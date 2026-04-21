@@ -1334,7 +1334,10 @@ document.getElementById('form-dia').addEventListener('submit', async e => {
       if (errSem) { btn.disabled=false; btn.textContent='💾 Guardar Registro'; toast('Error creando semana: '+errSem.message,'err'); return; }
       semana_id = newSem.id;
       toast(`Semana "${autoLabel}" creada automáticamente ✓`, 'ok');
-      await loadSemanas();
+      // reload semanas from DB
+      semanas.push({...newSem, fecha_inicio:newSem.start_date, fecha_fin:newSem.end_date, numero_semana:semanas.length+1, _local:false});
+      semanas.sort((a,b)=>a.fecha_inicio.localeCompare(b.fecha_inicio));
+      populateSelects(); populateMonthSelects();
     }
   }
 
@@ -2678,7 +2681,7 @@ ${semAnt&&totalKgAnt>0?`<div class="section-title">Comparativo vs semana anterio
   </div>
 </div>`:''}
 <div class="footer"><span>AMEG Production Dashboard — Confidencial</span><span>${fechaReporte}</span></div>
-<scr`+'ipt>window.onload=()=>window.print();</scr'+'ipt></body></html>`;
+<`+'script>window.onload=()=>window.print();</scri'+'pt></body></html>`;
     const blob=new Blob([html],{type:'text/html'});
     const url=URL.createObjectURL(blob);
     const a=document.createElement('a');
@@ -3018,6 +3021,8 @@ async function navTo(tabId){
   const btn=document.querySelector(`#main-nav button[data-tab="${tabId}"]`);
   if (btn) btn.classList.add('active');
   if (tabId==='tablero')       await renderTablero();
+  if (tabId==='semana-import') { /* upload tab, no render needed */ }
+  if (tabId==='captura')       { await renderRecientes(); }
   if (tabId==='calendario')    await renderCalendario();
   if (tabId==='mes')           await renderMes();
   if (tabId==='graficas')      await renderGraficas();
