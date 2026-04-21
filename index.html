@@ -2681,7 +2681,7 @@ ${semAnt&&totalKgAnt>0?`<div class="section-title">Comparativo vs semana anterio
   </div>
 </div>`:''}
 <div class="footer"><span>AMEG Production Dashboard — Confidencial</span><span>${fechaReporte}</span></div>
-<`+'script>window.onload=()=>window.print();</scri'+'pt></body></html>`;
+</body></html>` + '<scr'+'ipt>window.onload=()=>window.print();</scr'+'ipt>';
     const blob=new Blob([html],{type:'text/html'});
     const url=URL.createObjectURL(blob);
     const a=document.createElement('a');
