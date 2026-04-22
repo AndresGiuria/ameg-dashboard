@@ -5,10 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>AMEG Dashboard — La Chilaca / Gus Tacos</title>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
   <script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
   <style>
     :root {
       --verde:       #1b4332;
@@ -865,12 +864,19 @@ const META_KG_H    = 12;
 const EXCLUIDO_RH  = 'Mario Alberto Hernández';
 const EXCLUIDO_CSV = 'HERNANDEZ ALCALA, MARIO ALBERTO';
 
+// Capture native fetch before any library can override it
+const _nativeFetch = window.fetch.bind(window);
+
 if (window.pdfjsLib) {
-  pdfjsLib.GlobalWorkerOptions.workerSrc =
-    'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js';
+  pdfjsLib.GlobalWorkerOptions.workerSrc = '';
 }
+
 const { createClient } = supabase;
-const db = createClient(SUPABASE_URL, SUPABASE_KEY);
+const db = createClient(SUPABASE_URL, SUPABASE_KEY, {
+  global: {
+    fetch: (...args) => _nativeFetch(...args),
+  }
+});
 
 // ─── SEED DATA ─────────────────────────────────────────────────────────
 const SEED = [
@@ -1084,8 +1090,8 @@ async function initSemanas() {
     }
 
   } catch (err) {
-    console.error('initSemanas:', err);
-    setStatus('DB error: '+(err.message||err).toString().slice(0,50), false);
+    console.error('initSemanas full error:', JSON.stringify(err), err);
+    setStatus('DB error: '+(err?.message||err?.code||JSON.stringify(err)).toString().slice(0,60), false);
   }
 }
 
@@ -1936,127 +1942,144 @@ async function extractFromDigitalPDF(pdf, pageTexts) {
 
 // ── Extractor para PDFs escaneados (OCR con Tesseract) ───────────────
 async function extractFromScannedPDF(pdf) {
-  if (!window.Tesseract) throw new Error('Tesseract.js no cargado');
-
-  // Inicializar worker una sola vez
-  if (!window._tesseractWorker) {
-    window._tesseractWorker = await Tesseract.createWorker('eng', 1, {
-      logger: () => {},
-    });
-    await window._tesseractWorker.setParameters({
-      tessedit_char_whitelist: '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz .,/-:áéíóúÁÉÍÓÚñÑ',
-    });
-  }
-  const worker = window._tesseractWorker;
-
-  const resultados = [];
-  const MESES_NUM = {
-    'jan':1,'feb':2,'mar':3,'apr':4,'may':5,'jun':6,
-    'jul':7,'aug':8,'sep':9,'oct':10,'nov':11,'dec':12,
-    'ene':1,'abr':4,'ago':8,
-  };
-
+  // PDF escaneado: renderizar páginas como imágenes y mostrar formulario manual
+  const pageImages = [];
   for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
-    try {
-      // Renderizar página a canvas
-      const page = await pdf.getPage(pageNum);
-      const scale = 2.5; // mayor escala = mejor OCR
-      const viewport = page.getViewport({scale});
-      const canvas = document.createElement('canvas');
-      canvas.width  = viewport.width;
-      canvas.height = viewport.height;
-      const ctx = canvas.getContext('2d');
-      await page.render({canvasContext: ctx, viewport}).promise;
-
-      // OCR
-      const {data: {text}} = await worker.recognize(canvas);
-      const lines = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
-
-      // Detectar fecha: buscar "Month: April Year: 26" o similar
-      let day = null, month = null, year = 2026;
-
-      // Buscar Year
-      for (const line of lines) {
-        const yMatch = line.match(/Year[:\s]+(\d{2,4})/i);
-        if (yMatch) { let y = parseInt(yMatch[1]); if (y < 100) y += 2000; year = y; }
-        const mMatch = line.match(/Month[:\s]+([A-Za-z]+)/i);
-        if (mMatch) {
-          const mn = mMatch[1].toLowerCase().slice(0,3);
-          month = MESES_NUM[mn] || null;
-        }
-      }
-
-      // Buscar Date column — número que aparece repetidamente al inicio de filas
-      const dateCandidates = {};
-      for (const line of lines) {
-        const m = line.match(/^(\d{1,2})\s+(ASADA|BARBACOA|BIRRIA|CARNITAS|CHICKEN|RAW|FISH|BB|BIRRIA C|CONSOME|BEANS|PASTOR|TOTAL)/i);
-        if (m) { const d = parseInt(m[1]); dateCandidates[d] = (dateCandidates[d]||0)+1; }
-      }
-      const dayEntries = Object.entries(dateCandidates).sort((a,b)=>b[1]-a[1]);
-      if (dayEntries.length) day = parseInt(dayEntries[0][0]);
-
-      // Si no encontramos fecha por filas, buscar línea "Date" con número solo
-      if (!day) {
-        for (const line of lines) {
-          const m = line.match(/^(\d{1,2})$/);
-          if (m) { day = parseInt(m[1]); break; }
-        }
-      }
-
-      const fecha = day && month
-        ? `${year}-${String(month).padStart(2,'0')}-${String(day).padStart(2,'0')}`
-        : null;
-
-      // Buscar fila TOTAL
-      function parseNum(s) { const n = parseFloat(s.replace(/[,\s]/g,'')); return isNaN(n)?null:n; }
-      function extractNums(text) {
-        return [...text.matchAll(/\d+(?:[.,]\d+)?/g)]
-          .map(m => parseNum(m[0].replace(',','.')))
-          .filter(n => n !== null && n > 0 && n < 100000);
-      }
-
-      const totalLine = lines.find(l => /^TOTAL/i.test(l));
-      if (totalLine) {
-        const nums = extractNums(totalLine);
-        if (nums.length >= 2) {
-          let kgInicio, kgFin, kgProd;
-          const sorted = [...nums].sort((a,b)=>b-a);
-          // Los dos más grandes son kgFin y kgInicio
-          kgFin = sorted[0]; kgInicio = sorted[1];
-          kgProd = +(kgFin - kgInicio).toFixed(2);
-
-          if (kgProd > 0) {
-            resultados.push({
-              fecha, kgInicio:+kgInicio.toFixed(2), kgFin:+kgFin.toFixed(2),
-              kgProd, rawLine: totalLine, pagina: pageNum, productos: [],
-              _ocr: true,
-            });
-          }
-        }
-      } else {
-        // Sin TOTAL: sumar productos
-        const PROD_RE = /^(\d{1,2})\s+(ASADA|BARBACOA|BIRRIA|CARNITAS|CHICKEN|RAW PASTOR|FISH|BB JUICE|BEANS|PASTOR MARINATE|CONSOME)/i;
-        const prodLines = lines.filter(l => PROD_RE.test(l));
-        if (prodLines.length >= 4) {
-          let sumInicio = 0, sumFin = 0;
-          for (const pl of prodLines) {
-            const nums = extractNums(pl.replace(PROD_RE, ''));
-            if (nums.length >= 2) { sumInicio += nums[0]; sumFin += nums[nums.length-1]; }
-          }
-          if (sumFin > sumInicio && sumInicio > 0) {
-            resultados.push({
-              fecha, kgInicio:+sumInicio.toFixed(2), kgFin:+sumFin.toFixed(2),
-              kgProd:+(sumFin-sumInicio).toFixed(2), rawLine:'(OCR: suma productos)',
-              pagina: pageNum, productos: [], _ocr: true,
-            });
-          }
-        }
-      }
-    } catch(e) {
-      console.warn(`OCR página ${pageNum}:`, e.message);
-    }
+    const page = await pdf.getPage(pageNum);
+    const scale = 1.5;
+    const viewport = page.getViewport({scale});
+    const canvas = document.createElement('canvas');
+    canvas.width = viewport.width;
+    canvas.height = viewport.height;
+    const ctx = canvas.getContext('2d');
+    await page.render({canvasContext: ctx, viewport}).promise;
+    pageImages.push(canvas.toDataURL('image/jpeg', 0.82));
   }
-  return resultados;
+  showScannedPDFModal(pageImages, pdf.numPages);
+  return []; // datos se capturan via modal
+}
+
+function showScannedPDFModal(pageImages, numPages) {
+  const existing = document.getElementById('scanned-modal');
+  if (existing) existing.remove();
+
+  function suggestDate(i) {
+    const d = new Date();
+    d.setDate(d.getDate() - (numPages - 1 - i));
+    return d.toISOString().split('T')[0];
+  }
+
+  const pagesHTML = pageImages.map((img, i) => `
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:24px;padding-bottom:24px;border-bottom:1px solid var(--borde)">
+      <div>
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--gris-500);margin-bottom:8px">Página ${i+1} de ${numPages}</div>
+        <img src="${img}" style="width:100%;border-radius:8px;border:1px solid var(--borde);box-shadow:var(--sombra-sm)">
+      </div>
+      <div style="display:flex;flex-direction:column;gap:12px;justify-content:center">
+        <div style="background:var(--gris-50);border-radius:10px;padding:16px;border:1px solid var(--borde)">
+          <div style="font-size:13px;font-weight:700;color:var(--gris-700);margin-bottom:12px">📋 Fila TOTAL — Día ${i+1}</div>
+          <div style="display:flex;flex-direction:column;gap:10px">
+            <div>
+              <label style="font-size:11px;font-weight:600;color:var(--gris-600);display:block;margin-bottom:4px">Fecha</label>
+              <input type="date" id="scan-fecha-${i}" value="${suggestDate(i)}"
+                style="width:100%;border:1px solid var(--borde);border-radius:7px;padding:8px 10px;font-size:13px;font-family:inherit">
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+              <div>
+                <label style="font-size:11px;font-weight:600;color:var(--gris-600);display:block;margin-bottom:4px">Kg Inicio (TOTAL)</label>
+                <input type="number" id="scan-inicio-${i}" step="0.01" placeholder="Ej. 1070"
+                  style="width:100%;border:1px solid var(--borde);border-radius:7px;padding:8px 10px;font-size:14px;font-family:inherit"
+                  oninput="calcScannedProd(${i})">
+              </div>
+              <div>
+                <label style="font-size:11px;font-weight:600;color:var(--gris-600);display:block;margin-bottom:4px">Kg Fin (TOTAL)</label>
+                <input type="number" id="scan-fin-${i}" step="0.01" placeholder="Ej. 1821.95"
+                  style="width:100%;border:1px solid var(--borde);border-radius:7px;padding:8px 10px;font-size:14px;font-family:inherit"
+                  oninput="calcScannedProd(${i})">
+              </div>
+            </div>
+            <div style="background:white;border-radius:7px;padding:10px 12px;border:1px solid var(--borde);text-align:center">
+              <div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;color:var(--gris-500);margin-bottom:4px">Kg Producidos</div>
+              <div id="scan-prod-${i}" style="font-size:26px;font-weight:700;font-family:'DM Mono',monospace;color:var(--gris-400)">—</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>`).join('');
+
+  const modal = document.createElement('div');
+  modal.id = 'scanned-modal';
+  modal.style.cssText = 'position:fixed;inset:0;z-index:9998;background:rgba(0,0,0,0.65);display:flex;align-items:flex-start;justify-content:center;overflow-y:auto;padding:24px;';
+  modal.innerHTML = `
+    <div style="background:white;border-radius:14px;width:100%;max-width:920px;box-shadow:0 20px 60px rgba(0,0,0,0.35);overflow:hidden;margin:auto">
+      <div style="background:var(--gris-950);color:white;padding:18px 24px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:1">
+        <div>
+          <div style="font-size:15px;font-weight:700">📷 PDF Escaneado — Ingresa los totales</div>
+          <div style="font-size:12px;opacity:0.55;margin-top:2px">Mira la fila TOTAL de cada página y escribe los dos números</div>
+        </div>
+        <button onclick="document.getElementById('scanned-modal').remove()"
+          style="background:rgba(255,255,255,0.1);border:none;color:white;width:32px;height:32px;border-radius:6px;font-size:18px;cursor:pointer">✕</button>
+      </div>
+      <div style="padding:24px">
+        ${pagesHTML}
+        <div style="display:flex;gap:12px;align-items:center;padding-top:4px">
+          <button onclick="guardarScannedDias(${numPages})" class="btn btn-primary" style="flex:1;justify-content:center;padding:13px;font-size:14px">
+            💾 Guardar ${numPages} día(s) en Supabase
+          </button>
+          <button onclick="document.getElementById('scanned-modal').remove()" class="btn btn-secondary">Cancelar</button>
+        </div>
+      </div>
+    </div>`;
+  document.body.appendChild(modal);
+}
+
+function calcScannedProd(i) {
+  const inicio = parseFloat(document.getElementById('scan-inicio-'+i)?.value)||0;
+  const fin    = parseFloat(document.getElementById('scan-fin-'+i)?.value)||0;
+  const prod   = +(fin - inicio).toFixed(2);
+  const el = document.getElementById('scan-prod-'+i);
+  if (!el) return;
+  el.textContent = prod > 0 ? prod.toFixed(2) : '—';
+  el.style.color = prod >= 600 ? 'var(--verde)' : prod > 0 ? 'var(--rojo)' : 'var(--gris-400)';
+}
+
+async function guardarScannedDias(numPages) {
+  const btn = document.querySelector('#scanned-modal .btn-primary');
+  if (btn) { btn.disabled=true; btn.textContent='Guardando…'; }
+  let guardados=0, errores=0;
+  for (let i=0; i<numPages; i++) {
+    const fecha  = document.getElementById('scan-fecha-'+i)?.value;
+    const inicio = parseFloat(document.getElementById('scan-inicio-'+i)?.value)||0;
+    const fin    = parseFloat(document.getElementById('scan-fin-'+i)?.value)||0;
+    const prod   = +(fin - inicio).toFixed(2);
+    if (!fecha || prod <= 0) { errores++; continue; }
+    let semana_id = null;
+    const semEx = semanas.find(s => fecha >= s.fecha_inicio && fecha <= s.fecha_fin);
+    if (semEx) {
+      semana_id = semEx.id;
+    } else {
+      const dObj = new Date(fecha+'T12:00:00');
+      const dow = dObj.getDay();
+      const lun = new Date(dObj); lun.setDate(dObj.getDate()+(dow===0?-6:1-dow));
+      const dom = new Date(lun); dom.setDate(lun.getDate()+6);
+      const toISO = x=>x.toISOString().split('T')[0];
+      const meses=['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+      const label=`Sem ${semanas.length+1} (${lun.getDate()}–${dom.getDate()} ${meses[lun.getMonth()]})`;
+      const {data:ns,error:es}=await db.from('semanas').insert({label,start_date:toISO(lun),end_date:toISO(dom)}).select().single();
+      if (es){errores++;continue;}
+      semana_id=ns.id;
+      semanas.push({...ns,fecha_inicio:ns.start_date,fecha_fin:ns.end_date,numero_semana:semanas.length+1,_local:false});
+      semanas.sort((a,b)=>a.fecha_inicio.localeCompare(b.fecha_inicio));
+      populateSelects(); populateMonthSelects();
+    }
+    const notas=`Inv: ${inicio} → ${fin}`;
+    const {error}=await db.from('dias').upsert({fecha,semana_id,prod,notas,horas:null},{onConflict:'fecha'});
+    if (error) errores++; else guardados++;
+  }
+  if (btn){btn.disabled=false;btn.textContent=`💾 Guardar ${numPages} día(s) en Supabase`;}
+  document.getElementById('scanned-modal')?.remove();
+  toast(`${guardados} día(s) guardado(s)${errores?` · ${errores} sin datos`:''}`,errores&&!guardados?'err':'ok');
+  if (guardados>0) await refreshAll();
 }
 
 // Fallback para PDFs de un solo día sin encabezado "Fecha:"
