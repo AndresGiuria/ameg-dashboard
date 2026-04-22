@@ -8,6 +8,7 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
   <script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
   <style>
     :root {
       --verde:       #1b4332;
@@ -1751,7 +1752,7 @@ async function handleAllPDFs(files) {
   const labelEl = document.getElementById('pdf-label');
   const result  = document.getElementById('pdf-result');
   iconEl.textContent  = '⏳';
-  labelEl.textContent = files.length===1 ? 'Procesando PDF…' : `Procesando ${files.length} archivos…`;
+  labelEl.textContent = files.length===1 ? 'Procesando PDF… (puede tardar si es escaneado)' : `Procesando ${files.length} archivos…`;
   result.innerHTML    = '<div class="loading"><div class="spinner"></div></div>';
 
   const diasExtraidos = [];
@@ -1767,8 +1768,9 @@ async function handleAllPDFs(files) {
   const ok   = diasExtraidos.filter(d => !d.error && d.kgProd !== undefined);
   const fail = diasExtraidos.filter(d => d.error);
 
+  const usedOCR = ok.some(d => d._ocr);
   iconEl.textContent  = fail.length && !ok.length ? '❌' : ok.length ? '✅' : '⚠️';
-  labelEl.textContent = `${ok.length} día(s) extraído(s)${fail.length ? ` · ${fail.length} error(es)` : ''}`;
+  labelEl.textContent = `${ok.length} día(s) extraído(s)${usedOCR?' (OCR)':''}${fail.length ? ` · ${fail.length} error(es)` : ''}`;
 
   if (!ok.length) {
     result.innerHTML = `<div style="color:#c0392b;margin-top:10px;font-size:13px">
@@ -1779,39 +1781,56 @@ async function handleAllPDFs(files) {
   renderMultiDayPDF(ok, fail);
 }
 
-// ─── FUNCIÓN CORREGIDA ──────────────────────────────────────────────
-// Extrae TODOS los días de un PDF concatenando páginas y dividiendo
-// por el patrón "Fecha: DD de Mes, YYYY"
+// ─── FUNCIÓN CORREGIDA + OCR ────────────────────────────────────────
+// Detecta automáticamente si el PDF es digital o escaneado.
+// - PDF digital: extrae texto con pdfjs (rápido)
+// - PDF escaneado: convierte a imagen y usa Tesseract OCR (lento ~5s/pág)
+
 async function extractPDFAllPages(file) {
   if (!window.pdfjsLib) throw new Error('PDF.js no cargado');
   const arrayBuffer = await file.arrayBuffer();
   const pdf = await pdfjsLib.getDocument({data: arrayBuffer}).promise;
 
-  // 1. Recopilar TODOS los text items de TODAS las páginas
-  //    Aplicar un offset Y por página para que las filas no colisionen
+  // 1. Intentar extracción de texto nativo
+  let totalTextLength = 0;
+  const pageTexts = [];
+  for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+    const page = await pdf.getPage(pageNum);
+    const content = await page.getTextContent();
+    const text = content.items.map(i => i.str).join(' ');
+    totalTextLength += text.trim().length;
+    pageTexts.push({pageNum, text, page});
+  }
+
+  // 2. Si hay texto suficiente → PDF digital → usar extractor original
+  if (totalTextLength > 100) {
+    return extractFromDigitalPDF(pdf, pageTexts);
+  }
+
+  // 3. PDF escaneado → OCR con Tesseract
+  return extractFromScannedPDF(pdf);
+}
+
+// ── Extractor para PDFs digitales (texto nativo) ─────────────────────
+async function extractFromDigitalPDF(pdf, pageTexts) {
+  // Recopilar todos los items con coordenadas
   const allItems = [];
   for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
-    const page    = await pdf.getPage(pageNum);
+    const page = await pdf.getPage(pageNum);
     const content = await page.getTextContent();
-    const yOffset = (pageNum - 1) * 10000; // separa páginas en el eje Y
+    const yOffset = (pageNum - 1) * 10000;
     for (const item of content.items) {
       const s = item.str?.trim();
       if (!s) continue;
-      allItems.push({
-        str:  s,
-        x:    Math.round(item.transform[4]),
-        y:    Math.round(item.transform[5]) + yOffset,
-        page: pageNum,
-      });
+      allItems.push({str: s, x: Math.round(item.transform[4]),
+                     y: Math.round(item.transform[5]) + yOffset, page: pageNum});
     }
   }
 
-  // 2. Agrupar items por fila Y (tolerancia ±4 px dentro de la misma página)
   const yBuckets = {};
   for (const item of allItems) {
     let bucket = null;
     for (const key of Object.keys(yBuckets)) {
-      // Solo agrupar si están en la misma página (evitar merge cross-page)
       const sample = yBuckets[key][0];
       if (sample.page === item.page && Math.abs(item.y - Number(key)) <= 4) {
         bucket = key; break;
@@ -1820,17 +1839,13 @@ async function extractPDFAllPages(file) {
     if (!bucket) { bucket = String(item.y); yBuckets[bucket] = []; }
     yBuckets[bucket].push(item);
   }
-
-  // Ordenar filas de mayor Y a menor Y (orden de lectura top→bottom)
   const lines = Object.entries(yBuckets)
     .sort(([a],[b]) => Number(b) - Number(a))
     .map(([y, items]) => ({
-      y:    Number(y),
-      page: items[0].page,
+      y: Number(y), page: items[0].page,
       text: items.sort((a,b) => a.x - b.x).map(i => i.str).join(' '),
     }));
 
-  // 3. Dividir el documento en bloques por "Fecha: DD de Mes, YYYY"
   const MESES_ES = {
     'enero':1,'febrero':2,'marzo':3,'abril':4,'mayo':5,'junio':6,
     'julio':7,'agosto':8,'septiembre':9,'octubre':10,'noviembre':11,'diciembre':12,
@@ -1841,54 +1856,39 @@ async function extractPDFAllPages(file) {
   lines.forEach((line, idx) => {
     const m = line.text.match(FECHA_RE);
     if (m) {
-      const day    = parseInt(m[1]);
-      const mesNom = m[2].toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
-      const year   = parseInt(m[3]);
-      const month  = MESES_ES[m[2].toLowerCase()] || MESES_ES[mesNom];
-      const fecha  = month
+      const day = parseInt(m[1]);
+      const mesNom = m[2].toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'');
+      const year = parseInt(m[3]);
+      const month = MESES_ES[m[2].toLowerCase()] || MESES_ES[mesNom];
+      const fecha = month
         ? `${year}-${String(month).padStart(2,'0')}-${String(day).padStart(2,'0')}`
         : null;
-      bloqueStarts.push({ idx, fecha });
+      bloqueStarts.push({idx, fecha});
     }
   });
 
-  // Sin bloques "Fecha:" → intentar extracción de un solo día (fallback)
-  if (!bloqueStarts.length) {
-    return extractSingleDayFromLines(lines);
-  }
+  if (!bloqueStarts.length) return extractSingleDayFromLines(lines);
 
-  // 4. Procesar cada bloque
-  function parseNum(s) {
-    const n = parseFloat(String(s).replace(/[,\s]/g,''));
-    return isNaN(n) ? null : n;
-  }
+  function parseNum(s) { const n = parseFloat(String(s).replace(/[,\s]/g,'')); return isNaN(n)?null:n; }
   function extractNums(text) {
     return [...text.matchAll(/\d[\d,\s]*(?:\.\d+)?/g)]
-      .map(m => parseNum(m[0]))
-      .filter(n => n !== null && n > 0 && n < 1_000_000);
+      .map(m => parseNum(m[0])).filter(n => n !== null && n > 0 && n < 1_000_000);
   }
 
   const PDF_PRODUCT_NAMES = /^(ASADA|BARBACOA|BIRRIA|CONSOMÉ|CONSOME|TRIPAS|BUCHE|COSTILLA|CABEZA|LENGUA|FAJITA|CHORIZO|CARNITAS|CHICKEN|RAW PASTOR|FISH BASSA|BB JUICE|PASTOR MARINATE|BEANS)/i;
-
   const resultados = [];
 
   for (let b = 0; b < bloqueStarts.length; b++) {
     const startIdx = bloqueStarts[b].idx;
-    const endIdx   = b + 1 < bloqueStarts.length ? bloqueStarts[b+1].idx : lines.length;
-    const bloque   = lines.slice(startIdx, endIdx);
-    const { fecha } = bloqueStarts[b];
+    const endIdx = b + 1 < bloqueStarts.length ? bloqueStarts[b+1].idx : lines.length;
+    const bloque = lines.slice(startIdx, endIdx);
+    const {fecha} = bloqueStarts[b];
 
-    // Buscar línea TOTAL en el bloque (puede estar en página siguiente)
-    const totalLine = bloque.find(l => /^\s*TOTAL\b/i.test(l.text))
-      || bloque.find(l => /\bTOTAL\b/i.test(l.text));
-
-    // Extraer filas de productos del bloque
+    const totalLine = bloque.find(l => /^\s*TOTAL/i.test(l.text))
+      || bloque.find(l => /TOTAL/i.test(l.text));
     const productRows = bloque
       .filter(l => PDF_PRODUCT_NAMES.test(l.text.trim()))
-      .map(l => ({
-        name: l.text.trim().split(/\s+/)[0].toUpperCase(),
-        nums: extractNums(l.text),
-      }));
+      .map(l => ({name: l.text.trim().split(/\s+/)[0].toUpperCase(), nums: extractNums(l.text)}));
 
     let kgInicio, kgFin, kgProd, rawLine;
 
@@ -1897,54 +1897,163 @@ async function extractPDFAllPages(file) {
       const nums = extractNums(totalLine.text);
       if (nums.length >= 2) {
         if (nums.length === 2) {
-          [kgInicio, kgFin] = nums;
-          kgProd = +(kgFin - kgInicio).toFixed(2);
+          [kgInicio, kgFin] = nums; kgProd = +(kgFin - kgInicio).toFixed(2);
         } else {
-          // Buscar tripleta a+b≈c (inicio + prod = fin)
           let found = false;
           for (let i = 0; i <= nums.length - 3; i++) {
-            const [a, b, c] = [nums[i], nums[i+1], nums[i+2]];
-            if (Math.abs(a + b - c) < Math.max(5, c * 0.01)) {
-              kgInicio=a; kgProd=b; kgFin=c; found=true; break;
-            }
+            const [a,b,c] = [nums[i],nums[i+1],nums[i+2]];
+            if (Math.abs(a+b-c) < Math.max(5,c*0.01)){kgInicio=a;kgProd=b;kgFin=c;found=true;break;}
           }
           if (!found) {
-            // Los dos números más grandes son fin e inicio
-            const sorted = [...nums].sort((a,b) => b-a);
+            const sorted = [...nums].sort((a,b)=>b-a);
             kgFin=sorted[0]; kgInicio=sorted[1];
-            kgProd = +(kgFin - kgInicio).toFixed(2);
+            kgProd = +(kgFin-kgInicio).toFixed(2);
           }
         }
       }
     } else if (productRows.length >= 3) {
-      // Sin TOTAL: sumar productos individuales
-      const withNums = productRows.filter(p => p.nums.length >= 2 && !/^TOTAL/i.test(p.name));
+      const withNums = productRows.filter(p=>p.nums.length>=2&&!/^TOTAL/i.test(p.name));
       if (withNums.length >= 2) {
-        kgInicio = withNums.reduce((a,p) => a + (p.nums[0]||0), 0);
-        kgFin    = withNums.reduce((a,p) => a + (p.nums[p.nums.length-1]||0), 0);
-        kgProd   = +(kgFin - kgInicio).toFixed(2);
+        kgInicio = withNums.reduce((a,p)=>a+(p.nums[0]||0),0);
+        kgFin    = withNums.reduce((a,p)=>a+(p.nums[p.nums.length-1]||0),0);
+        kgProd   = +(kgFin-kgInicio).toFixed(2);
         rawLine  = `(suma de ${withNums.length} productos)`;
       }
     }
 
     if (kgProd !== undefined && kgInicio !== undefined && kgProd >= 0) {
       const productos = productRows
-        .filter(p => p.nums.length >= 2 && !/^TOTAL/i.test(p.name))
-        .map(p => ({
-          producto:  p.name,
-          kg_inicio: +(p.nums[0]||0).toFixed(2),
-          kg_fin:    +(p.nums[p.nums.length-1]||0).toFixed(2),
-          kg_prod:   +(Math.max(0, p.nums[p.nums.length-1]-p.nums[0])).toFixed(2),
-        }));
-      resultados.push({
-        fecha,
-        kgInicio: +kgInicio.toFixed(2),
-        kgFin:    +kgFin.toFixed(2),
-        kgProd:   Math.max(0, kgProd),
-        rawLine:  rawLine || '',
-        pagina:   1,
-        productos,
-      });
+        .filter(p=>p.nums.length>=2&&!/^TOTAL/i.test(p.name))
+        .map(p=>({producto:p.name, kg_inicio:+(p.nums[0]||0).toFixed(2),
+                  kg_fin:+(p.nums[p.nums.length-1]||0).toFixed(2),
+                  kg_prod:+(Math.max(0,p.nums[p.nums.length-1]-p.nums[0])).toFixed(2)}));
+      resultados.push({fecha, kgInicio:+kgInicio.toFixed(2), kgFin:+kgFin.toFixed(2),
+                       kgProd:Math.max(0,kgProd), rawLine:rawLine||'', pagina:1, productos});
+    }
+  }
+  return resultados;
+}
+
+// ── Extractor para PDFs escaneados (OCR con Tesseract) ───────────────
+async function extractFromScannedPDF(pdf) {
+  if (!window.Tesseract) throw new Error('Tesseract.js no cargado');
+
+  // Inicializar worker una sola vez
+  if (!window._tesseractWorker) {
+    window._tesseractWorker = await Tesseract.createWorker('eng', 1, {
+      logger: () => {},
+    });
+    await window._tesseractWorker.setParameters({
+      tessedit_char_whitelist: '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz .,/-:áéíóúÁÉÍÓÚñÑ',
+    });
+  }
+  const worker = window._tesseractWorker;
+
+  const resultados = [];
+  const MESES_NUM = {
+    'jan':1,'feb':2,'mar':3,'apr':4,'may':5,'jun':6,
+    'jul':7,'aug':8,'sep':9,'oct':10,'nov':11,'dec':12,
+    'ene':1,'abr':4,'ago':8,
+  };
+
+  for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+    try {
+      // Renderizar página a canvas
+      const page = await pdf.getPage(pageNum);
+      const scale = 2.5; // mayor escala = mejor OCR
+      const viewport = page.getViewport({scale});
+      const canvas = document.createElement('canvas');
+      canvas.width  = viewport.width;
+      canvas.height = viewport.height;
+      const ctx = canvas.getContext('2d');
+      await page.render({canvasContext: ctx, viewport}).promise;
+
+      // OCR
+      const {data: {text}} = await worker.recognize(canvas);
+      const lines = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+
+      // Detectar fecha: buscar "Month: April Year: 26" o similar
+      let day = null, month = null, year = 2026;
+
+      // Buscar Year
+      for (const line of lines) {
+        const yMatch = line.match(/Year[:\s]+(\d{2,4})/i);
+        if (yMatch) { let y = parseInt(yMatch[1]); if (y < 100) y += 2000; year = y; }
+        const mMatch = line.match(/Month[:\s]+([A-Za-z]+)/i);
+        if (mMatch) {
+          const mn = mMatch[1].toLowerCase().slice(0,3);
+          month = MESES_NUM[mn] || null;
+        }
+      }
+
+      // Buscar Date column — número que aparece repetidamente al inicio de filas
+      const dateCandidates = {};
+      for (const line of lines) {
+        const m = line.match(/^(\d{1,2})\s+(ASADA|BARBACOA|BIRRIA|CARNITAS|CHICKEN|RAW|FISH|BB|BIRRIA C|CONSOME|BEANS|PASTOR|TOTAL)/i);
+        if (m) { const d = parseInt(m[1]); dateCandidates[d] = (dateCandidates[d]||0)+1; }
+      }
+      const dayEntries = Object.entries(dateCandidates).sort((a,b)=>b[1]-a[1]);
+      if (dayEntries.length) day = parseInt(dayEntries[0][0]);
+
+      // Si no encontramos fecha por filas, buscar línea "Date" con número solo
+      if (!day) {
+        for (const line of lines) {
+          const m = line.match(/^(\d{1,2})$/);
+          if (m) { day = parseInt(m[1]); break; }
+        }
+      }
+
+      const fecha = day && month
+        ? `${year}-${String(month).padStart(2,'0')}-${String(day).padStart(2,'0')}`
+        : null;
+
+      // Buscar fila TOTAL
+      function parseNum(s) { const n = parseFloat(s.replace(/[,\s]/g,'')); return isNaN(n)?null:n; }
+      function extractNums(text) {
+        return [...text.matchAll(/\d+(?:[.,]\d+)?/g)]
+          .map(m => parseNum(m[0].replace(',','.')))
+          .filter(n => n !== null && n > 0 && n < 100000);
+      }
+
+      const totalLine = lines.find(l => /^TOTAL/i.test(l));
+      if (totalLine) {
+        const nums = extractNums(totalLine);
+        if (nums.length >= 2) {
+          let kgInicio, kgFin, kgProd;
+          const sorted = [...nums].sort((a,b)=>b-a);
+          // Los dos más grandes son kgFin y kgInicio
+          kgFin = sorted[0]; kgInicio = sorted[1];
+          kgProd = +(kgFin - kgInicio).toFixed(2);
+
+          if (kgProd > 0) {
+            resultados.push({
+              fecha, kgInicio:+kgInicio.toFixed(2), kgFin:+kgFin.toFixed(2),
+              kgProd, rawLine: totalLine, pagina: pageNum, productos: [],
+              _ocr: true,
+            });
+          }
+        }
+      } else {
+        // Sin TOTAL: sumar productos
+        const PROD_RE = /^(\d{1,2})\s+(ASADA|BARBACOA|BIRRIA|CARNITAS|CHICKEN|RAW PASTOR|FISH|BB JUICE|BEANS|PASTOR MARINATE|CONSOME)/i;
+        const prodLines = lines.filter(l => PROD_RE.test(l));
+        if (prodLines.length >= 4) {
+          let sumInicio = 0, sumFin = 0;
+          for (const pl of prodLines) {
+            const nums = extractNums(pl.replace(PROD_RE, ''));
+            if (nums.length >= 2) { sumInicio += nums[0]; sumFin += nums[nums.length-1]; }
+          }
+          if (sumFin > sumInicio && sumInicio > 0) {
+            resultados.push({
+              fecha, kgInicio:+sumInicio.toFixed(2), kgFin:+sumFin.toFixed(2),
+              kgProd:+(sumFin-sumInicio).toFixed(2), rawLine:'(OCR: suma productos)',
+              pagina: pageNum, productos: [], _ocr: true,
+            });
+          }
+        }
+      }
+    } catch(e) {
+      console.warn(`OCR página ${pageNum}:`, e.message);
     }
   }
   return resultados;
@@ -1957,8 +2066,8 @@ function extractSingleDayFromLines(lines) {
     return [...text.matchAll(/\d[\d,\s]*(?:\.\d+)?/g)]
       .map(m => parseNum(m[0])).filter(n => n!==null && n>0 && n<1_000_000);
   }
-  const totalLine = lines.find(l => /^\s*TOTAL\b/i.test(l.text))
-    || lines.find(l => /\bTOTAL\b/i.test(l.text));
+  const totalLine = lines.find(l => /^\s*TOTAL/i.test(l.text))
+    || lines.find(l => /TOTAL/i.test(l.text));
   if (!totalLine) return [];
   const nums = extractNums(totalLine.text);
   if (nums.length < 2) return [];
@@ -1973,7 +2082,7 @@ function extractSingleDayFromLines(lines) {
   return [{fecha:null, kgInicio:+kgInicio.toFixed(2), kgFin:+kgFin.toFixed(2),
            kgProd:Math.max(0,kgProd), rawLine:totalLine.text.trim(), pagina:1, productos:[]}];
 }
-// ─── FIN FUNCIÓN CORREGIDA ──────────────────────────────────────────
+// ─── FIN FUNCIÓN CORREGIDA + OCR ─────────────────────────────────────
 
 (function initPDFUpload() {
   const zone=document.getElementById('pdf-zone'), input=document.getElementById('pdf-input');
@@ -2433,7 +2542,9 @@ async function swProcesarPDFs(files){
   const labelEl=document.getElementById('sw-pdf-label');
   iconEl.textContent='⏳'; labelEl.textContent=`Procesando ${files.length} PDF(s)…`;
   const extraidos=[];
-  for (const file of files){
+  for (let fi=0; fi<files.length; fi++){
+    const file=files[fi];
+    labelEl.textContent=`Procesando archivo ${fi+1} de ${files.length}… (puede tardar si es escaneado)`;
     try { const paginas=await extractPDFAllPages(file); for (const p of paginas) extraidos.push(p); }
     catch(e){ console.warn('PDF error:',e.message); }
   }
