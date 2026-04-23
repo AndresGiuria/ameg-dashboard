@@ -568,7 +568,7 @@
     </div>
   </div>
   <div id="sw-preview" style="display:none">
-    <div class="card" style="margin-bottom:16px">
+    <div class="card" id="sw-preview-card" style="margin-bottom:16px">
       <h2>📋 Vista previa — Semana detectada</h2>
       <div id="sw-semana-info" style="margin-bottom:16px"></div>
       <div class="table-wrap">
@@ -586,11 +586,8 @@
           <tfoot id="sw-tabla-foot"></tfoot>
         </table>
       </div>
+      <button id="sw-btn-guardar" onclick="swGuardarTodo()" style="display:block; width:100%; margin-top:20px; padding:15px; background:#2d6a4f; color:white; border:none; border-radius:8px; font-weight:bold; cursor:pointer;">💾 Confirmar y Guardar Semana</button>
       <div style="display:flex;gap:12px;margin-top:18px;flex-wrap:wrap;align-items:center;justify-content:center">
-        <button class="btn btn-primary" id="sw-btn-guardar" onclick="swGuardarTodo()"
-          style="background:#16a34a;border-color:#16a34a;color:#fff;font-size:16px;padding:14px 28px;font-weight:700;min-width:320px;justify-content:center">
-          💾 Guardar Todo en Supabase
-        </button>
         <button class="btn btn-secondary" id="sw-btn-reporte" style="display:none" onclick="swGenerarReporte()">
           📄 Descargar reporte PDF
         </button>
@@ -2873,6 +2870,7 @@ function swHorasDia(fecha, horasRepartidas) {
 
 function swActualizarPreview() {
   const preview = document.getElementById('sw-preview');
+  const previewCard = document.getElementById('sw-preview-card');
   const infoEl = document.getElementById('sw-semana-info');
   const bodyEl = document.getElementById('sw-tabla-body');
   const footEl = document.getElementById('sw-tabla-foot');
@@ -2936,6 +2934,7 @@ function swActualizarPreview() {
   </tr>`;
 
   preview.style.display = 'block';
+  if (previewCard) previewCard.style.display = 'block';
 
   const saveStatus = document.getElementById('sw-save-status');
   if (saveStatus) {
@@ -3260,7 +3259,7 @@ async function swGuardarTodo() {
     if (saveStatus) saveStatus.textContent = err?.message || 'Error durante guardado.';
     toast(err?.message || 'Error guardando semana.', 'err');
   } finally {
-    if (btn) { btn.disabled = false; btn.textContent = '💾 Guardar Todo en Supabase'; }
+    if (btn) { btn.disabled = false; btn.textContent = '💾 Confirmar y Guardar Semana'; }
   }
 }
 window.swGuardarTodo = swGuardarTodo;
