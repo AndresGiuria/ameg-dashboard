@@ -2549,10 +2549,23 @@ async function swProcesarHoras(file){
   iconEl.textContent='⏳'; labelEl.textContent='Procesando horas…';
   const ext=file.name.split('.').pop().toLowerCase();
   try {
-    swHorasPorDia=ext==='xlsx'||ext==='xls' ? await swLeerXLSX(file) : {};
-    const total=Object.values(swHorasPorDia).reduce((a,b)=>a+b,0);
+    // Reset manual total before processing
+    window._swHorasManualTotal = 0;
+    if (ext==='xlsx'||ext==='xls') {
+      swHorasPorDia = await swLeerXLSX(file);
+    } else {
+      swHorasPorDia = {};
+      await swLeerCSV(file); // sets window._swHorasManualTotal
+    }
+    const manualTotal = window._swHorasManualTotal || 0;
+    const diasTotal = Object.values(swHorasPorDia).reduce((a,b)=>a+b,0);
+    const total = manualTotal || diasTotal;
     iconEl.textContent='✅';
-    labelEl.textContent=`${Object.keys(swHorasPorDia).length} días · ${total.toFixed(2)}h total`;
+    if (manualTotal > 0) {
+      labelEl.textContent=`${total.toFixed(2)}h detectadas (resumen semanal)`;
+    } else {
+      labelEl.textContent=`${Object.keys(swHorasPorDia).length} días · ${total.toFixed(2)}h total`;
+    }
     swActualizarPreview();
   } catch(e){
     iconEl.textContent='❌'; labelEl.textContent='Error: '+e.message;
