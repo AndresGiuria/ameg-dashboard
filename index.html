@@ -2948,9 +2948,11 @@ async function swGuardarTodoImpl() {
       toast(`Semana guardada correctamente (${guardados} días).`, 'ok');
       const btnReport = document.getElementById('sw-btn-reporte');
       if (btnReport) btnReport.style.display = '';
+      // En este proyecto no existen fetchAllData/renderCharts;
+      // refrescamos datos desde Supabase y redibujamos gráficas del Tablero.
+      await refreshAll();
+      await renderTablero();
     }
-
-    if (guardados > 0) await refreshAll();
   } catch (err) {
     console.error('swGuardarTodo error:', err);
     if (saveStatus) saveStatus.textContent = err?.message || 'Error durante guardado.';
