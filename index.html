@@ -2475,6 +2475,44 @@ async function renderTablero() {
   await renderChartMesMain();
 }
 
+async function renderCalendario() {
+  const container = document.getElementById('cal-content');
+  if (!container) return;
+  const mesSel = document.getElementById('cal-mes-sel')?.value || new Date().toISOString().slice(0,7);
+  if (mesSel === 'all') {
+    container.innerHTML = '<div class="empty"><p>Selecciona un mes para ver el calendario.</p></div>';
+    return;
+  }
+  const [y, m] = mesSel.split('-').map(Number);
+  const desde = `${mesSel}-01`;
+  const hasta = new Date(y, m, 0).toISOString().split('T')[0];
+  const rows = await fetchDiasByRange(desde, hasta);
+  const byDate = {};
+  rows.forEach(r => { byDate[r.fecha] = r; });
+
+  const firstDow = new Date(`${desde}T12:00:00`).getDay();
+  const padStart = firstDow === 0 ? 6 : firstDow - 1; // lunes inicio
+  const daysInMonth = new Date(y, m, 0).getDate();
+  const labels = ['L','M','M','J','V','S','D'];
+
+  let html = `<div class="cal-month-title">${monthLabel(mesSel).replace(/^\w/, c => c.toUpperCase())}</div>`;
+  html += `<div class="cal-grid">${labels.map(d => `<div class="cal-header">${d}</div>`).join('')}`;
+  for (let i = 0; i < padStart; i++) html += `<div class="cal-day empty-day"></div>`;
+  for (let d = 1; d <= daysInMonth; d++) {
+    const iso = `${mesSel}-${String(d).padStart(2,'0')}`;
+    const row = byDate[iso];
+    const kg = row?.kg_producidos || 0;
+    const cls = row ? (kg >= META_KG_DIA ? 'ok' : (kg >= META_KG_DIA * 0.85 ? 'warn' : 'bad')) : 'feriado';
+    html += `<div class="cal-day ${cls}">
+      <div>${d}</div>
+      <div class="cal-kg">${row ? `${fmt(kg,0)} kg` : '—'}</div>
+    </div>`;
+  }
+  html += `</div>`;
+  container.innerHTML = html;
+}
+window.renderCalendar = renderCalendario;
+
 async function renderChartDiarioMain() {
   const canvas=document.getElementById('chart-diario-main');
   if (!canvas) return;
@@ -2711,7 +2749,12 @@ function swToISODate(raw) {
 
 function swParseHours(val) {
   if (val == null || val === '') return 0;
-  return parseFloat(String(val).replace(',', '.')) || 0;
+  const cleaned = String(val)
+    .replace(/"/g, '')
+    .replace(/'/g, '')
+    .replace(/\s+/g, '')
+    .replace(',', '.');
+  return parseFloat(cleaned) || 0;
 }
 
 async function swLeerCSV(file) {
@@ -2723,13 +2766,14 @@ async function swLeerCSV(file) {
   const findIdx = (keys) => header.findIndex(h => keys.some(k => h.includes(k)));
   const idx = {
     name: findIdx(['name', 'employee']),
-    reg:  findIdx(['reg hours', 'regular hours', 'regular']),
+    reg:  findIdx(['reg hours', 'regular hours', 'regular', 'reg']),
     ot:   findIdx(['o/t hours', 'ot hours', 'overtime hours', 'overtime']),
+    total: findIdx(['total hours', 'hours total', 'hours worked', 'hours']),
     date: findIdx(['date', 'shift date', 'day', 'work date']),
   };
 
-  if (idx.name < 0 || idx.reg < 0 || idx.ot < 0) {
-    throw new Error('CSV 7shifts sin columnas Name/Reg Hours/O/T Hours');
+  if (idx.name < 0 || (idx.total < 0 && idx.reg < 0 && idx.ot < 0)) {
+    throw new Error('CSV sin columnas válidas de horas (Total/Reg/OT)');
   }
 
   const byDate = {};
@@ -2741,9 +2785,10 @@ async function swLeerCSV(file) {
     const rawName = cols[idx.name] || '';
     if (swShouldExclude(rawName)) continue;
 
-    const reg = swParseHours(cols[idx.reg]);
-    const ot = swParseHours(cols[idx.ot]);
-    const total = reg + ot;
+    const reg = idx.reg >= 0 ? swParseHours(cols[idx.reg]) : 0;
+    const ot = idx.ot >= 0 ? swParseHours(cols[idx.ot]) : 0;
+    const totalDirecto = idx.total >= 0 ? swParseHours(cols[idx.total]) : null;
+    const total = totalDirecto != null && totalDirecto > 0 ? totalDirecto : (reg + ot);
     if (total <= 0) continue;
 
     weeklyTotal += total;
@@ -3060,14 +3105,25 @@ async function navTo(tabId){
   if (pane) pane.classList.add('active');
   const btn=document.querySelector(`#main-nav button[data-tab="${tabId}"]`);
   if (btn) btn.classList.add('active');
-  if (tabId==='tablero')       await renderTablero();
-  if (tabId==='semana-import') { /* upload tab, no render needed */ }
-  if (tabId==='captura')       { await renderRecientes(); }
-  if (tabId==='calendario')    await renderCalendario();
-  if (tabId==='mes')           await renderMes();
-  if (tabId==='graficas')      await renderGraficas();
-  if (tabId==='semanal')       await renderSemanal();
-  if (tabId==='historial')     await renderHistorial();
+  const loaders = {
+    tablero: renderTablero,
+    captura: renderRecientes,
+    calendario: renderCalendario,
+    mes: renderMes,
+    graficas: renderGraficas,
+    semanal: renderSemanal,
+    historial: renderHistorial,
+    'semana-import': null,
+  };
+  const load = loaders[tabId];
+  if (typeof load === 'function') {
+    try {
+      await load();
+    } catch (e) {
+      console.error('navTo error:', tabId, e);
+      toast(`Error cargando pestaña "${tabId}"`, 'err');
+    }
+  }
 }
 
 document.querySelectorAll('#main-nav button[data-tab]').forEach(btn=>{
