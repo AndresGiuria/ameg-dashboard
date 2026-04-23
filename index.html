@@ -2872,46 +2872,43 @@ async function swGuardarTodoImpl() {
     }
 
     const horasPorFecha = swGetHorasMapParaGuardado();
-    const fechas = diasValidos.map(d => d.fecha).sort();
-    const fechaMin = fechas[0];
-    const fechaMax = fechas[fechas.length - 1];
+    const semanaCache = {};
+    const toISO = x => x.toISOString().split('T')[0];
+    const meses = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+    const semanaPorFecha = async (fecha) => {
+      const semExistente = semanas.find(s => fecha >= s.fecha_inicio && fecha <= s.fecha_fin);
+      if (semExistente) return semExistente.id;
 
-    let semana_id = swSemanaId;
-    if (!semana_id) {
-      const semExistente = semanas.find(s => fechaMin >= s.fecha_inicio && fechaMax <= s.fecha_fin);
-      if (semExistente) {
-        semana_id = semExistente.id;
-      } else {
-        const dObj = new Date(fechaMin + 'T12:00:00');
-        const dow = dObj.getDay();
-        const diffLun = dow === 0 ? -6 : 1 - dow;
-        const lun = new Date(dObj); lun.setDate(dObj.getDate() + diffLun);
-        const dom = new Date(lun); dom.setDate(lun.getDate() + 6);
-        const toISO = x => x.toISOString().split('T')[0];
-        const meses = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
-        const numSem = (semanas.length ? Math.max(...semanas.map(s => s.numero_semana || 0)) : 0) + 1;
-        const autoLabel = `Sem ${numSem} (${lun.getDate()}–${dom.getDate()} ${meses[lun.getMonth()]})`;
+      const dObj = new Date(fecha + 'T12:00:00');
+      const dow = dObj.getDay();
+      const diffLun = dow === 0 ? -6 : 1 - dow;
+      const lun = new Date(dObj); lun.setDate(dObj.getDate() + diffLun);
+      const dom = new Date(lun); dom.setDate(lun.getDate() + 6);
+      const startISO = toISO(lun);
+      const endISO = toISO(dom);
+      const key = `${startISO}|${endISO}`;
+      if (semanaCache[key]) return semanaCache[key];
 
-        if (saveStatus) saveStatus.textContent = 'Creando semana automáticamente...';
-        const { data: newSem, error: errSem } = await db.from('semanas')
-          .insert({ label: autoLabel, start_date: toISO(lun), end_date: toISO(dom) })
-          .select().single();
-        if (errSem) throw new Error('Error creando semana: ' + errSem.message);
+      const numSem = (semanas.length ? Math.max(...semanas.map(s => s.numero_semana || 0)) : 0) + 1;
+      const autoLabel = `Sem ${numSem} (${lun.getDate()}–${dom.getDate()} ${meses[lun.getMonth()]})`;
+      if (saveStatus) saveStatus.textContent = 'Creando semana automáticamente...';
+      const { data: newSem, error: errSem } = await db.from('semanas')
+        .insert({ label: autoLabel, start_date: startISO, end_date: endISO })
+        .select().single();
+      if (errSem) throw new Error('Error creando semana: ' + errSem.message);
 
-        semana_id = newSem.id;
-        semanas.push({
-          ...newSem,
-          fecha_inicio: newSem.start_date,
-          fecha_fin: newSem.end_date,
-          numero_semana: numSem,
-          _local: false,
-        });
-        semanas.sort((a, b) => a.fecha_inicio.localeCompare(b.fecha_inicio));
-        populateSelects();
-        populateMonthSelects();
-      }
-      swSemanaId = semana_id;
-    }
+      const semanaNormalizada = {
+        ...newSem,
+        fecha_inicio: newSem.start_date,
+        fecha_fin: newSem.end_date,
+        numero_semana: numSem,
+        _local: false,
+      };
+      semanas.push(semanaNormalizada);
+      semanas.sort((a, b) => a.fecha_inicio.localeCompare(b.fecha_inicio));
+      semanaCache[key] = newSem.id;
+      return newSem.id;
+    };
 
     let guardados = 0;
     let errores = 0;
@@ -2921,6 +2918,7 @@ async function swGuardarTodoImpl() {
       if (saveStatus) saveStatus.textContent = `Guardando ${guardados + errores + 1} de ${diasValidos.length}...`;
 
       const horas = horasPorFecha[d.fecha] ?? null;
+      const semana_id = await semanaPorFecha(d.fecha);
       const notasAuto = `Inv: ${Number(d.kgInicio || 0).toFixed(2)} → ${Number(d.kgFin || 0).toFixed(2)}`;
       const { error } = await db.from('dias').upsert({
         fecha: d.fecha,
@@ -2944,14 +2942,18 @@ async function swGuardarTodoImpl() {
       if (saveStatus) saveStatus.textContent = `${guardados} día(s) guardado(s) · ${errores} error(es)`;
       toast(`${guardados} día(s) guardado(s), ${errores} con error.`, 'err');
     } else {
+      swSemanaId = null;
+      populateSelects();
+      populateMonthSelects();
       if (saveStatus) saveStatus.textContent = `Semana guardada: ${guardados} día(s)`;
       toast(`Semana guardada correctamente (${guardados} días).`, 'ok');
       const btnReport = document.getElementById('sw-btn-reporte');
       if (btnReport) btnReport.style.display = '';
-      // En este proyecto no existen fetchAllData/renderCharts;
-      // refrescamos datos desde Supabase y redibujamos gráficas del Tablero.
-      await refreshAll();
-      await renderTablero();
+      if (saveStatus) saveStatus.textContent = 'Actualizando datos y gráficas...';
+      await fetchAllData();
+      await renderCharts();
+      await renderTable();
+      if (saveStatus) saveStatus.textContent = `Semana guardada y tablero actualizado: ${guardados} día(s)`;
     }
   } catch (err) {
     console.error('swGuardarTodo error:', err);
@@ -2960,6 +2962,22 @@ async function swGuardarTodoImpl() {
   } finally {
     if (btn) { btn.disabled = false; btn.textContent = '💾 Guardar semana completa'; }
   }
+}
+
+async function fetchAllData() {
+  await initSemanas();
+}
+
+async function renderCharts() {
+  await renderTablero();
+  await renderGraficas();
+}
+
+async function renderTable() {
+  await renderRecientes();
+  await renderSemanal();
+  await renderMes();
+  await renderHistorial();
 }
 
 function swGenerarReporte() {
