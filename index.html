@@ -1201,9 +1201,7 @@ function autoFillWeekLabel() {
   if (!labelEl._userEdited) labelEl.value = label;
 }
 
-document.getElementById('ns-label').addEventListener('input', function() { this._userEdited = !!this.value; });
-document.getElementById('ns-start').addEventListener('change', autoFillWeekLabel);
-document.getElementById('ns-end').addEventListener('change', autoFillWeekLabel);
+// ns-label/start/end listeners moved to DOMContentLoaded (elements may not exist yet)
 
 function sugerirSiguienteSemana() {
   const body   = document.getElementById('nueva-semana-body');
@@ -1227,7 +1225,7 @@ function sugerirSiguienteSemana() {
   document.getElementById('ns-label').focus();
 }
 
-document.getElementById('form-nueva-semana').addEventListener('submit', async e => {
+async function handleNuevaSemanaSubmit(e) {
   e.preventDefault();
   const btn   = document.getElementById('btn-crear-semana');
   const label = document.getElementById('ns-label').value.trim();
@@ -1258,7 +1256,7 @@ document.getElementById('form-nueva-semana').addEventListener('submit', async e 
   document.getElementById('ns-label')._userEdited = false;
   toggleNuevaSemana();
   await renderSemanal();
-});
+}
 
 // =====================================================================
 // TAB: CAPTURA DIARIA
@@ -1275,9 +1273,9 @@ function autoSelectSemana(dateStr) {
   if (s) sel.value = s.id;
 }
 
-document.getElementById('f-fecha').addEventListener('change', e => autoSelectSemana(e.target.value));
+// moved to DOMContentLoaded
 
-document.getElementById('form-dia').addEventListener('submit', async e => {
+async function handleFormDiaSubmit(e) {
   e.preventDefault();
   const btn = document.getElementById('btn-guardar');
   btn.disabled = true; btn.textContent = 'Guardando…';
@@ -1325,11 +1323,9 @@ document.getElementById('form-dia').addEventListener('submit', async e => {
   if (error) { toast('Error: '+error.message,'err'); return; }
   toast('Registro guardado ✓','ok');
   await refreshAll();
-});
+}
 
-document.getElementById('btn-limpiar').addEventListener('click', () => {
-  document.getElementById('form-dia').reset(); setTodayDate();
-});
+// moved to DOMContentLoaded
 
 async function renderRecientes() {
   const container = document.getElementById('tabla-recientes');
@@ -3202,6 +3198,23 @@ document.querySelectorAll('#main-nav button[data-tab]').forEach(btn=>{
 // ARRANQUE
 // =====================================================================
 document.addEventListener('DOMContentLoaded', async ()=>{
+  // Attach form listeners safely after DOM is ready
+  const nsLabel = document.getElementById('ns-label');
+  const nsStart = document.getElementById('ns-start');
+  const nsEnd   = document.getElementById('ns-end');
+  const fFecha  = document.getElementById('f-fecha');
+  const formDia = document.getElementById('form-dia');
+  const btnLimpiar = document.getElementById('btn-limpiar');
+  const formNuevaSem = document.getElementById('form-nueva-semana');
+
+  if (nsLabel) nsLabel.addEventListener('input', function() { this._userEdited = !!this.value; });
+  if (nsStart) nsStart.addEventListener('change', autoFillWeekLabel);
+  if (nsEnd)   nsEnd.addEventListener('change', autoFillWeekLabel);
+  if (fFecha)  fFecha.addEventListener('change', e => autoSelectSemana(e.target.value));
+  if (formDia) formDia.addEventListener('submit', handleFormDiaSubmit);
+  if (btnLimpiar) btnLimpiar.addEventListener('click', () => { document.getElementById('form-dia').reset(); setTodayDate(); });
+  if (formNuevaSem) formNuevaSem.addEventListener('submit', handleNuevaSemanaSubmit);
+
   await initSemanas();
   await refreshAll();
 });
