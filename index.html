@@ -544,9 +544,9 @@
   <div class="card" style="margin-bottom:16px">
     <h2>⚡ Captura Semanal — Sube todo de una vez</h2>
     <p style="font-size:13px;color:var(--gris-500);margin-bottom:18px">
-      Sube los 7 PDFs de bitácora y el Excel de horas de la semana. El sistema detecta las fechas, asigna la semana automáticamente y genera el reporte.
+      Sube los PDFs de bitácora y el archivo de horas. Las semanas se crean automáticamente. También puedes ingresar las horas manualmente.
     </p>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">
       <div>
         <div style="font-size:12px;font-weight:600;color:var(--gris-700);margin-bottom:8px">📄 PDFs de Bitácora (1–7 días)</div>
         <div class="upload-zone" id="sw-pdf-zone">
@@ -557,18 +557,26 @@
         </div>
       </div>
       <div>
-        <div style="font-size:12px;font-weight:600;color:var(--gris-700);margin-bottom:8px">📊 Excel / CSV de Horas 7shifts</div>
+        <div style="font-size:12px;font-weight:600;color:var(--gris-700);margin-bottom:8px">📊 CSV / Excel de Horas 7shifts</div>
         <div class="upload-zone" id="sw-csv-zone">
           <input type="file" id="sw-csv-input" accept=".csv,.txt,.xlsx,.xls">
           <div class="uz-icon" id="sw-csv-icon">📊</div>
-          <p id="sw-csv-label">Arrastra el Excel de horas aquí</p>
+          <p id="sw-csv-label">Arrastra el CSV/Excel de horas aquí</p>
           <small>Mario Alberto se excluye automáticamente</small>
         </div>
       </div>
     </div>
+    <!-- Horas manuales -->
+    <div style="background:var(--gris-50);border:1px solid var(--borde);border-radius:10px;padding:14px;display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+      <span style="font-size:13px;font-weight:600;color:var(--gris-700)">⌨️ Horas manuales:</span>
+      <input type="number" id="sw-horas-manual" min="0" step="0.01" placeholder="Ej. 326.32"
+        style="border:1px solid var(--borde);border-radius:7px;padding:7px 12px;font-size:14px;font-family:'DM Mono',monospace;width:140px">
+      <button class="btn btn-secondary btn-sm" onclick="swAplicarHorasManual()">✓ Aplicar horas</button>
+      <span id="sw-horas-status" style="font-size:12px;color:var(--gris-500)"></span>
+    </div>
   </div>
   <div id="sw-preview" style="display:none">
-    <div class="card" id="sw-preview-card" style="margin-bottom:16px">
+    <div class="card" style="margin-bottom:16px">
       <h2>📋 Vista previa — Semana detectada</h2>
       <div id="sw-semana-info" style="margin-bottom:16px"></div>
       <div class="table-wrap">
@@ -586,8 +594,10 @@
           <tfoot id="sw-tabla-foot"></tfoot>
         </table>
       </div>
-      <button id="sw-btn-guardar" onclick="swGuardarTodo()" style="display:block; width:100%; margin-top:20px; padding:15px; background:#2d6a4f; color:white; border:none; border-radius:8px; font-weight:bold; cursor:pointer;">💾 Confirmar y Guardar Semana</button>
-      <div style="display:flex;gap:12px;margin-top:18px;flex-wrap:wrap;align-items:center;justify-content:center">
+      <div style="display:flex;gap:12px;margin-top:18px;flex-wrap:wrap;align-items:center">
+        <button class="btn btn-primary" id="sw-btn-guardar" onclick="swGuardarTodo()">
+          💾 Guardar semana completa
+        </button>
         <button class="btn btn-secondary" id="sw-btn-reporte" style="display:none" onclick="swGenerarReporte()">
           📄 Descargar reporte PDF
         </button>
@@ -664,46 +674,6 @@
   <div class="filter-bar">
     <label>Mes:</label>
     <select id="semanal-mes-sel" onchange="renderSemanal()"></select>
-  </div>
-  <div style="display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap">
-    <div class="nueva-semana-toggle" id="nueva-semana-toggle" onclick="toggleNuevaSemana()" style="flex:1;margin-bottom:0">
-      <span class="ns-icon">➕</span>
-      <span class="ns-title">Nueva Semana</span>
-      <span class="ns-arrow">▼</span>
-    </div>
-    <button class="btn btn-secondary" onclick="sugerirSiguienteSemana()" title="Rellena automáticamente la siguiente semana">
-      ⚡ Siguiente semana
-    </button>
-  </div>
-  <div class="nueva-semana-body" id="nueva-semana-body">
-    <form id="form-nueva-semana" autocomplete="off">
-      <div class="form-grid">
-        <div class="form-group">
-          <label>Etiqueta *</label>
-          <input type="text" id="ns-label" placeholder="Ej. Sem 6 (6–12 abr)" required>
-        </div>
-        <div class="form-group">
-          <label>Fecha inicio *</label>
-          <input type="date" id="ns-start" required>
-        </div>
-        <div class="form-group">
-          <label>Fecha fin *</label>
-          <input type="date" id="ns-end" required>
-        </div>
-        <div class="form-group">
-          <label>Horas RH totales</label>
-          <input type="number" id="ns-horas" min="0" step="0.01" placeholder="Ej. 320.00">
-        </div>
-        <div class="form-group">
-          <label>Notas</label>
-          <input type="text" id="ns-notas" placeholder="Opcional">
-        </div>
-      </div>
-      <div class="form-actions" style="margin-top:14px">
-        <button type="submit" class="btn btn-primary" id="btn-crear-semana">➕ Crear Semana</button>
-        <button type="button" class="btn btn-secondary" onclick="toggleNuevaSemana()">Cancelar</button>
-      </div>
-    </form>
   </div>
   <div id="semanas-list"><div class="loading"><div class="spinner"></div></div></div>
 </div>
@@ -975,11 +945,6 @@ let localSeedDias = buildSeedDias();
 // =====================================================================
 let semanas = [];
 let charts  = {};
-const appState = {
-  lastDias: [],
-  lastRange: null,
-  tableroRange: null,
-};
 
 // =====================================================================
 // UTILS
@@ -1140,7 +1105,7 @@ async function fetchDiasByRange(desde, hasta) {
     const sem = semanas.find(s => r.fecha>=s.fecha_inicio && r.fecha<=s.fecha_fin);
     if (sem) (semGroups[sem.id]=semGroups[sem.id]||[]).push(r);
   });
-  const finalRows = allRows.map(r => {
+  return allRows.map(r => {
     if (r.horas_rh != null) return r;
     const sem = semanas.find(s => r.fecha>=s.fecha_inicio && r.fecha<=s.fecha_fin);
     if (!sem?.horas) return r;
@@ -1150,49 +1115,6 @@ async function fetchDiasByRange(desde, hasta) {
       ? +(r.kg_producidos/horas_rh).toFixed(2) : null;
     return {...r, horas_rh, kg_hora};
   });
-  appState.lastDias = finalRows;
-  appState.lastRange = {desde, hasta};
-  return finalRows;
-}
-
-async function getTableroRange(forceRefresh = false) {
-  if (!forceRefresh && appState.tableroRange) return appState.tableroRange;
-
-  const hastaDefault = new Date().toISOString().split('T')[0];
-  const desdeDefaultObj = new Date();
-  desdeDefaultObj.setDate(desdeDefaultObj.getDate() - 30);
-  const desdeDefault = desdeDefaultObj.toISOString().split('T')[0];
-
-  const rowsDefault = await fetchDiasByRange(desdeDefault, hastaDefault);
-  if (rowsDefault.length > 0) {
-    appState.tableroRange = {desde: desdeDefault, hasta: hastaDefault};
-    return appState.tableroRange;
-  }
-
-  const {data:lastRow, error:lastErr} = await db.from('dias')
-    .select('fecha')
-    .order('fecha', {ascending:false})
-    .limit(1)
-    .maybeSingle();
-  if (lastErr) {
-    console.warn('getTableroRange latest fecha:', lastErr.message);
-    appState.tableroRange = {desde: desdeDefault, hasta: hastaDefault};
-    return appState.tableroRange;
-  }
-
-  if (!lastRow?.fecha) {
-    appState.tableroRange = {desde: desdeDefault, hasta: hastaDefault};
-    return appState.tableroRange;
-  }
-
-  const latest = new Date(lastRow.fecha + 'T12:00:00');
-  const dow = latest.getDay();
-  const diffLun = dow === 0 ? -6 : 1 - dow;
-  const lun = new Date(latest); lun.setDate(latest.getDate() + diffLun);
-  const dom = new Date(lun); dom.setDate(lun.getDate() + 6);
-  const toISO = d => d.toISOString().split('T')[0];
-  appState.tableroRange = {desde: toISO(lun), hasta: toISO(dom)};
-  return appState.tableroRange;
 }
 
 // =====================================================================
@@ -1936,8 +1858,8 @@ async function extractFromDigitalPDF(pdf, pageTexts) {
     const bloque = lines.slice(startIdx, endIdx);
     const {fecha} = bloqueStarts[b];
 
-    const totalLine = bloque.find(l => /^\s*TOTAL /i.test(l.text))
-      || bloque.find(l => / TOTAL /i.test(l.text));
+    const totalLine = bloque.find(l => /^\s*TOTAL/i.test(l.text))
+      || bloque.find(l => /TOTAL/i.test(l.text));
     const productRows = bloque
       .filter(l => PDF_PRODUCT_NAMES.test(l.text.trim()))
       .map(l => ({name: l.text.trim().split(/\s+/)[0].toUpperCase(), nums: extractNums(l.text)}));
@@ -2070,7 +1992,7 @@ function showScannedPDFModal(pageImages, numPages) {
         ${pagesHTML}
         <div style="display:flex;gap:12px;align-items:center;padding-top:4px">
           <button onclick="guardarScannedDias(${numPages})" class="btn btn-primary" style="flex:1;justify-content:center;padding:13px;font-size:14px">
-            💾 Guardar ${numPages} día(s) en Base de Datos
+            💾 Guardar ${numPages} día(s) en Supabase
           </button>
           <button onclick="document.getElementById('scanned-modal').remove()" class="btn btn-secondary">Cancelar</button>
         </div>
@@ -2122,7 +2044,7 @@ async function guardarScannedDias(numPages) {
     const {error}=await db.from('dias').upsert({fecha,semana_id,prod,notas,horas:null},{onConflict:'fecha'});
     if (error) errores++; else guardados++;
   }
-  if (btn){btn.disabled=false;btn.textContent=`💾 Guardar ${numPages} día(s) en Base de Datos`;}
+  if (btn){btn.disabled=false;btn.textContent=`💾 Guardar ${numPages} día(s) en Supabase`;}
   document.getElementById('scanned-modal')?.remove();
   toast(`${guardados} día(s) guardado(s)${errores?` · ${errores} sin datos`:''}`,errores&&!guardados?'err':'ok');
   if (guardados>0) await refreshAll();
@@ -2135,8 +2057,8 @@ function extractSingleDayFromLines(lines) {
     return [...text.matchAll(/\d[\d,\s]*(?:\.\d+)?/g)]
       .map(m => parseNum(m[0])).filter(n => n!==null && n>0 && n<1_000_000);
   }
-  const totalLine = lines.find(l => /^\s*TOTAL /i.test(l.text))
-    || lines.find(l => / TOTAL /i.test(l.text));
+  const totalLine = lines.find(l => /^\s*TOTAL/i.test(l.text))
+    || lines.find(l => /TOTAL/i.test(l.text));
   if (!totalLine) return [];
   const nums = extractNums(totalLine.text);
   if (nums.length < 2) return [];
@@ -2376,29 +2298,31 @@ async function handleCSVFile(file) {
     const header=parseCSVRow(lines[0]);
     const idx={};
     header.forEach((h,i)=>{
-      const k=h.toLowerCase().replace(/\s+/g,' ').trim();
+      const k=h.toLowerCase().replace(/\s+/g,' ').trim().replace(/['"]/g,'');
       if (k==='name')idx.name=i;
       else if (k==='reg hours')idx.reg=i;
-      else if (k==='o/t hours'||k==='overtime hours')idx.ot=i;
+      else if (k==='o/t hours'||k==='overtime hours'||k==='d/t hours')idx.ot=(idx.ot||[]).concat(i);
       else if (k==='group')idx.group=i;
     });
-    const missing=['name','reg','ot'].filter(k=>idx[k]==null);
-    if (missing.length){
-      result.innerHTML=`<div style="color:#c0392b;font-size:13px;margin-top:10px">⚠️ Columnas no encontradas: ${missing.join(', ')}</div>`;
+    // ot can be multiple columns — sum them
+    const otCols = Array.isArray(idx.ot) ? idx.ot : (idx.ot!=null?[idx.ot]:[]);
+    if (idx.name==null||idx.reg==null){
+      result.innerHTML=`<div style="color:#c0392b;font-size:13px;margin-top:10px">⚠️ Columnas no encontradas. Detectadas: ${header.join(', ')}</div>`;
       return;
     }
     const employees=[];let totalIncluido=0,totalExcluido=0;
     for (let i=1;i<lines.length;i++){
       const cols=parseCSVRow(lines[i]);
-      if (cols.length<=Math.max(idx.name,idx.reg,idx.ot)) continue;
+      if (!cols[idx.name]) continue;
       const rawName=(cols[idx.name]||'').trim();
-      if (!rawName) continue;
+      if (!rawName||rawName.toUpperCase().includes('TOTAL')||rawName.toUpperCase().includes('SUBTOTAL')) continue;
       const nameUp=rawName.toUpperCase().replace(/\s+/g,' ');
       const reg=parseFloat(cols[idx.reg])||0;
-      const ot=parseFloat(cols[idx.ot])||0;
+      const ot=otCols.reduce((s,c)=>s+(parseFloat(cols[c])||0),0);
       const total=reg+ot;
+      if (!total) continue;
       const group=idx.group!=null?(cols[idx.group]||''):'';
-      const excluido=nameUp===EXCLUIDO_CSV;
+      const excluido=nameUp.includes('HERNANDEZ')&&nameUp.includes('MARIO');
       employees.push({name:rawName,group,reg,ot,total,excluido});
       if(excluido)totalExcluido+=total; else totalIncluido+=total;
     }
@@ -2473,50 +2397,12 @@ async function renderTablero() {
   await renderChartMesMain();
 }
 
-async function renderCalendario() {
-  const container = document.getElementById('cal-content');
-  if (!container) return;
-  const mesSel = document.getElementById('cal-mes-sel')?.value || new Date().toISOString().slice(0,7);
-  if (mesSel === 'all') {
-    container.innerHTML = '<div class="empty"><p>Selecciona un mes para ver el calendario.</p></div>';
-    return;
-  }
-  const [y, m] = mesSel.split('-').map(Number);
-  const desde = `${mesSel}-01`;
-  const hasta = new Date(y, m, 0).toISOString().split('T')[0];
-  const rows = await fetchDiasByRange(desde, hasta);
-  const byDate = {};
-  rows.forEach(r => { byDate[r.fecha] = r; });
-
-  const firstDow = new Date(`${desde}T12:00:00`).getDay();
-  const padStart = firstDow === 0 ? 6 : firstDow - 1; // lunes inicio
-  const daysInMonth = new Date(y, m, 0).getDate();
-  const labels = ['L','M','M','J','V','S','D'];
-
-  let html = `<div class="cal-month-title">${monthLabel(mesSel).replace(/^\w/, c => c.toUpperCase())}</div>`;
-  html += `<div class="cal-grid">${labels.map(d => `<div class="cal-header">${d}</div>`).join('')}`;
-  for (let i = 0; i < padStart; i++) html += `<div class="cal-day empty-day"></div>`;
-  for (let d = 1; d <= daysInMonth; d++) {
-    const iso = `${mesSel}-${String(d).padStart(2,'0')}`;
-    const row = byDate[iso];
-    const kg = row?.kg_producidos || 0;
-    const cls = row ? (kg >= META_KG_DIA ? 'ok' : (kg >= META_KG_DIA * 0.85 ? 'warn' : 'bad')) : 'feriado';
-    html += `<div class="cal-day ${cls}">
-      <div>${d}</div>
-      <div class="cal-kg">${row ? `${fmt(kg,0)} kg` : '—'}</div>
-    </div>`;
-  }
-  html += `</div>`;
-  container.innerHTML = html;
-}
-window.renderCalendar = renderCalendario;
-window.renderCalendario = renderCalendario;
-
 async function renderChartDiarioMain() {
   const canvas=document.getElementById('chart-diario-main');
   if (!canvas) return;
-  const range = await getTableroRange();
-  const rows=(await fetchDiasByRange(range.desde, range.hasta)).sort((a,b)=>a.fecha.localeCompare(b.fecha));
+  const hasta=new Date().toISOString().split('T')[0];
+  const desde30=new Date(); desde30.setDate(desde30.getDate()-30);
+  const rows=(await fetchDiasByRange(desde30.toISOString().split('T')[0],hasta)).sort((a,b)=>a.fecha.localeCompare(b.fecha));
   if (window._chartDiarioMain) window._chartDiarioMain.destroy();
   window._chartDiarioMain=new Chart(canvas,{
     type:'bar',
@@ -2540,8 +2426,9 @@ async function renderChartDiarioMain() {
 async function renderChartEficMain() {
   const canvas=document.getElementById('chart-efic-main');
   if (!canvas) return;
-  const range = await getTableroRange();
-  const rows=(await fetchDiasByRange(range.desde, range.hasta))
+  const hasta=new Date().toISOString().split('T')[0];
+  const desde30=new Date(); desde30.setDate(desde30.getDate()-30);
+  const rows=(await fetchDiasByRange(desde30.toISOString().split('T')[0],hasta))
     .filter(r=>r.kg_hora).sort((a,b)=>a.fecha.localeCompare(b.fecha));
   if (window._chartEficMain) window._chartEficMain.destroy();
   window._chartEficMain=new Chart(canvas,{
@@ -2660,449 +2547,632 @@ async function swProcesarPDFs(files){
   swActualizarPreview();
 }
 
-
-// =====================================================================
-// LÓGICA DE CARGA DE HORAS ACTUALIZADA (Soporte CSV 7shifts + Excel)
-// =====================================================================
 async function swProcesarHoras(file){
-  const iconEl = document.getElementById('sw-csv-icon');
-  const labelEl = document.getElementById('sw-csv-label');
-  if(iconEl) iconEl.textContent = '⏳';
-  if(labelEl) labelEl.textContent = 'Analizando...';
-
-  const ext = file.name.split('.').pop().toLowerCase();
+  const iconEl=document.getElementById('sw-csv-icon');
+  const labelEl=document.getElementById('sw-csv-label');
+  iconEl.textContent='⏳'; labelEl.textContent='Procesando horas…';
+  const ext=file.name.split('.').pop().toLowerCase();
   try {
-    if (ext === 'csv' || ext === 'txt') {
-      swHorasPorDia = await swLeerCSV(file);
-    } else {
-      swHorasPorDia = await swLeerXLSX(file);
-    }
-
-    const total = swHorasPorDia["WEEKLY_TOTAL"] || Object.values(swHorasPorDia).reduce((a, b) => a + b, 0);
-
-    if(iconEl) iconEl.textContent = '✅';
-    if(labelEl) {
-      const suffix = swHorasPorDia._isWeeklySummary ? ' (resumen semanal)' : '';
-      labelEl.textContent = `${total.toFixed(2)}h detectadas${suffix}`;
-    }
-
+    swHorasPorDia=ext==='xlsx'||ext==='xls' ? await swLeerXLSX(file) : {};
+    const total=Object.values(swHorasPorDia).reduce((a,b)=>a+b,0);
+    iconEl.textContent='✅';
+    labelEl.textContent=`${Object.keys(swHorasPorDia).length} días · ${total.toFixed(2)}h total`;
     swActualizarPreview();
-  } catch(e) {
-    if(iconEl) iconEl.textContent = '❌';
-    if(labelEl) labelEl.textContent = 'Error: ' + e.message;
-    console.error(e);
+  } catch(e){
+    iconEl.textContent='❌'; labelEl.textContent='Error: '+e.message;
   }
 }
 
-function swParseCSVRow(row) {
-  const cols = [];
-  let cur = '';
-  let inQ = false;
-  for (let i = 0; i < row.length; i++) {
-    const c = row[i];
-    if (c === '"') {
-      if (inQ && row[i + 1] === '"') { cur += '"'; i++; }
-      else inQ = !inQ;
-    } else if (c === ',' && !inQ) {
-      cols.push(cur.trim());
-      cur = '';
-    } else {
-      cur += c;
-    }
-  }
-  cols.push(cur.trim());
-  return cols;
-}
-
-function swNormalizeName(name) {
-  return String(name || '')
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .toUpperCase()
-    .replace(/[^A-Z\s,]/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim();
-}
-
-function swShouldExclude(name) {
-  const n = swNormalizeName(name);
-  if (!n) return false;
-  if (n === 'MARIO HERNANDEZ') return true;
-  return n.includes('MARIO') && n.includes('HERNANDEZ');
-}
-
-function swToISODate(raw) {
-  const v = String(raw || '').trim();
-  if (!v) return null;
-  if (/^\d{4}-\d{2}-\d{2}$/.test(v)) return v;
-  if (/^\d{1,2}\/\d{1,2}\/\d{2,4}$/.test(v)) {
-    const [d, m, y] = v.split('/');
-    const yy = y.length === 2 ? ('20' + y) : y;
-    const dt = new Date(`${yy}-${m.padStart(2, '0')}-${d.padStart(2, '0')}T12:00:00`);
-    if (!isNaN(dt.getTime())) return dt.toISOString().slice(0, 10);
-  }
-  const dt = new Date(v);
-  if (isNaN(dt.getTime())) return null;
-  return new Date(dt.getTime() - dt.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
-}
-
-function swParseHours(val) {
-  if (val == null || val === '') return 0;
-  const cleaned = String(val)
-    .replace(/"/g, '')
-    .replace(/'/g, '')
-    .replace(/\s+/g, '')
-    .replace(',', '.');
-  return parseFloat(cleaned) || 0;
-}
-
-async function swLeerCSV(file) {
-  const text = await file.text();
-  const lines = text.replace(/^\uFEFF/, '').split(/\r?\n/).filter(l => l.trim());
-  if (lines.length < 2) return { "WEEKLY_TOTAL": 0, _isWeeklySummary: true };
-
-  const header = swParseCSVRow(lines[0]).map(h => h.toLowerCase().replace(/\s+/g, ' ').trim());
-  const findIdx = (keys) => header.findIndex(h => keys.some(k => h.includes(k)));
-  const idx = {
-    name: findIdx(['name', 'employee']),
-    reg:  findIdx(['reg hours', 'regular hours', 'regular', 'reg']),
-    ot:   findIdx(['o/t hours', 'ot hours', 'overtime hours', 'overtime']),
-    total: findIdx(['total hours', 'hours total', 'hours worked', 'hours']),
-    date: findIdx(['date', 'shift date', 'day', 'work date']),
-  };
-  console.log('[swLeerCSV] headers:', header);
-  console.log('[swLeerCSV] columnas detectadas:', {
-    name: idx.name >= 0 ? header[idx.name] : null,
-    reg: idx.reg >= 0 ? header[idx.reg] : null,
-    ot: idx.ot >= 0 ? header[idx.ot] : null,
-    total: idx.total >= 0 ? header[idx.total] : null,
-    date: idx.date >= 0 ? header[idx.date] : null,
-  });
-
-  if (idx.name < 0 || (idx.total < 0 && idx.reg < 0 && idx.ot < 0)) {
-    throw new Error('CSV sin columnas válidas de horas (Total/Reg/OT)');
-  }
-
-  const byDate = {};
-  let weeklyTotal = 0;
-  let hasDateRows = false;
-
-  for (let i = 1; i < lines.length; i++) {
-    const cols = swParseCSVRow(lines[i]);
-    const rawName = cols[idx.name] || '';
-    if (swShouldExclude(rawName)) continue;
-
-    const reg = idx.reg >= 0 ? swParseHours(cols[idx.reg]) : 0;
-    const ot = idx.ot >= 0 ? swParseHours(cols[idx.ot]) : 0;
-    const totalDirecto = idx.total >= 0 ? swParseHours(cols[idx.total]) : null;
-    const total = totalDirecto != null && totalDirecto > 0 ? totalDirecto : (reg + ot);
-    if (total <= 0) continue;
-
-    weeklyTotal += total;
-    const iso = idx.date >= 0 ? swToISODate(cols[idx.date]) : null;
-    if (iso) {
-      byDate[iso] = (byDate[iso] || 0) + total;
-      hasDateRows = true;
-    }
-  }
-
-  return {
-    ...byDate,
-    WEEKLY_TOTAL: weeklyTotal,
-    _isWeeklySummary: !hasDateRows,
-  };
-}
-
-async function swLeerXLSX(file) {
-  if (!window.XLSX) {
-    await new Promise((res, rej) => {
-      const s = document.createElement('script');
-      s.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
-      s.onload = res;
-      s.onerror = () => rej(new Error('No se pudo cargar SheetJS'));
+async function swLeerXLSX(file){
+  if (!window.XLSX){
+    await new Promise((res,rej)=>{
+      const s=document.createElement('script');
+      s.src='https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+      s.onload=res; s.onerror=()=>rej(new Error('No se pudo cargar SheetJS'));
       document.head.appendChild(s);
     });
   }
+  const ab=await file.arrayBuffer();
+  const wb=XLSX.read(ab,{type:'array'});
+  const ws=wb.Sheets[wb.SheetNames[0]];
+  const rows=XLSX.utils.sheet_to_json(ws,{defval:''});
+  const allKeys=Object.keys(rows[0]||{});
+  const fnameKey=allKeys.find(k=>k.toLowerCase()==='fname');
+  const lnameKey=allKeys.find(k=>k.toLowerCase()==='lname');
+  const dateKey=allKeys.find(k=>k.toLowerCase().includes('local_date')||k.toLowerCase()==='date');
+  const hoursKey=allKeys.find(k=>k.toLowerCase()==='hours');
+  const jobKey=allKeys.find(k=>k.toLowerCase().includes('jobcode')||k.toLowerCase().includes('job'));
+  const hPorDia={};
+  for (const row of rows){
+    const fname=String(row[fnameKey]||'').trim();
+    const lname=String(row[lnameKey]||'').trim();
+    if (!fname||!lname) continue;
+    const nameUp=(fname+' '+lname).toUpperCase();
+    if (nameUp.includes('MARIO')&&nameUp.includes('HERNANDEZ')) continue;
+    const jobcode=jobKey?String(row[jobKey]||'').trim().toLowerCase():'';
+    if (jobcode==='break') continue;
+    const hrs=parseFloat(String(row[hoursKey]||'0').replace(',','.'))||0;
+    const dateVal=row[dateKey];
+    let fecha;
+    if (dateVal instanceof Date) fecha=dateVal.toISOString().split('T')[0];
+    else if (typeof dateVal==='string') fecha=dateVal.slice(0,10);
+    else if (typeof dateVal==='number'){const d=new Date((dateVal-25569)*86400*1000);fecha=d.toISOString().split('T')[0];}
+    else continue;
+    hPorDia[fecha]=(hPorDia[fecha]||0)+hrs;
+  }
+  return hPorDia;
+}
 
-  const ab = await file.arrayBuffer();
-  const wb = XLSX.read(ab, { type: 'array' });
-  const ws = wb.Sheets[wb.SheetNames[0]];
-  const rows = XLSX.utils.sheet_to_json(ws, { defval: '' });
-  if (!rows.length) return { WEEKLY_TOTAL: 0, _isWeeklySummary: true };
+function swAplicarHorasManual() {
+  const val = parseFloat(document.getElementById('sw-horas-manual')?.value);
+  const statusEl = document.getElementById('sw-horas-status');
+  if (!val || val <= 0) { if(statusEl) statusEl.textContent='⚠️ Ingresa un número válido'; return; }
+  // Distribute evenly across all PDF days detected
+  const numDias = swDiasPDF.length || 7;
+  const porDia = +(val / numDias).toFixed(2);
+  // Build swHorasPorDia from detected dates or leave empty for later
+  swHorasPorDia = {};
+  if (swDiasPDF.length) {
+    swDiasPDF.forEach(d => { if (d.fecha) swHorasPorDia[d.fecha] = porDia; });
+  }
+  // Store total for semana update
+  window._swHorasManualTotal = val;
+  if (statusEl) statusEl.textContent = `✓ ${val.toFixed(2)}h aplicadas (${porDia.toFixed(2)}h/día)`;
+  if (swDiasPDF.length) swActualizarPreview();
+  toast(`${val.toFixed(2)}h RH aplicadas ✓`, 'ok');
+}
 
-  const keys = Object.keys(rows[0]);
-  const findKey = (preds) => keys.find(k => preds.some(p => p(k.toLowerCase())));
-  const nameKey = findKey([k => k.includes('name')]);
-  const regKey  = findKey([k => k.includes('reg hours'), k => k.includes('regular hours')]);
-  const otKey   = findKey([k => k.includes('o/t'), k => k.includes('ot hours'), k => k.includes('overtime')]);
-  const dateKey = findKey([k => k === 'date', k => k.includes('shift date'), k => k.includes('work date')]);
-  if (!nameKey || !regKey || !otKey) throw new Error('Excel sin columnas Name/Reg/O/T');
-
-  const byDate = {};
-  let weeklyTotal = 0;
-  let hasDateRows = false;
-  for (const row of rows) {
-    if (swShouldExclude(row[nameKey])) continue;
-    const reg = swParseHours(row[regKey]);
-    const ot = swParseHours(row[otKey]);
-    const total = reg + ot;
-    if (total <= 0) continue;
-    weeklyTotal += total;
-    const iso = dateKey ? swToISODate(row[dateKey]) : null;
-    if (iso) {
-      byDate[iso] = (byDate[iso] || 0) + total;
-      hasDateRows = true;
+async function swLeerCSV(file) {
+  let text = await file.text();
+  text = text.replace(/^\uFEFF/, '');
+  const rawLines = text.split(/\r?\n/);
+  const lines = rawLines.filter(l => l.trim());
+  const header = parseCSVRow(lines[0]);
+  const idx = {};
+  header.forEach((h, i) => {
+    const k = h.toLowerCase().replace(/\s+/g,' ').trim().replace(/['"]/g,'');
+    if (k === 'name') idx.name = i;
+    if (k === 'reg hours') idx.reg = i;
+    if (k === 'o/t hours' || k === 'overtime hours' || k === 'd/t hours') {
+      if (!idx.ot) idx.ot = [];
+      idx.ot.push(i);
     }
+  });
+  const otCols = Array.isArray(idx.ot) ? idx.ot : [];
+  let total = 0;
+  for (const line of lines.slice(1)) {
+    const cols = parseCSVRow(line);
+    const name = String(cols[idx.name] || '').trim().toUpperCase();
+    if (!name || name.includes('TOTAL') || name.includes('SUBTOTAL')) continue;
+    if (name.includes('MARIO') && name.includes('HERNANDEZ')) continue;
+    const reg = parseFloat(cols[idx.reg]) || 0;
+    const ot = otCols.reduce((s, c) => s + (parseFloat(cols[c]) || 0), 0);
+    total += reg + ot;
   }
-
-  return {
-    ...byDate,
-    WEEKLY_TOTAL: weeklyTotal,
-    _isWeeklySummary: !hasDateRows,
-  };
+  if (total > 0) {
+    window._swHorasManualTotal = total;
+    const statusEl = document.getElementById('sw-horas-status');
+    if (statusEl) statusEl.textContent = 'CSV: ' + total.toFixed(2) + 'h detectadas';
+  }
+  return {};
 }
 
-function swHorasDia(fecha, horasRepartidas) {
-  if (!swHorasPorDia) return 0;
-  if (fecha && swHorasPorDia[fecha] != null) return swHorasPorDia[fecha];
-  return horasRepartidas;
-}
-
-function swActualizarPreview() {
-  const preview = document.getElementById('sw-preview');
-  const previewCard = document.getElementById('sw-preview-card');
-  const infoEl = document.getElementById('sw-semana-info');
-  const bodyEl = document.getElementById('sw-tabla-body');
-  const footEl = document.getElementById('sw-tabla-foot');
-  if (!preview || !bodyEl || !footEl || !infoEl) return;
-
-  if (swDiasPDF.length === 0) {
-    preview.style.display = 'none';
-    bodyEl.innerHTML = '';
-    footEl.innerHTML = '';
-    return;
-  }
-
-  const diasConFecha = swDiasPDF.filter(d => !!d.fecha);
-  const diasParaReparto = Math.max(1, diasConFecha.length || swDiasPDF.length);
-  const totalHoras = swHorasPorDia.WEEKLY_TOTAL || 0;
-  const horasRepartidas = totalHoras > 0 ? (totalHoras / diasParaReparto) : 0;
-  const isWeeklySummary = !!swHorasPorDia._isWeeklySummary;
-
-  const rango = diasConFecha.length
-    ? `${diasConFecha[0].fecha} → ${diasConFecha[diasConFecha.length - 1].fecha}`
-    : 'Fechas no detectadas';
-  infoEl.innerHTML = `
-    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
-      <span class="badge ${isWeeklySummary ? 'badge-warn' : 'badge-ok'}">
-        ${isWeeklySummary ? 'Resumen semanal detectado' : 'Horas por día detectadas'}
-      </span>
-      <span style="font-size:12px;color:var(--gris-500)">
-        ${diasParaReparto} día(s) · ${rango}
-      </span>
+function swActualizarPreview(){
+  if (!swDiasPDF.length) return;
+  const preview=document.getElementById('sw-preview');
+  preview.style.display='block';
+  const fechas=swDiasPDF.map(d=>d.fecha).filter(Boolean).sort();
+  const semanaDetectada=fechas.length ? semanas.find(s=>fechas[0]>=s.fecha_inicio&&fechas[0]<=s.fecha_fin) : null;
+  swSemanaId=semanaDetectada?.id||null;
+  const semInfo=document.getElementById('sw-semana-info');
+  if (semanaDetectada){
+    semInfo.innerHTML=`<div style="display:inline-flex;align-items:center;gap:8px;background:var(--verde-bg);border:1px solid #bbf7d0;border-radius:8px;padding:10px 16px">
+      <span style="font-size:18px">✅</span>
+      <div><strong style="color:var(--verde)">${weekLabel(semanaDetectada)}</strong>
+      <div style="font-size:11px;color:var(--gris-500)">${semanaDetectada.fecha_inicio} → ${semanaDetectada.fecha_fin}</div></div>
     </div>`;
-
-  let totalKg = 0;
-  let totalHorasAplicadas = 0;
-  bodyEl.innerHTML = swDiasPDF.map((d, i) => {
-    const fecha = d.fecha || '';
-    const horas = swHorasDia(fecha, horasRepartidas);
-    const kg = Number(d.kgProd || 0);
-    const ef = horas > 0 ? (kg / horas) : 0;
-    totalKg += kg;
-    totalHorasAplicadas += horas;
-
+  } else {
+    semInfo.innerHTML=`<div style="background:var(--dorado-bg);border:1px solid #fde68a;border-radius:8px;padding:10px 16px;font-size:13px;color:var(--dorado)">
+      ⚠️ Semana no encontrada — se creará automáticamente al guardar
+    </div>`;
+  }
+  const dias_nombres=['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
+  let totalKg=0, totalH=0;
+  const rows=swDiasPDF.map((d,i)=>{
+    const horas=d.fecha?(swHorasPorDia[d.fecha]||0):0;
+    const kgh=horas>0?(d.kgProd/horas).toFixed(1):'—';
+    const diaNombre=d.fecha?dias_nombres[new Date(d.fecha+'T12:00:00').getDay()]:'—';
+    const metaOk=d.kgProd>=META_KG_DIA;
+    totalKg+=d.kgProd; totalH+=horas;
     return `<tr>
-      <td>${fecha || 'Sin fecha'}</td>
-      <td>${d.dia || ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'][new Date((fecha || '2026-01-01') + 'T12:00:00').getDay()] || '—'}</td>
-      <td class="td-num">${fmt(d.kgInicio,2)}</td>
-      <td class="td-num">${fmt(d.kgFin,2)}</td>
-      <td class="td-num"><strong>${fmt(kg,2)}</strong></td>
-      <td class="td-num">${fmt(horas,2)}</td>
-      <td class="td-num">${fmt(ef,2)}</td>
-      <td class="td-center" id="sw-row-status-${i}">⏳</td>
+      <td><input type="date" value="${d.fecha||''}" id="sw-fecha-${i}"
+        style="border:1px solid var(--borde);border-radius:6px;padding:4px 8px;font-size:12px;font-family:inherit">
+      </td>
+      <td style="color:var(--gris-500);font-size:12px">${diaNombre}</td>
+      <td class="td-num" style="font-family:'DM Mono',monospace;font-size:12px">${d.kgInicio.toFixed(1)}</td>
+      <td class="td-num" style="font-family:'DM Mono',monospace;font-size:12px">${d.kgFin.toFixed(1)}</td>
+      <td class="td-num" style="font-family:'DM Mono',monospace;font-weight:700;color:${metaOk?'var(--verde)':'var(--rojo)'}">${d.kgProd.toFixed(1)}</td>
+      <td class="td-num" style="font-family:'DM Mono',monospace;font-size:12px">${horas>0?horas.toFixed(2):'—'}</td>
+      <td class="td-num" style="font-size:12px">${kgh}</td>
+      <td class="td-center"><span id="sw-status-${i}">⏳</span></td>
     </tr>`;
-  }).join('');
-
-  const totalEfic = totalHorasAplicadas > 0 ? (totalKg / totalHorasAplicadas) : 0;
-  footEl.innerHTML = `<tr>
-    <th colspan="4" style="text-align:right">Totales</th>
-    <th class="td-num">${fmt(totalKg,2)}</th>
-    <th class="td-num">${fmt(totalHorasAplicadas,2)}</th>
-    <th class="td-num">${fmt(totalEfic,2)}</th>
-    <th></th>
-  </tr>`;
-
-  preview.style.display = 'block';
-  if (previewCard) previewCard.style.display = 'block';
-
-  const saveStatus = document.getElementById('sw-save-status');
-  if (saveStatus) {
-    saveStatus.textContent = isWeeklySummary
-      ? 'Horas semanales repartidas entre los días detectados en PDF.'
-      : 'Horas asignadas por fecha desde el archivo cargado.';
-  }
-
-  const btnSave = document.getElementById('sw-btn-guardar');
-  if (btnSave) {
-    btnSave.disabled = swDiasPDF.length === 0 || totalHoras <= 0;
-    btnSave.title = totalHoras > 0 ? '' : 'Carga primero el archivo de horas.';
-  }
-
-  const btnReport = document.getElementById('sw-btn-reporte');
-  if (btnReport) {
-    btnReport.style.display = 'none';
-  }
+  });
+  const eficTotal=totalH>0?(totalKg/totalH).toFixed(2):'—';
+  document.getElementById('sw-tabla-body').innerHTML=rows.join('');
+  document.getElementById('sw-tabla-foot').innerHTML=`
+    <tr style="background:var(--gris-50);font-weight:600">
+      <td colspan="4" style="padding:10px 14px;font-size:12px">TOTAL SEMANA</td>
+      <td class="td-num" style="font-family:'DM Mono',monospace;color:var(--verde)">${fmt(totalKg)} kg</td>
+      <td class="td-num" style="font-family:'DM Mono',monospace">${fmt(totalH)} h</td>
+      <td class="td-num" style="font-size:12px">${eficTotal} kg/h</td>
+      <td></td>
+    </tr>`;
 }
 
-async function swGuardarTodoImpl() {
-  const btn = document.getElementById('sw-btn-guardar');
-  const saveStatus = document.getElementById('sw-save-status');
-  if (btn) { btn.disabled = true; btn.textContent = 'Guardando…'; }
-  if (saveStatus) saveStatus.textContent = 'Preparando guardado masivo...';
-
-  try {
-    const diasValidos = swDiasPDF
-      .map((d, idx) => ({ ...d, _idx: idx }))
-      .filter(d => !!d.fecha);
-
-    if (!diasValidos.length) {
-      toast('No hay días con fecha para guardar.', 'err');
-      return;
-    }
-
-    const horasPorFecha = swGetHorasMapParaGuardado();
-    const semanaCache = {};
-    const toISO = x => x.toISOString().split('T')[0];
-    const meses = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
-    const semanaPorFecha = async (fecha) => {
-      const semExistente = semanas.find(s => fecha >= s.fecha_inicio && fecha <= s.fecha_fin);
-      if (semExistente) return semExistente.id;
-
-      const dObj = new Date(fecha + 'T12:00:00');
-      const dow = dObj.getDay();
-      const diffLun = dow === 0 ? -6 : 1 - dow;
-      const lun = new Date(dObj); lun.setDate(dObj.getDate() + diffLun);
-      const dom = new Date(lun); dom.setDate(lun.getDate() + 6);
-      const startISO = toISO(lun);
-      const endISO = toISO(dom);
-      const key = `${startISO}|${endISO}`;
-      if (semanaCache[key]) return semanaCache[key];
-
-      const numSem = (semanas.length ? Math.max(...semanas.map(s => s.numero_semana || 0)) : 0) + 1;
-      const autoLabel = `Sem ${numSem} (${lun.getDate()}–${dom.getDate()} ${meses[lun.getMonth()]})`;
-      if (saveStatus) saveStatus.textContent = 'Creando semana automáticamente...';
-      const { data: newSem, error: errSem } = await db.from('semanas')
-        .insert({ label: autoLabel, start_date: startISO, end_date: endISO })
-        .select().single();
-      if (errSem) throw new Error('Error creando semana: ' + errSem.message);
-
-      const semanaNormalizada = {
-        ...newSem,
-        fecha_inicio: newSem.start_date,
-        fecha_fin: newSem.end_date,
-        numero_semana: numSem,
-        _local: false,
-      };
-      semanas.push(semanaNormalizada);
-      semanas.sort((a, b) => a.fecha_inicio.localeCompare(b.fecha_inicio));
-      semanaCache[key] = newSem.id;
-      return newSem.id;
-    };
-
-    let guardados = 0;
-    let errores = 0;
-    for (const d of diasValidos) {
-      const statusEl = document.getElementById(`sw-row-status-${d._idx}`);
-      if (statusEl) statusEl.textContent = '⏳';
-      if (saveStatus) saveStatus.textContent = `Guardando ${guardados + errores + 1} de ${diasValidos.length}...`;
-
-      const horas = horasPorFecha[d.fecha] ?? null;
-      const semana_id = await semanaPorFecha(d.fecha);
-      const notasAuto = `Inv: ${Number(d.kgInicio || 0).toFixed(2)} → ${Number(d.kgFin || 0).toFixed(2)}`;
-      const { error } = await db.from('dias').upsert({
-        fecha: d.fecha,
-        semana_id,
-        prod: Number(d.kgProd || 0),
-        horas: (horas != null && horas > 0) ? +Number(horas).toFixed(2) : null,
-        notas: notasAuto,
-      }, { onConflict: 'fecha' });
-
-      if (error) {
-        errores++;
-        if (statusEl) statusEl.textContent = '❌';
-        console.warn('swGuardarTodo upsert error:', d.fecha, error.message);
-      } else {
-        guardados++;
-        if (statusEl) statusEl.textContent = '✅';
+async function swGuardarTodo(){
+  const btn=document.getElementById('sw-btn-guardar');
+  const status=document.getElementById('sw-save-status');
+  btn.disabled=true; btn.textContent='Guardando…';
+  let guardados=0, errores=0;
+  for (let i=0;i<swDiasPDF.length;i++){
+    const statusEl=document.getElementById(`sw-status-${i}`);
+    const fechaEl=document.getElementById(`sw-fecha-${i}`);
+    const fecha=fechaEl?.value;
+    if (!fecha){statusEl.textContent='⚠️';errores++;continue;}
+    const d=swDiasPDF[i];
+    const horas=swHorasPorDia[fecha]||null;
+    let semana_id=swSemanaId;
+    if (!semana_id){
+      const sem=semanas.find(s=>fecha>=s.fecha_inicio&&fecha<=s.fecha_fin);
+      if (sem){semana_id=sem.id;swSemanaId=sem.id;}
+      else {
+        const dObj=new Date(fecha+'T12:00:00');
+        const dow=dObj.getDay();
+        const diffLun=dow===0?-6:1-dow;
+        const lun=new Date(dObj); lun.setDate(dObj.getDate()+diffLun);
+        const dom=new Date(lun); dom.setDate(lun.getDate()+6);
+        const toISO=x=>x.toISOString().split('T')[0];
+        const meses=['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+        const numSem=semanas.length+1;
+        const label=`Sem ${numSem} (${lun.getDate()}–${dom.getDate()} ${meses[lun.getMonth()]})`;
+        const {data:ns,error:es}=await db.from('semanas').insert({label,start_date:toISO(lun),end_date:toISO(dom)}).select().single();
+        if (es){statusEl.textContent='❌';errores++;continue;}
+        semana_id=ns.id; swSemanaId=ns.id;
+        semanas.push({...ns,fecha_inicio:ns.start_date,fecha_fin:ns.end_date,numero_semana:semanas.length+1,_local:false});
+        semanas.sort((a,b)=>a.fecha_inicio.localeCompare(b.fecha_inicio));
       }
     }
-
-    if (errores > 0) {
-      if (saveStatus) saveStatus.textContent = `${guardados} día(s) guardado(s) · ${errores} error(es)`;
-      toast(`${guardados} día(s) guardado(s), ${errores} con error.`, 'err');
-    } else {
-      swSemanaId = null;
-      populateSelects();
-      populateMonthSelects();
-      if (saveStatus) saveStatus.textContent = `Semana guardada: ${guardados} día(s)`;
-      toast(`Semana guardada correctamente (${guardados} días).`, 'ok');
-      const btnReport = document.getElementById('sw-btn-reporte');
-      if (btnReport) btnReport.style.display = '';
-      if (saveStatus) saveStatus.textContent = 'Actualizando datos y gráficas...';
-      await appFetchAll();
-      const tableroRange = await getTableroRange(true);
-      await fetchDiasByRange(tableroRange.desde, tableroRange.hasta);
-      await renderCharts();
-      await renderTable();
-      if (saveStatus) saveStatus.textContent = `Semana guardada y tablero actualizado: ${guardados} día(s)`;
+    const horasVal=horas>0?+horas.toFixed(2):null;
+    const notas=`Inv: ${d.kgInicio} → ${d.kgFin}${horasVal?' | Horas: '+horasVal+'h':''}`;
+    const {error}=await db.from('dias').upsert({fecha,semana_id,prod:d.kgProd,notas,horas:horasVal},{onConflict:'fecha'});
+    if (error){statusEl.textContent='❌';errores++;}
+    else{statusEl.textContent='✅';guardados++;}
+  }
+  // Update semana horas — use manual total if provided, otherwise sum por-dia hours
+  if (swSemanaId) {
+    const manualTotal = window._swHorasManualTotal || 0;
+    const diasTotal = Object.values(swHorasPorDia).reduce((a,b)=>a+b,0);
+    const totalH = manualTotal || diasTotal;
+    if (totalH > 0) {
+      await db.from('semanas').update({horas:+totalH.toFixed(2)}).eq('id',swSemanaId);
     }
-  } catch (err) {
-    console.error('swGuardarTodo error:', err);
-    if (saveStatus) saveStatus.textContent = err?.message || 'Error durante guardado.';
-    toast(err?.message || 'Error durante guardado masivo.', 'err');
-  } finally {
-    if (btn) { btn.disabled = false; btn.textContent = '💾 Confirmar y Guardar Semana'; }
+    window._swHorasManualTotal = 0;
+  }
+  btn.disabled=false; btn.textContent='💾 Guardar semana completa';
+  status.textContent=`${guardados} día(s) guardado(s)${errores?` · ${errores} error(es)`:''}`;
+  toast(`Semana guardada: ${guardados} días ✓`,errores?'err':'ok');
+  if (guardados>0){
+    await refreshAll();
+    document.getElementById('sw-btn-reporte').style.display='inline-flex';
   }
 }
 
-async function appFetchAll() {
-  await initSemanas();
-  const range = await getTableroRange(true);
-  await fetchDiasByRange(range.desde, range.hasta);
+async function swGenerarReporte(){
+  const btn=document.getElementById('sw-btn-reporte');
+  btn.disabled=true; btn.textContent='⏳ Generando…';
+  try {
+    const semana=semanas.find(s=>s.id===swSemanaId);
+    if (!semana){toast('Semana no encontrada','err');return;}
+    const dias=await fetchDiasByRange(semana.fecha_inicio,semana.fecha_fin);
+    const diasOrd=dias.sort((a,b)=>a.fecha.localeCompare(b.fecha));
+    const totalKg=diasOrd.reduce((a,d)=>a+(d.kg_producidos||0),0);
+    const totalH=Object.values(swHorasPorDia).reduce((a,b)=>a+b,0)||semana.horas||0;
+    const efic=totalH>0?(totalKg/totalH).toFixed(2):'—';
+    const metaOk=diasOrd.filter(d=>d.kg_producidos>=META_KG_DIA).length;
+    const pctMeta=(totalKg/(META_KG_DIA*6)*100).toFixed(1);
+    const semIdx=semanas.findIndex(s=>s.id===swSemanaId);
+    let semAnt=null, totalKgAnt=0;
+    if (semIdx>0){semAnt=semanas[semIdx-1];const diasAnt=await fetchDiasByRange(semAnt.fecha_inicio,semAnt.fecha_fin);totalKgAnt=diasAnt.reduce((a,d)=>a+(d.kg_producidos||0),0);}
+    const tendencia=totalKgAnt>0?((totalKg-totalKgAnt)/totalKgAnt*100).toFixed(1):null;
+    const dias_nombres=['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
+    const meses_nombres=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+    const hoy=new Date();
+    const fechaReporte=`${hoy.getDate()} de ${meses_nombres[hoy.getMonth()]} de ${hoy.getFullYear()}`;
+    const filasDias=diasOrd.map(d=>{
+      const h=swHorasPorDia[d.fecha]||0;
+      const kgh=h>0?(d.kg_producidos/h).toFixed(2):'—';
+      const metaD=d.kg_producidos>=META_KG_DIA;
+      const diaNom=dias_nombres[new Date(d.fecha+'T12:00:00').getDay()];
+      return `<tr><td>${diaNom}</td><td>${fmtDate(d.fecha)}</td>
+        <td class="num">${fmt(d.kg_producidos)}</td>
+        <td class="num" style="color:${metaD?'#16a34a':'#dc2626'}">${metaD?'✓ Sí':'✗ No'}</td>
+        <td class="num">${h>0?h.toFixed(2):'—'}</td>
+        <td class="num">${kgh}</td>
+        <td style="font-size:11px;color:#666;max-width:160px">${d.notas||'—'}</td>
+      </tr>`;
+    }).join('');
+    const html=`<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8">
+<title>Reporte Semanal AMEG</title>
+<style>*{box-sizing:border-box;margin:0;padding:0;}body{font-family:'Helvetica Neue',Arial,sans-serif;color:#1e293b;background:#fff;padding:40px;}
+.header{border-bottom:3px solid #1a7a3c;padding-bottom:20px;margin-bottom:28px;display:flex;justify-content:space-between;align-items:flex-end;}
+.logo{font-size:28px;font-weight:800;color:#1a7a3c;letter-spacing:-1px;}.logo span{color:#1e293b;}
+.kpi-row{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:28px;}
+.kpi{background:#f8fafc;border-radius:10px;padding:16px 18px;border:1px solid #e2e8f0;border-top:3px solid #1a7a3c;}
+.kpi.bad{border-top-color:#dc2626;}.kpi-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:#64748b;margin-bottom:6px;}
+.kpi-value{font-size:26px;font-weight:800;color:#0f172a;letter-spacing:-1px;}.kpi-value span{font-size:12px;font-weight:400;color:#64748b;}
+.kpi-meta{font-size:11px;color:#64748b;margin-top:4px;}
+.section-title{font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:#1a7a3c;margin-bottom:12px;border-bottom:1px solid #e2e8f0;padding-bottom:6px;}
+table{width:100%;border-collapse:collapse;font-size:12px;margin-bottom:28px;}
+thead th{background:#1e293b;color:#fff;padding:9px 12px;text-align:left;font-size:11px;font-weight:600;text-transform:uppercase;}
+tbody td{padding:9px 12px;border-bottom:1px solid #f1f5f9;}tbody tr:nth-child(even){background:#f8fafc;}
+.num{text-align:right;font-family:monospace;}
+.footer{margin-top:32px;padding-top:16px;border-top:1px solid #e2e8f0;display:flex;justify-content:space-between;font-size:10px;color:#94a3b8;}
+@media print{body{padding:20px;}}</style></head><body>
+<div class="header">
+  <div><div class="logo">AMEG <span>Production</span></div><div style="font-size:12px;color:#64748b">La Chilaca / Gus Tacos</div></div>
+  <div style="text-align:right"><h1 style="font-size:18px;font-weight:700">Reporte Semanal</h1>
+    <p style="font-size:12px;color:#64748b">${weekLabel(semana)} · ${fechaReporte}</p></div>
+</div>
+<div class="kpi-row">
+  <div class="kpi ${totalKg>=META_KG_DIA*6?'':'bad'}"><div class="kpi-label">Total semana</div><div class="kpi-value">${fmt(totalKg)}<span> kg</span></div><div class="kpi-meta">Meta: ${fmt(META_KG_DIA*6)} kg · ${pctMeta}%</div></div>
+  <div class="kpi ${parseFloat(efic)>=META_KG_H?'':'bad'}"><div class="kpi-label">Eficiencia</div><div class="kpi-value">${efic}<span> kg/h</span></div><div class="kpi-meta">Meta: ${META_KG_H} kg/h</div></div>
+  <div class="kpi"><div class="kpi-label">Horas RH</div><div class="kpi-value">${totalH>0?totalH.toFixed(1):'—'}<span> h</span></div><div class="kpi-meta">Sin Mario A.H.</div></div>
+  <div class="kpi ${metaOk>=5?'':'bad'}"><div class="kpi-label">Días sobre meta</div><div class="kpi-value">${metaOk}<span> / ${diasOrd.length}</span></div><div class="kpi-meta">Meta: ≥600 kg/día</div></div>
+</div>
+<div class="section-title">Detalle por día</div>
+<table><thead><tr><th>Día</th><th>Fecha</th><th class="num">Kg Prod.</th><th class="num">≥600 kg</th><th class="num">Horas RH</th><th class="num">kg/h</th><th>Notas</th></tr></thead>
+<tbody>${filasDias}</tbody></table>
+${semAnt&&totalKgAnt>0?`<div class="section-title">Comparativo vs semana anterior</div>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+  <div style="background:#f8fafc;border-radius:10px;padding:16px;border:1px solid #e2e8f0">
+    <div style="font-size:12px;font-weight:700;color:#64748b;margin-bottom:8px">${weekLabel(semana)}</div>
+    <div style="font-size:24px;font-weight:800">${fmt(totalKg)} kg</div>
+    ${tendencia!==null?`<div style="margin-top:8px;display:inline-flex;align-items:center;gap:4px;font-size:13px;font-weight:700;padding:3px 10px;border-radius:20px;background:${parseFloat(tendencia)>=0?'#dcfce7':'#fee2e2'};color:${parseFloat(tendencia)>=0?'#16a34a':'#dc2626'}">${parseFloat(tendencia)>=0?'↑':'↓'} ${Math.abs(tendencia)}%</div>`:''}
+  </div>
+  <div style="background:#f8fafc;border-radius:10px;padding:16px;border:1px solid #e2e8f0">
+    <div style="font-size:12px;font-weight:700;color:#64748b;margin-bottom:8px">${weekLabel(semAnt)}</div>
+    <div style="font-size:24px;font-weight:800">${fmt(totalKgAnt)} kg</div>
+  </div>
+</div>`:''}
+<div class="footer"><span>AMEG Production Dashboard — Confidencial</span><span>${fechaReporte}</span></div>
+</body></html>` + '<scr'+'ipt>window.onload=()=>window.print();</scr'+'ipt>';
+    const blob=new Blob([html],{type:'text/html'});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a');
+    a.href=url; a.download=`AMEG_Reporte_${weekLabel(semana).replace(/\s/g,'_')}.html`; a.click();
+    URL.revokeObjectURL(url);
+    toast('Reporte generado — abre el archivo y usa Cmd+P para PDF','ok');
+  } catch(e){toast('Error generando reporte: '+e.message,'err');}
+  finally{btn.disabled=false;btn.textContent='📄 Descargar reporte PDF';}
 }
 
-async function fetchAllData() { return appFetchAll(); }
-
-async function renderCharts() {
-  await renderTablero();
-  await renderGraficas();
+// =====================================================================
+// TAB: CALENDARIO
+// =====================================================================
+async function renderCalendario(){
+  const container=document.getElementById('cal-content');
+  const mesSel=document.getElementById('cal-mes-sel').value;
+  container.innerHTML='<div class="loading"><div class="spinner"></div></div>';
+  const {desde,hasta}=getAllDateRange();
+  const allRows=await fetchDiasByRange(desde,hasta);
+  const byFecha={};
+  for (const r of allRows) byFecha[r.fecha]=r;
+  const mesesDisponibles=[...new Set(allRows.map(r=>r.fecha.slice(0,7)))].sort();
+  const mesesAMostrar=mesSel==='all'?mesesDisponibles:[mesSel];
+  const diasSem=['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'];
+  const mesesNom=['','Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+  let html='';
+  for (const mes of mesesAMostrar){
+    const [y,m]=mes.split('-').map(Number);
+    const primerDia=new Date(y,m-1,1);
+    const ultimoDia=new Date(y,m,0);
+    const totalDias=ultimoDia.getDate();
+    let startDow=primerDia.getDay();
+    startDow=startDow===0?6:startDow-1;
+    const rowsMes=allRows.filter(r=>r.fecha.slice(0,7)===mes);
+    const totalKg=rowsMes.reduce((a,r)=>a+(r.kg_producidos||0),0);
+    const diasOk=rowsMes.filter(r=>r.kg_producidos>=META_KG_DIA).length;
+    html+=`<div class="card" style="margin-bottom:20px">
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:16px">
+        <div class="cal-month-title">${mesesNom[m]} ${y}</div>
+        <div style="display:flex;gap:16px;font-size:12px">
+          <span><strong style="font-family:'DM Mono',monospace">${fmt(totalKg)}</strong> kg totales</span>
+          <span><strong style="color:var(--verde-vivo)">${diasOk}</strong> días sobre meta</span>
+          <span><strong>${rowsMes.length}</strong> días registrados</span>
+        </div>
+      </div>
+      <div class="cal-grid">
+        ${diasSem.map(d=>`<div class="cal-header">${d}</div>`).join('')}
+        ${Array(startDow).fill('<div></div>').join('')}
+        ${Array.from({length:totalDias},(_,i)=>{
+          const d=i+1;
+          const iso=`${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+          const r=byFecha[iso];
+          const dow=new Date(iso+'T12:00:00').getDay();
+          const esFinSemana=dow===0||dow===6;
+          if (!r){const cls=esFinSemana?'other-month':'feriado';return `<div class="cal-day ${cls}">${d}</div>`;}
+          const kg=r.kg_producidos||0;
+          const pct=kg/META_KG_DIA;
+          const cls=pct>=1?'ok':pct>=0.85?'warn':'bad';
+          return `<div class="cal-day ${cls}" title="${fmtDate(iso)}: ${fmt(kg)} kg">${d}<div class="cal-kg">${fmt(kg,0)}</div></div>`;
+        }).join('')}
+      </div>
+      <div style="display:flex;gap:12px;margin-top:12px;flex-wrap:wrap">
+        <div style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--gris-500)"><div style="width:12px;height:12px;border-radius:3px;background:#dcfce7"></div>≥600 kg</div>
+        <div style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--gris-500)"><div style="width:12px;height:12px;border-radius:3px;background:#fef3c7"></div>85–99%</div>
+        <div style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--gris-500)"><div style="width:12px;height:12px;border-radius:3px;background:#fee2e2"></div>Bajo meta</div>
+        <div style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--gris-500)"><div style="width:12px;height:12px;border-radius:3px;background:#f1f5f9;border:1px dashed #cbd5e1"></div>Sin registro</div>
+      </div>
+    </div>`;
+  }
+  const sorted=[...allRows].filter(r=>r.kg_producidos>0).sort((a,b)=>b.kg_producidos-a.kg_producidos);
+  const top5=sorted.slice(0,5);
+  const low5=sorted.slice(-5).reverse();
+  html+=`<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px">
+    <div class="card"><h2 style="margin-bottom:12px">🏆 Top 5 días más productivos</h2>
+      <div class="top-dias">
+        ${top5.map((r,i)=>`<div class="top-dia-card"><div class="top-dia-rank">#${i+1}</div>
+          <div class="top-dia-kg">${fmt(r.kg_producidos,0)} <span style="font-size:12px;font-weight:400;color:var(--gris-500)">kg</span></div>
+          <div class="top-dia-fecha">${fmtDate(r.fecha)} · ${r.dia_nombre||''}</div></div>`).join('')}
+      </div>
+    </div>
+    <div class="card"><h2 style="margin-bottom:12px">📉 5 días con menor producción</h2>
+      <div class="top-dias">
+        ${low5.map((r,i)=>`<div class="top-dia-card bad"><div class="top-dia-rank">#${i+1}</div>
+          <div class="top-dia-kg">${fmt(r.kg_producidos,0)} <span style="font-size:12px;font-weight:400;color:var(--gris-500)">kg</span></div>
+          <div class="top-dia-fecha">${fmtDate(r.fecha)} · ${r.dia_nombre||''}</div></div>`).join('')}
+      </div>
+    </div>
+  </div>`;
+  container.innerHTML=html;
 }
 
-async function renderTable() {
-  await renderRecientes();
-  await renderSemanal();
-  await renderMes();
-  await renderHistorial();
+// =====================================================================
+// INVENTARIO
+// =====================================================================
+let invData={};
+const CONSUMO_PROMEDIO={
+  'ASADA':155,'BARBACOA':51,'BIRRIA':65,'CARNITAS':83,'CHICKEN':82,
+  'RAW PASTOR':82,'FISH BASSA':145,'BB JUICE':21,'BIRRIA CONSOME':37,
+  'CONSOME BBQ':17,'BEANS':75,'PASTOR MARINATE':10,'SONORA WHITE':30,
+};
+const CONSUMO_POR_MES={
+  '2026-03':{'ASADA':149,'BARBACOA':48,'BIRRIA':65,'CARNITAS':76,'CHICKEN':73,'RAW PASTOR':82,'FISH BASSA':113,'BB JUICE':21,'BIRRIA CONSOME':38,'CONSOME BBQ':15,'BEANS':75,'PASTOR MARINATE':10},
+  '2026-04':{'ASADA':173,'BARBACOA':61,'BIRRIA':65,'CARNITAS':92,'CHICKEN':101,'RAW PASTOR':86,'FISH BASSA':233,'BB JUICE':22,'BIRRIA CONSOME':35,'CONSOME BBQ':23,'BEANS':77,'PASTOR MARINATE':10},
+};
+const BOLSA_KG={
+  'ASADA':{kg:3,unidad:'kg'},'BIRRIA':{kg:3,unidad:'kg'},'FISH BASSA':{kg:3,unidad:'kg'},'CHICKEN':{kg:3,unidad:'kg'},
+  'BARBACOA':{kg:2,unidad:'kg'},'CARNITAS':{kg:2,unidad:'kg'},'BIRRIA CONSOME':{kg:2,unidad:'kg'},
+  'RAW PASTOR':{kg:4,unidad:'kg'},'BB JUICE':{kg:1,unidad:'L'},'CONSOME BBQ':{kg:0.75,unidad:'kg'},
+  'BEANS':{kg:2.2,unidad:'kg'},'PASTOR MARINATE':{kg:0.45,unidad:'kg'},
+};
+
+(function initInvUpload(){
+  const zone=document.getElementById('inv-xlsx-zone');
+  const input=document.getElementById('inv-xlsx-input');
+  if (!zone||!input) return;
+  zone.addEventListener('click',()=>input.click());
+  zone.addEventListener('dragover',e=>{e.preventDefault();zone.classList.add('drag');});
+  zone.addEventListener('dragleave',()=>zone.classList.remove('drag'));
+  zone.addEventListener('drop',e=>{e.preventDefault();zone.classList.remove('drag');const f=e.dataTransfer.files[0];if(f)invLeerXLSX(f);});
+  input.addEventListener('change',e=>{if(e.target.files[0])invLeerXLSX(e.target.files[0]);});
+  const fechaEl=document.getElementById('inv-fecha');
+  if (fechaEl) fechaEl.value=new Date().toISOString().split('T')[0];
+})();
+
+async function invLeerXLSX(file){
+  const iconEl=document.getElementById('inv-xlsx-icon');
+  const labelEl=document.getElementById('inv-xlsx-label');
+  iconEl.textContent='⏳'; labelEl.textContent='Leyendo inventario…';
+  try {
+    if (!window.XLSX){
+      await new Promise((res,rej)=>{
+        const s=document.createElement('script');
+        s.src='https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+        s.onload=res; s.onerror=()=>rej(new Error('No se pudo cargar SheetJS'));
+        document.head.appendChild(s);
+      });
+    }
+    const ab=await file.arrayBuffer();
+    const wb=XLSX.read(ab,{type:'array',cellDates:true});
+    const ws=wb.Sheets['Starting Counting']||wb.Sheets[wb.SheetNames[1]];
+    if (!ws) throw new Error('No se encontró la hoja "Starting Counting"');
+    const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:null});
+    let fecha=new Date().toISOString().split('T')[0];
+    for (const row of rows.slice(0,3)){
+      for (const cell of row){
+        if (cell instanceof Date){fecha=cell.toISOString().split('T')[0];break;}
+      }
+    }
+    const productos=[];
+    const PRODUCTOS_VALIDOS=['ASADA','BARBACOA','BIRRIA','CARNITAS','CHICKEN','BBJ','BIRRIA CONSO','BBQ CONSO','BEANS','PASTOR','PAS MARINATE','FISH','SONORA WHITE'];
+    for (const row of rows){
+      const prod=String(row[0]||'').trim().toUpperCase();
+      if (!PRODUCTOS_VALIDOS.some(p=>prod.includes(p.split(' ')[0]))) continue;
+      const inventory=parseFloat(row[1])||0;
+      const ordered=parseFloat(row[2])||0;
+      const total=inventory-ordered;
+      const consumo=CONSUMO_PROMEDIO[prod]||CONSUMO_PROMEDIO[Object.keys(CONSUMO_PROMEDIO).find(k=>prod.includes(k))]||null;
+      const diasExist=consumo&&consumo>0?+(total/consumo).toFixed(1):null;
+      productos.push({producto:prod,inventory,ordered,total,consumo,diasExist});
+    }
+    invData={fecha,productos,archivo:file.name};
+    iconEl.textContent='✅';
+    labelEl.textContent=`${productos.length} productos leídos — ${fmtDate(fecha)}`;
+    invRenderTabla();
+  } catch(e){
+    iconEl.textContent='❌'; labelEl.textContent='Error: '+e.message;
+  }
 }
 
-function swGenerarReporte() {
-  toast('Reporte PDF no disponible en esta versión.', 'err');
+function invGuardarManual(){
+  const fecha=document.getElementById('inv-fecha')?.value;
+  const prod=document.getElementById('inv-producto')?.value;
+  const inv=parseFloat(document.getElementById('inv-inventory')?.value)||0;
+  const ordered=parseFloat(document.getElementById('inv-ordered')?.value)||0;
+  if (!fecha||!prod){toast('Completa la fecha y producto','err');return;}
+  if (!invData.fecha) invData={fecha,productos:[]};
+  const total=inv-ordered;
+  const consumo=CONSUMO_PROMEDIO[prod]||null;
+  const diasExist=consumo&&consumo>0?+(total/consumo).toFixed(1):null;
+  const idx=invData.productos.findIndex(p=>p.producto===prod);
+  if (idx>=0) invData.productos[idx]={producto:prod,inventory:inv,ordered,total,consumo,diasExist};
+  else invData.productos.push({producto:prod,inventory:inv,ordered,total,consumo,diasExist});
+  document.getElementById('inv-inventory').value='';
+  document.getElementById('inv-ordered').value='';
+  toast(`${prod} agregado ✓`,'ok');
+  invRenderTabla();
 }
 
-function swGetHorasMapParaGuardado() {
-  const out = {};
-  const diasConFecha = swDiasPDF.filter(d => !!d.fecha);
-  const diasParaReparto = Math.max(1, diasConFecha.length || swDiasPDF.length);
-  const totalHoras = swHorasPorDia.WEEKLY_TOTAL || 0;
-  const horasRepartidas = totalHoras > 0 ? (totalHoras / diasParaReparto) : 0;
-  swDiasPDF.forEach((d) => {
-    if (!d.fecha) return;
-    out[d.fecha] = swHorasDia(d.fecha, horasRepartidas);
-  });
-  return out;
+function invRenderTabla(){
+  if (!invData.productos?.length) return;
+  const {fecha,productos}=invData;
+  const criticos=productos.filter(p=>p.diasExist!==null&&p.diasExist<2);
+  const advertencias=productos.filter(p=>p.diasExist!==null&&p.diasExist>=2&&p.diasExist<3);
+  let alertasHtml='';
+  if (criticos.length) alertasHtml+=criticos.map(p=>`<div class="inv-alerta critico">🚨 <strong>${p.producto}</strong> — ${p.diasExist} días (${fmt(p.total)} kg)</div>`).join('');
+  if (advertencias.length) alertasHtml+=advertencias.map(p=>`<div class="inv-alerta warn">⚠️ <strong>${p.producto}</strong> — ${p.diasExist} días (${fmt(p.total)} kg)</div>`).join('');
+  if (!criticos.length&&!advertencias.length) alertasHtml=`<div class="inv-alerta ok">✅ Todos los productos tienen más de 3 días de existencia</div>`;
+  document.getElementById('inv-alertas').innerHTML=alertasHtml;
+  function buildTable(items,titulo){
+    if (!items.length) return '';
+    return `<div class="card" style="margin-bottom:16px"><h2 style="margin-bottom:16px">${titulo}</h2>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Producto</th><th class="td-num">Inventario</th><th class="td-num">Ordenado</th>
+          <th class="td-num">Disponible</th><th class="td-num">Consumo/día</th>
+          <th class="td-num">Días existencia</th><th>Estado</th></tr></thead>
+        <tbody>${items.map(p=>{
+          const cls='inv-dias-badge '+(p.diasExist===null?'':p.diasExist<2?'critico':p.diasExist<3?'warn':'ok');
+          const est=p.diasExist===null?'—':p.diasExist<2?'🚨 Crítico':p.diasExist<3?'⚠️ Bajo':'✅ OK';
+          return `<tr><td><strong>${p.producto}</strong></td>
+            <td class="td-num">${fmt(p.inventory,1)} kg</td>
+            <td class="td-num">${fmt(p.ordered,1)} kg</td>
+            <td class="td-num" style="font-weight:700">${fmt(p.total,1)} kg</td>
+            <td class="td-num" style="color:var(--gris-500)">${p.consumo?fmt(p.consumo,0)+' kg':'—'}</td>
+            <td class="td-num">${p.diasExist!==null?`<span class="${cls}">${p.diasExist} días</span>`:'—'}</td>
+            <td>${est}</td></tr>`;
+        }).join('')}</tbody></table></div></div>`;
+  }
+  const carnes=productos.filter(p=>['ASADA','BARBACOA','BIRRIA','CARNITAS','CHICKEN','PASTOR','PAS MARINATE','FISH'].some(k=>p.producto.includes(k)));
+  const otros=productos.filter(p=>['BBJ','BIRRIA CONSO','BBQ CONSO','BEANS','SONORA WHITE'].some(k=>p.producto.includes(k)));
+  const extras=productos.filter(p=>!carnes.includes(p)&&!otros.includes(p));
+  document.getElementById('inv-content').innerHTML=`
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:8px">
+      <div><div style="font-size:15px;font-weight:700">Inventario del ${fmtDate(fecha)}</div>
+        <div style="font-size:12px;color:var(--gris-500)">${productos.length} productos</div></div>
+      <button class="btn btn-secondary btn-sm" onclick="invExportarCSV()">⬇ Exportar CSV</button>
+    </div>
+    ${buildTable(carnes,'🥩 Carnes y Proteínas')}
+    ${buildTable(otros,'🍲 Consomés y Preparados')}
+    ${buildTable(extras,'🥬 Extras')}`;
 }
 
+function invExportarCSV(){
+  if (!invData.productos?.length) return;
+  const rows=[['Fecha','Producto','Inventario','Ordenado','Disponible','Consumo/día','Días existencia']];
+  for (const p of invData.productos) rows.push([invData.fecha,p.producto,p.inventory,p.ordered,p.total,p.consumo||'',p.diasExist||'']);
+  const csv=rows.map(r=>r.join(',')).join('\n');
+  const blob=new Blob([csv],{type:'text/csv'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url; a.download=`AMEG_Inventario_${invData.fecha}.csv`; a.click();
+  URL.revokeObjectURL(url);
+}
+
+function invActualizarMes(){}
+
+async function invMostrarProyeccion(){
+  const container=document.getElementById('inv-proyeccion');
+  const mesSel=document.getElementById('inv-mes-sel')?.value||'all';
+  container.innerHTML='<div class="loading"><div class="spinner"></div></div>';
+  try {
+    let query=db.from('dias_productos').select('producto,kg_fin,fecha').order('fecha',{ascending:false});
+    if (mesSel!=='all'){
+      const [y,m]=mesSel.split('-').map(Number);
+      query=query.gte('fecha',mesSel+'-01').lte('fecha',new Date(y,m,0).toISOString().split('T')[0]);
+    }
+    const {data:diasProds,error}=await query.limit(200);
+    if (error||!diasProds?.length){container.innerHTML='<p style="color:var(--gris-500);font-size:13px">Sin datos. Captura primero los días con desglose por producto.</p>';return;}
+    const fechasUnicas=[...new Set(diasProds.map(r=>r.fecha))].sort().reverse();
+    const fechaRef=fechasUnicas[0];
+    const stockActual={};
+    for (const r of diasProds){if (r.fecha===fechaRef&&!stockActual[r.producto]) stockActual[r.producto]=r.kg_fin;}
+    const mesConsumo=mesSel!=='all'?mesSel:'2026-04';
+    const consumoMes=CONSUMO_POR_MES[mesConsumo]||CONSUMO_POR_MES['2026-04']||{};
+    const prods=['ASADA','BARBACOA','BIRRIA','CARNITAS','CHICKEN','RAW PASTOR','FISH BASSA','BB JUICE','BIRRIA CONSOME','CONSOME BBQ','BEANS','PASTOR MARINATE'];
+    const items=prods.map(prod=>{
+      const stock=stockActual[prod]??null;
+      const consumo=consumoMes[prod]||CONSUMO_PROMEDIO[prod]||null;
+      const dias=stock!==null&&consumo?+(stock/consumo).toFixed(1):null;
+      const bolsaInfo=BOLSA_KG[prod]||null;
+      const numBolsas=bolsaInfo&&stock!==null?Math.floor(stock/bolsaInfo.kg):null;
+      const bolsaLabel=bolsaInfo?(bolsaInfo.kg<1?bolsaInfo.kg*1000+'g':bolsaInfo.kg+bolsaInfo.unidad):'';
+      let est=dias===null?'ok':dias<2?'crit':dias<3?'warn':'ok';
+      const pct=Math.min((dias||0)/7*100,100);
+      const badgeCls=est==='crit'?'badge-bad':est==='warn'?'badge-warn':'badge-ok';
+      const diasCls=est==='crit'?'color:#c0392b':est==='warn'?'color:#d68910':'color:#1e8449';
+      return{est,html:`
+        <div style="background:var(--gris-50);border:1px solid var(--borde);border-radius:12px;padding:14px 16px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+            <span style="font-size:13px;font-weight:600">${prod}</span>
+            <span class="badge ${badgeCls}" style="font-size:11px">${est==='crit'?'Crítico':est==='warn'?'Bajo':'OK'}</span>
+          </div>
+          <div style="display:flex;align-items:baseline;gap:6px;margin-bottom:3px">
+            <span style="font-size:22px;font-weight:700">${stock!==null?stock.toFixed(1):'—'}</span>
+            <span style="font-size:13px;color:var(--gris-500)">kg</span>
+          </div>
+          <div style="font-size:13px;color:var(--gris-500);margin-bottom:10px">
+            ${numBolsas!==null?`<strong style="font-size:15px;color:var(--gris-800)">${numBolsas}</strong> bolsas de ${bolsaLabel}`:'—'}
+          </div>
+          <div style="height:0.5px;background:var(--borde);margin-bottom:8px"></div>
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+            <span style="font-size:11px;color:var(--gris-500)">Días estimados</span>
+            <span style="font-size:18px;font-weight:600;${diasCls}">${dias!==null?dias:'—'}</span>
+          </div>
+          <div style="height:5px;background:var(--borde);border-radius:3px;overflow:hidden;margin-bottom:6px">
+            <div style="height:100%;width:${pct}%;border-radius:3px;background:${est==='ok'?'#27ae60':est==='warn'?'#d68910':'#c0392b'}"></div>
+          </div>
+          <div style="font-size:11px;color:var(--gris-400)">Consumo ~${consumo||'—'} kg/día</div>
+        </div>`};
+    });
+    const criticos=items.filter(i=>i.est==='crit').length;
+    const bajos=items.filter(i=>i.est==='warn').length;
+    const ok=items.filter(i=>i.est==='ok').length;
+    container.innerHTML=`
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px">
+        <div style="background:var(--gris-50);border-radius:8px;padding:12px 14px;border:1px solid var(--borde)">
+          <div style="font-size:11px;color:var(--gris-500);margin-bottom:4px">Críticos (&lt;2 días)</div>
+          <div style="font-size:22px;font-weight:700;color:#c0392b">${criticos}</div>
+        </div>
+        <div style="background:var(--gris-50);border-radius:8px;padding:12px 14px;border:1px solid var(--borde)">
+          <div style="font-size:11px;color:var(--gris-500);margin-bottom:4px">Bajos (2-3 días)</div>
+          <div style="font-size:22px;font-weight:700;color:#d68910">${bajos}</div>
+        </div>
+        <div style="background:var(--gris-50);border-radius:8px;padding:12px 14px;border:1px solid var(--borde)">
+          <div style="font-size:11px;color:var(--gris-500);margin-bottom:4px">OK (&gt;3 días)</div>
+          <div style="font-size:22px;font-weight:700;color:#1e8449">${ok}</div>
+        </div>
+      </div>
+      <div style="font-size:11px;color:var(--gris-400);margin:10px 0 14px">
+        Stock: Kg Day Ending del <strong>${fmtDate(fechaRef)}</strong>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:12px">
+        ${items.map(i=>i.html).join('')}
+      </div>`;
+  } catch(e){
+    container.innerHTML=`<p style="color:var(--rojo);font-size:13px">Error: ${e.message}</p>`;
+  }
+}
 
 // =====================================================================
 // NAVEGACIÓN
@@ -3114,25 +3184,14 @@ async function navTo(tabId){
   if (pane) pane.classList.add('active');
   const btn=document.querySelector(`#main-nav button[data-tab="${tabId}"]`);
   if (btn) btn.classList.add('active');
-  const loaders = {
-    tablero: renderTablero,
-    captura: renderRecientes,
-    calendario: renderCalendario,
-    mes: renderMes,
-    graficas: renderGraficas,
-    semanal: renderSemanal,
-    historial: renderHistorial,
-    'semana-import': null,
-  };
-  const load = loaders[tabId];
-  if (typeof load === 'function') {
-    try {
-      await load();
-    } catch (e) {
-      console.error('navTo error:', tabId, e);
-      toast(`Error cargando pestaña "${tabId}"`, 'err');
-    }
-  }
+  if (tabId==='tablero')       await renderTablero();
+  if (tabId==='semana-import') { /* upload tab, no render needed */ }
+  if (tabId==='captura')       { await renderRecientes(); }
+  if (tabId==='calendario')    await renderCalendario();
+  if (tabId==='mes')           await renderMes();
+  if (tabId==='graficas')      await renderGraficas();
+  if (tabId==='semanal')       await renderSemanal();
+  if (tabId==='historial')     await renderHistorial();
 }
 
 document.querySelectorAll('#main-nav button[data-tab]').forEach(btn=>{
@@ -3143,126 +3202,9 @@ document.querySelectorAll('#main-nav button[data-tab]').forEach(btn=>{
 // ARRANQUE
 // =====================================================================
 document.addEventListener('DOMContentLoaded', async ()=>{
-  const swBtn = document.getElementById('sw-btn-guardar');
-  if (swBtn) swBtn.setAttribute('onclick', 'swGuardarTodo()');
   await initSemanas();
   await refreshAll();
 });
-
-// Implementación pública al final del archivo para onclick del botón.
-async function swGuardarTodo() {
-  const btn = document.getElementById('sw-btn-guardar');
-  const saveStatus = document.getElementById('sw-save-status');
-  const parseCellNum = (txt) => {
-    const cleaned = String(txt || '')
-      .replace(/[^\d.,-]/g, '')
-      .replace(/,/g, '');
-    return parseFloat(cleaned) || 0;
-  };
-
-  if (btn) { btn.disabled = true; btn.textContent = 'Guardando…'; }
-  if (saveStatus) saveStatus.textContent = 'Preparando guardado desde vista previa...';
-
-  try {
-    const trs = [...document.querySelectorAll('#sw-tabla-body tr')];
-    const rows = trs.map((tr, idx) => {
-      const tds = tr.querySelectorAll('td');
-      return {
-        idx,
-        fecha: (tds[0]?.textContent || '').trim(),
-        kgInicio: parseCellNum(tds[2]?.textContent),
-        kgFin: parseCellNum(tds[3]?.textContent),
-        kgProd: parseCellNum(tds[4]?.textContent),
-        horas: parseCellNum(tds[5]?.textContent),
-      };
-    }).filter(r => /^\d{4}-\d{2}-\d{2}$/.test(r.fecha));
-
-    if (!rows.length) {
-      toast('No hay filas válidas para guardar.', 'err');
-      return;
-    }
-
-    const semanaCache = {};
-    const toISO = x => x.toISOString().split('T')[0];
-    const meses = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
-    const semanaPorFecha = async (fecha) => {
-      const semExistente = semanas.find(s => fecha >= s.fecha_inicio && fecha <= s.fecha_fin);
-      if (semExistente) return semExistente.id;
-
-      const dObj = new Date(fecha + 'T12:00:00');
-      const dow = dObj.getDay();
-      const diffLun = dow === 0 ? -6 : 1 - dow;
-      const lun = new Date(dObj); lun.setDate(dObj.getDate() + diffLun);
-      const dom = new Date(lun); dom.setDate(lun.getDate() + 6);
-      const startISO = toISO(lun);
-      const endISO = toISO(dom);
-      const key = `${startISO}|${endISO}`;
-      if (semanaCache[key]) return semanaCache[key];
-
-      const numSem = (semanas.length ? Math.max(...semanas.map(s => s.numero_semana || 0)) : 0) + 1;
-      const autoLabel = `Sem ${numSem} (${lun.getDate()}–${dom.getDate()} ${meses[lun.getMonth()]})`;
-      const { data: newSem, error: errSem } = await db.from('semanas')
-        .insert({ label: autoLabel, start_date: startISO, end_date: endISO })
-        .select().single();
-      if (errSem) throw new Error('Error creando semana: ' + errSem.message);
-
-      semanas.push({
-        ...newSem,
-        fecha_inicio: newSem.start_date,
-        fecha_fin: newSem.end_date,
-        numero_semana: numSem,
-        _local: false,
-      });
-      semanas.sort((a, b) => a.fecha_inicio.localeCompare(b.fecha_inicio));
-      semanaCache[key] = newSem.id;
-      return newSem.id;
-    };
-
-    let guardados = 0;
-    let errores = 0;
-    for (const r of rows) {
-      const statusEl = document.getElementById(`sw-row-status-${r.idx}`);
-      if (statusEl) statusEl.textContent = '⏳';
-      if (saveStatus) saveStatus.textContent = `Guardando ${guardados + errores + 1} de ${rows.length}...`;
-
-      const semana_id = await semanaPorFecha(r.fecha);
-      const notasAuto = `Inv: ${r.kgInicio.toFixed(2)} → ${r.kgFin.toFixed(2)}`;
-      const { error } = await db.from('dias').upsert({
-        fecha: r.fecha,
-        semana_id,
-        prod: r.kgProd,
-        horas: r.horas > 0 ? +r.horas.toFixed(2) : null,
-        notas: notasAuto,
-      }, { onConflict: 'fecha' });
-
-      if (error) {
-        errores++;
-        if (statusEl) statusEl.textContent = '❌';
-      } else {
-        guardados++;
-        if (statusEl) statusEl.textContent = '✅';
-      }
-    }
-
-    if (errores > 0) {
-      if (saveStatus) saveStatus.textContent = `${guardados} día(s) guardado(s) · ${errores} error(es)`;
-      toast(`${guardados} guardados, ${errores} con error.`, 'err');
-    } else {
-      if (saveStatus) saveStatus.textContent = 'Actualizando Tablero y Calendario...';
-      toast(`Semana guardada correctamente (${guardados} días).`, 'ok');
-      await appFetchAll();
-      await refreshAll();
-      if (saveStatus) saveStatus.textContent = `Semana guardada y sincronizada (${guardados} días).`;
-    }
-  } catch (err) {
-    console.error('swGuardarTodo (preview) error:', err);
-    if (saveStatus) saveStatus.textContent = err?.message || 'Error durante guardado.';
-    toast(err?.message || 'Error guardando semana.', 'err');
-  } finally {
-    if (btn) { btn.disabled = false; btn.textContent = '💾 Confirmar y Guardar Semana'; }
-  }
-}
-window.swGuardarTodo = swGuardarTodo;
 </script>
 </body>
 </html>
