@@ -977,6 +977,11 @@ let localSeedDias = buildSeedDias();
 // =====================================================================
 let semanas = [];
 let charts  = {};
+const appState = {
+  lastDias: [],
+  lastRange: null,
+  tableroRange: null,
+};
 
 // =====================================================================
 // UTILS
@@ -1137,7 +1142,7 @@ async function fetchDiasByRange(desde, hasta) {
     const sem = semanas.find(s => r.fecha>=s.fecha_inicio && r.fecha<=s.fecha_fin);
     if (sem) (semGroups[sem.id]=semGroups[sem.id]||[]).push(r);
   });
-  return allRows.map(r => {
+  const finalRows = allRows.map(r => {
     if (r.horas_rh != null) return r;
     const sem = semanas.find(s => r.fecha>=s.fecha_inicio && r.fecha<=s.fecha_fin);
     if (!sem?.horas) return r;
@@ -1147,6 +1152,49 @@ async function fetchDiasByRange(desde, hasta) {
       ? +(r.kg_producidos/horas_rh).toFixed(2) : null;
     return {...r, horas_rh, kg_hora};
   });
+  appState.lastDias = finalRows;
+  appState.lastRange = {desde, hasta};
+  return finalRows;
+}
+
+async function getTableroRange(forceRefresh = false) {
+  if (!forceRefresh && appState.tableroRange) return appState.tableroRange;
+
+  const hastaDefault = new Date().toISOString().split('T')[0];
+  const desdeDefaultObj = new Date();
+  desdeDefaultObj.setDate(desdeDefaultObj.getDate() - 30);
+  const desdeDefault = desdeDefaultObj.toISOString().split('T')[0];
+
+  const rowsDefault = await fetchDiasByRange(desdeDefault, hastaDefault);
+  if (rowsDefault.length > 0) {
+    appState.tableroRange = {desde: desdeDefault, hasta: hastaDefault};
+    return appState.tableroRange;
+  }
+
+  const {data:lastRow, error:lastErr} = await db.from('dias')
+    .select('fecha')
+    .order('fecha', {ascending:false})
+    .limit(1)
+    .maybeSingle();
+  if (lastErr) {
+    console.warn('getTableroRange latest fecha:', lastErr.message);
+    appState.tableroRange = {desde: desdeDefault, hasta: hastaDefault};
+    return appState.tableroRange;
+  }
+
+  if (!lastRow?.fecha) {
+    appState.tableroRange = {desde: desdeDefault, hasta: hastaDefault};
+    return appState.tableroRange;
+  }
+
+  const latest = new Date(lastRow.fecha + 'T12:00:00');
+  const dow = latest.getDay();
+  const diffLun = dow === 0 ? -6 : 1 - dow;
+  const lun = new Date(latest); lun.setDate(latest.getDate() + diffLun);
+  const dom = new Date(lun); dom.setDate(lun.getDate() + 6);
+  const toISO = d => d.toISOString().split('T')[0];
+  appState.tableroRange = {desde: toISO(lun), hasta: toISO(dom)};
+  return appState.tableroRange;
 }
 
 // =====================================================================
@@ -2430,9 +2478,8 @@ async function renderTablero() {
 async function renderChartDiarioMain() {
   const canvas=document.getElementById('chart-diario-main');
   if (!canvas) return;
-  const hasta=new Date().toISOString().split('T')[0];
-  const desde30=new Date(); desde30.setDate(desde30.getDate()-30);
-  const rows=(await fetchDiasByRange(desde30.toISOString().split('T')[0],hasta)).sort((a,b)=>a.fecha.localeCompare(b.fecha));
+  const range = await getTableroRange();
+  const rows=(await fetchDiasByRange(range.desde, range.hasta)).sort((a,b)=>a.fecha.localeCompare(b.fecha));
   if (window._chartDiarioMain) window._chartDiarioMain.destroy();
   window._chartDiarioMain=new Chart(canvas,{
     type:'bar',
@@ -2456,9 +2503,8 @@ async function renderChartDiarioMain() {
 async function renderChartEficMain() {
   const canvas=document.getElementById('chart-efic-main');
   if (!canvas) return;
-  const hasta=new Date().toISOString().split('T')[0];
-  const desde30=new Date(); desde30.setDate(desde30.getDate()-30);
-  const rows=(await fetchDiasByRange(desde30.toISOString().split('T')[0],hasta))
+  const range = await getTableroRange();
+  const rows=(await fetchDiasByRange(range.desde, range.hasta))
     .filter(r=>r.kg_hora).sort((a,b)=>a.fecha.localeCompare(b.fecha));
   if (window._chartEficMain) window._chartEficMain.destroy();
   window._chartEficMain=new Chart(canvas,{
@@ -2950,7 +2996,9 @@ async function swGuardarTodoImpl() {
       const btnReport = document.getElementById('sw-btn-reporte');
       if (btnReport) btnReport.style.display = '';
       if (saveStatus) saveStatus.textContent = 'Actualizando datos y gráficas...';
-      await fetchAllData();
+      await appFetchAll();
+      const tableroRange = await getTableroRange(true);
+      await fetchDiasByRange(tableroRange.desde, tableroRange.hasta);
       await renderCharts();
       await renderTable();
       if (saveStatus) saveStatus.textContent = `Semana guardada y tablero actualizado: ${guardados} día(s)`;
@@ -2964,9 +3012,13 @@ async function swGuardarTodoImpl() {
   }
 }
 
-async function fetchAllData() {
+async function appFetchAll() {
   await initSemanas();
+  const range = await getTableroRange(true);
+  await fetchDiasByRange(range.desde, range.hasta);
 }
+
+async function fetchAllData() { return appFetchAll(); }
 
 async function renderCharts() {
   await renderTablero();
