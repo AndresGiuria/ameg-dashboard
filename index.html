@@ -2584,9 +2584,9 @@ async function swProcesarPDFs(files){
 async function swProcesarHoras(file){
   const iconEl = document.getElementById('sw-csv-icon');
   const labelEl = document.getElementById('sw-csv-label');
-  if(iconEl) iconEl.textContent = '⏳'; 
+  if(iconEl) iconEl.textContent = '⏳';
   if(labelEl) labelEl.textContent = 'Analizando...';
-  
+
   const ext = file.name.split('.').pop().toLowerCase();
   try {
     if (ext === 'csv' || ext === 'txt') {
@@ -2594,105 +2594,387 @@ async function swProcesarHoras(file){
     } else {
       swHorasPorDia = await swLeerXLSX(file);
     }
-    
-    // Calculamos el total para mostrar en el label
+
     const total = swHorasPorDia["WEEKLY_TOTAL"] || Object.values(swHorasPorDia).reduce((a, b) => a + b, 0);
-    
+
     if(iconEl) iconEl.textContent = '✅';
-    if(labelEl) labelEl.textContent = `${total.toFixed(2)}h detectadas`;
-    
+    if(labelEl) {
+      const suffix = swHorasPorDia._isWeeklySummary ? ' (resumen semanal)' : '';
+      labelEl.textContent = `${total.toFixed(2)}h detectadas${suffix}`;
+    }
+
     swActualizarPreview();
   } catch(e) {
-    if(iconEl) iconEl.textContent = '❌'; 
+    if(iconEl) iconEl.textContent = '❌';
     if(labelEl) labelEl.textContent = 'Error: ' + e.message;
     console.error(e);
   }
 }
 
-async function swLeerCSV(file) {
-  const text = await file.text();
-  const lines = text.split(/?
-/).filter(l => l.trim());
-  if (lines.length < 2) return { "WEEKLY_TOTAL": 0 };
-
-  // Función para limpiar comillas y manejar comas dentro de comillas
-  function parseCSVRow(row) {
-    const result = [];
-    let cur = '';
-    let inQuotes = false;
-    for (let char of row) {
-      if (char === '"') inQuotes = !inQuotes;
-      else if (char === ',' && !inQuotes) {
-        result.push(cur.trim());
-        cur = '';
-      } else cur += char;
+function swParseCSVRow(row) {
+  const cols = [];
+  let cur = '';
+  let inQ = false;
+  for (let i = 0; i < row.length; i++) {
+    const c = row[i];
+    if (c === '"') {
+      if (inQ && row[i + 1] === '"') { cur += '"'; i++; }
+      else inQ = !inQ;
+    } else if (c === ',' && !inQ) {
+      cols.push(cur.trim());
+      cur = '';
+    } else {
+      cur += c;
     }
-    result.push(cur.trim());
-    return result;
   }
-
-  const header = parseCSVRow(lines[0]);
-  const idx = {
-    name: header.findIndex(h => h.toLowerCase().includes('name')),
-    reg: header.findIndex(h => h.toLowerCase().includes('reg hours')),
-    ot: header.findIndex(h => h.toLowerCase().includes('o/t hours'))
-  };
-
-  let totalSemanal = 0;
-  for (let i = 1; i < lines.length; i++) {
-    const cols = parseCSVRow(lines[i]);
-    const name = (cols[idx.name] || '').toUpperCase();
-    
-    // Filtro para Mario Hernandez
-    if (name.includes('MARIO') && name.includes('HERNANDEZ')) continue;
-    
-    const reg = parseFloat(cols[idx.reg]) || 0;
-    const ot = parseFloat(cols[idx.ot]) || 0;
-    totalSemanal += (reg + ot);
-  }
-  
-  return { "WEEKLY_TOTAL": totalSemanal };
+  cols.push(cur.trim());
+  return cols;
 }
 
-// Reemplazo de la función swActualizarPreview para que use el reparto si no hay fechas
+function swNormalizeName(name) {
+  return String(name || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toUpperCase()
+    .replace(/[^A-Z\s,]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function swShouldExclude(name) {
+  const n = swNormalizeName(name);
+  if (!n) return false;
+  if (n === 'MARIO HERNANDEZ') return true;
+  return n.includes('MARIO') && n.includes('HERNANDEZ');
+}
+
+function swToISODate(raw) {
+  const v = String(raw || '').trim();
+  if (!v) return null;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(v)) return v;
+  if (/^\d{1,2}\/\d{1,2}\/\d{2,4}$/.test(v)) {
+    const [d, m, y] = v.split('/');
+    const yy = y.length === 2 ? ('20' + y) : y;
+    const dt = new Date(`${yy}-${m.padStart(2, '0')}-${d.padStart(2, '0')}T12:00:00`);
+    if (!isNaN(dt.getTime())) return dt.toISOString().slice(0, 10);
+  }
+  const dt = new Date(v);
+  if (isNaN(dt.getTime())) return null;
+  return new Date(dt.getTime() - dt.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+}
+
+function swParseHours(val) {
+  if (val == null || val === '') return 0;
+  return parseFloat(String(val).replace(',', '.')) || 0;
+}
+
+async function swLeerCSV(file) {
+  const text = await file.text();
+  const lines = text.replace(/^\uFEFF/, '').split(/\r?\n/).filter(l => l.trim());
+  if (lines.length < 2) return { "WEEKLY_TOTAL": 0, _isWeeklySummary: true };
+
+  const header = swParseCSVRow(lines[0]).map(h => h.toLowerCase().replace(/\s+/g, ' ').trim());
+  const findIdx = (keys) => header.findIndex(h => keys.some(k => h.includes(k)));
+  const idx = {
+    name: findIdx(['name', 'employee']),
+    reg:  findIdx(['reg hours', 'regular hours', 'regular']),
+    ot:   findIdx(['o/t hours', 'ot hours', 'overtime hours', 'overtime']),
+    date: findIdx(['date', 'shift date', 'day', 'work date']),
+  };
+
+  if (idx.name < 0 || idx.reg < 0 || idx.ot < 0) {
+    throw new Error('CSV 7shifts sin columnas Name/Reg Hours/O/T Hours');
+  }
+
+  const byDate = {};
+  let weeklyTotal = 0;
+  let hasDateRows = false;
+
+  for (let i = 1; i < lines.length; i++) {
+    const cols = swParseCSVRow(lines[i]);
+    const rawName = cols[idx.name] || '';
+    if (swShouldExclude(rawName)) continue;
+
+    const reg = swParseHours(cols[idx.reg]);
+    const ot = swParseHours(cols[idx.ot]);
+    const total = reg + ot;
+    if (total <= 0) continue;
+
+    weeklyTotal += total;
+    const iso = idx.date >= 0 ? swToISODate(cols[idx.date]) : null;
+    if (iso) {
+      byDate[iso] = (byDate[iso] || 0) + total;
+      hasDateRows = true;
+    }
+  }
+
+  return {
+    ...byDate,
+    WEEKLY_TOTAL: weeklyTotal,
+    _isWeeklySummary: !hasDateRows,
+  };
+}
+
+async function swLeerXLSX(file) {
+  if (!window.XLSX) {
+    await new Promise((res, rej) => {
+      const s = document.createElement('script');
+      s.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+      s.onload = res;
+      s.onerror = () => rej(new Error('No se pudo cargar SheetJS'));
+      document.head.appendChild(s);
+    });
+  }
+
+  const ab = await file.arrayBuffer();
+  const wb = XLSX.read(ab, { type: 'array' });
+  const ws = wb.Sheets[wb.SheetNames[0]];
+  const rows = XLSX.utils.sheet_to_json(ws, { defval: '' });
+  if (!rows.length) return { WEEKLY_TOTAL: 0, _isWeeklySummary: true };
+
+  const keys = Object.keys(rows[0]);
+  const findKey = (preds) => keys.find(k => preds.some(p => p(k.toLowerCase())));
+  const nameKey = findKey([k => k.includes('name')]);
+  const regKey  = findKey([k => k.includes('reg hours'), k => k.includes('regular hours')]);
+  const otKey   = findKey([k => k.includes('o/t'), k => k.includes('ot hours'), k => k.includes('overtime')]);
+  const dateKey = findKey([k => k === 'date', k => k.includes('shift date'), k => k.includes('work date')]);
+  if (!nameKey || !regKey || !otKey) throw new Error('Excel sin columnas Name/Reg/O/T');
+
+  const byDate = {};
+  let weeklyTotal = 0;
+  let hasDateRows = false;
+  for (const row of rows) {
+    if (swShouldExclude(row[nameKey])) continue;
+    const reg = swParseHours(row[regKey]);
+    const ot = swParseHours(row[otKey]);
+    const total = reg + ot;
+    if (total <= 0) continue;
+    weeklyTotal += total;
+    const iso = dateKey ? swToISODate(row[dateKey]) : null;
+    if (iso) {
+      byDate[iso] = (byDate[iso] || 0) + total;
+      hasDateRows = true;
+    }
+  }
+
+  return {
+    ...byDate,
+    WEEKLY_TOTAL: weeklyTotal,
+    _isWeeklySummary: !hasDateRows,
+  };
+}
+
+function swHorasDia(fecha, horasRepartidas) {
+  if (!swHorasPorDia) return 0;
+  if (fecha && swHorasPorDia[fecha] != null) return swHorasPorDia[fecha];
+  return horasRepartidas;
+}
+
 function swActualizarPreview() {
-  const container = document.getElementById('sw-preview-list');
-  if (!container) return;
+  const preview = document.getElementById('sw-preview');
+  const infoEl = document.getElementById('sw-semana-info');
+  const bodyEl = document.getElementById('sw-tabla-body');
+  const footEl = document.getElementById('sw-tabla-foot');
+  if (!preview || !bodyEl || !footEl || !infoEl) return;
+
   if (swDiasPDF.length === 0) {
-    container.innerHTML = '<p style="color:#666; font-style:italic">No hay datos de PDFs aún.</p>';
+    preview.style.display = 'none';
+    bodyEl.innerHTML = '';
+    footEl.innerHTML = '';
     return;
   }
 
-  const totalHorasCSV = swHorasPorDia["WEEKLY_TOTAL"] || 0;
-  const horasRepartidas = totalHorasCSV / swDiasPDF.length;
+  const diasConFecha = swDiasPDF.filter(d => !!d.fecha);
+  const diasParaReparto = Math.max(1, diasConFecha.length || swDiasPDF.length);
+  const totalHoras = swHorasPorDia.WEEKLY_TOTAL || 0;
+  const horasRepartidas = totalHoras > 0 ? (totalHoras / diasParaReparto) : 0;
+  const isWeeklySummary = !!swHorasPorDia._isWeeklySummary;
 
-  let html = `<table style="width:100%; border-collapse:collapse; font-size:13px">
-    <thead>
-      <tr style="background:#f9f9f9; text-align:left">
-        <th style="padding:10px; border-bottom:2px solid #eee">Fecha</th>
-        <th style="padding:10px; border-bottom:2px solid #eee">Kg Prod</th>
-        <th style="padding:10px; border-bottom:2px solid #eee">Horas</th>
-        <th style="padding:10px; border-bottom:2px solid #eee">Eficiencia</th>
-      </tr>
-    </thead>
-    <tbody>`;
+  const rango = diasConFecha.length
+    ? `${diasConFecha[0].fecha} → ${diasConFecha[diasConFecha.length - 1].fecha}`
+    : 'Fechas no detectadas';
+  infoEl.innerHTML = `
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+      <span class="badge ${isWeeklySummary ? 'badge-warn' : 'badge-ok'}">
+        ${isWeeklySummary ? 'Resumen semanal detectado' : 'Horas por día detectadas'}
+      </span>
+      <span style="font-size:12px;color:var(--gris-500)">
+        ${diasParaReparto} día(s) · ${rango}
+      </span>
+    </div>`;
 
-  swDiasPDF.forEach((d, i) => {
-    // Si swHorasPorDia tiene la fecha exacta, la usa. Si no, usa el reparto proporcional.
-    let horas = (d.fecha && swHorasPorDia[d.fecha]) ? swHorasPorDia[d.fecha] : horasRepartidas;
-    const ef = horas > 0 ? (d.prod / horas).toFixed(2) : '0.00';
-    
-    html += `<tr>
-      <td style="padding:10px; border-bottom:1px solid #eee">${d.fecha || 'Sin fecha'}</td>
-      <td style="padding:10px; border-bottom:1px solid #eee">${d.prod.toFixed(2)} kg</td>
-      <td style="padding:10px; border-bottom:1px solid #eee">${horas.toFixed(2)} h</td>
-      <td style="padding:10px; border-bottom:1px solid #eee; font-weight:bold; color:#2d6a4f">${ef}</td>
+  let totalKg = 0;
+  let totalHorasAplicadas = 0;
+  bodyEl.innerHTML = swDiasPDF.map((d, i) => {
+    const fecha = d.fecha || '';
+    const horas = swHorasDia(fecha, horasRepartidas);
+    const kg = Number(d.kgProd || 0);
+    const ef = horas > 0 ? (kg / horas) : 0;
+    totalKg += kg;
+    totalHorasAplicadas += horas;
+
+    return `<tr>
+      <td>${fecha || 'Sin fecha'}</td>
+      <td>${d.dia || ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'][new Date((fecha || '2026-01-01') + 'T12:00:00').getDay()] || '—'}</td>
+      <td class="td-num">${fmt(d.kgInicio,2)}</td>
+      <td class="td-num">${fmt(d.kgFin,2)}</td>
+      <td class="td-num"><strong>${fmt(kg,2)}</strong></td>
+      <td class="td-num">${fmt(horas,2)}</td>
+      <td class="td-num">${fmt(ef,2)}</td>
+      <td class="td-center" id="sw-row-status-${i}">⏳</td>
     </tr>`;
-  });
+  }).join('');
 
-  html += `</tbody></table>`;
-  container.innerHTML = html;
-  document.getElementById('sw-preview-card').style.display = 'block';
+  const totalEfic = totalHorasAplicadas > 0 ? (totalKg / totalHorasAplicadas) : 0;
+  footEl.innerHTML = `<tr>
+    <th colspan="4" style="text-align:right">Totales</th>
+    <th class="td-num">${fmt(totalKg,2)}</th>
+    <th class="td-num">${fmt(totalHorasAplicadas,2)}</th>
+    <th class="td-num">${fmt(totalEfic,2)}</th>
+    <th></th>
+  </tr>`;
+
+  preview.style.display = 'block';
+
+  const saveStatus = document.getElementById('sw-save-status');
+  if (saveStatus) {
+    saveStatus.textContent = isWeeklySummary
+      ? 'Horas semanales repartidas entre los días detectados en PDF.'
+      : 'Horas asignadas por fecha desde el archivo cargado.';
+  }
+
+  const btnSave = document.getElementById('sw-btn-guardar');
+  if (btnSave) {
+    btnSave.disabled = swDiasPDF.length === 0 || totalHoras <= 0;
+    btnSave.title = totalHoras > 0 ? '' : 'Carga primero el archivo de horas.';
+  }
+
+  const btnReport = document.getElementById('sw-btn-reporte');
+  if (btnReport) {
+    btnReport.style.display = 'none';
+  }
+}
+
+async function swGuardarTodo() {
+  const btn = document.getElementById('sw-btn-guardar');
+  const saveStatus = document.getElementById('sw-save-status');
+  if (btn) { btn.disabled = true; btn.textContent = 'Guardando…'; }
+  if (saveStatus) saveStatus.textContent = 'Preparando guardado masivo...';
+
+  try {
+    const diasValidos = swDiasPDF
+      .map((d, idx) => ({ ...d, _idx: idx }))
+      .filter(d => !!d.fecha);
+
+    if (!diasValidos.length) {
+      toast('No hay días con fecha para guardar.', 'err');
+      return;
+    }
+
+    const horasPorFecha = swGetHorasMapParaGuardado();
+    const fechas = diasValidos.map(d => d.fecha).sort();
+    const fechaMin = fechas[0];
+    const fechaMax = fechas[fechas.length - 1];
+
+    let semana_id = swSemanaId;
+    if (!semana_id) {
+      const semExistente = semanas.find(s => fechaMin >= s.fecha_inicio && fechaMax <= s.fecha_fin);
+      if (semExistente) {
+        semana_id = semExistente.id;
+      } else {
+        const dObj = new Date(fechaMin + 'T12:00:00');
+        const dow = dObj.getDay();
+        const diffLun = dow === 0 ? -6 : 1 - dow;
+        const lun = new Date(dObj); lun.setDate(dObj.getDate() + diffLun);
+        const dom = new Date(lun); dom.setDate(lun.getDate() + 6);
+        const toISO = x => x.toISOString().split('T')[0];
+        const meses = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+        const numSem = (semanas.length ? Math.max(...semanas.map(s => s.numero_semana || 0)) : 0) + 1;
+        const autoLabel = `Sem ${numSem} (${lun.getDate()}–${dom.getDate()} ${meses[lun.getMonth()]})`;
+
+        if (saveStatus) saveStatus.textContent = 'Creando semana automáticamente...';
+        const { data: newSem, error: errSem } = await db.from('semanas')
+          .insert({ label: autoLabel, start_date: toISO(lun), end_date: toISO(dom) })
+          .select().single();
+        if (errSem) throw new Error('Error creando semana: ' + errSem.message);
+
+        semana_id = newSem.id;
+        semanas.push({
+          ...newSem,
+          fecha_inicio: newSem.start_date,
+          fecha_fin: newSem.end_date,
+          numero_semana: numSem,
+          _local: false,
+        });
+        semanas.sort((a, b) => a.fecha_inicio.localeCompare(b.fecha_inicio));
+        populateSelects();
+        populateMonthSelects();
+      }
+      swSemanaId = semana_id;
+    }
+
+    let guardados = 0;
+    let errores = 0;
+    for (const d of diasValidos) {
+      const statusEl = document.getElementById(`sw-row-status-${d._idx}`);
+      if (statusEl) statusEl.textContent = '⏳';
+      if (saveStatus) saveStatus.textContent = `Guardando ${guardados + errores + 1} de ${diasValidos.length}...`;
+
+      const horas = horasPorFecha[d.fecha] ?? null;
+      const notasAuto = `Inv: ${Number(d.kgInicio || 0).toFixed(2)} → ${Number(d.kgFin || 0).toFixed(2)}`;
+      const { error } = await db.from('dias').upsert({
+        fecha: d.fecha,
+        semana_id,
+        prod: Number(d.kgProd || 0),
+        horas: (horas != null && horas > 0) ? +Number(horas).toFixed(2) : null,
+        notas: notasAuto,
+      }, { onConflict: 'fecha' });
+
+      if (error) {
+        errores++;
+        if (statusEl) statusEl.textContent = '❌';
+        console.warn('swGuardarTodo upsert error:', d.fecha, error.message);
+      } else {
+        guardados++;
+        if (statusEl) statusEl.textContent = '✅';
+      }
+    }
+
+    if (errores > 0) {
+      if (saveStatus) saveStatus.textContent = `${guardados} día(s) guardado(s) · ${errores} error(es)`;
+      toast(`${guardados} día(s) guardado(s), ${errores} con error.`, 'err');
+    } else {
+      if (saveStatus) saveStatus.textContent = `Semana guardada: ${guardados} día(s)`;
+      toast(`Semana guardada correctamente (${guardados} días).`, 'ok');
+      const btnReport = document.getElementById('sw-btn-reporte');
+      if (btnReport) btnReport.style.display = '';
+    }
+
+    if (guardados > 0) await refreshAll();
+  } catch (err) {
+    console.error('swGuardarTodo error:', err);
+    if (saveStatus) saveStatus.textContent = err?.message || 'Error durante guardado.';
+    toast(err?.message || 'Error durante guardado masivo.', 'err');
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = '💾 Guardar semana completa'; }
+  }
+}
+
+function swGenerarReporte() {
+  toast('Reporte PDF no disponible en esta versión.', 'err');
+}
+
+function swGetHorasMapParaGuardado() {
+  const out = {};
+  const diasConFecha = swDiasPDF.filter(d => !!d.fecha);
+  const diasParaReparto = Math.max(1, diasConFecha.length || swDiasPDF.length);
+  const totalHoras = swHorasPorDia.WEEKLY_TOTAL || 0;
+  const horasRepartidas = totalHoras > 0 ? (totalHoras / diasParaReparto) : 0;
+  swDiasPDF.forEach((d) => {
+    if (!d.fecha) return;
+    out[d.fecha] = swHorasDia(d.fecha, horasRepartidas);
+  });
+  return out;
 }
 
 
