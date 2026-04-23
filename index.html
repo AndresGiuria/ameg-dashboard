@@ -2686,6 +2686,15 @@ function swActualizarPreview(){
     </div>`;
   }
   const dias_nombres=['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
+  // If no per-day hours, distribute manual total evenly
+  const _manualTotal = window._swHorasManualTotal || 0;
+  const _numDias = swDiasPDF.length || 1;
+  const _horasPorDia = _manualTotal > 0 && Object.keys(swHorasPorDia).length === 0
+    ? _manualTotal / _numDias : 0;
+  // Pre-fill swHorasPorDia from manual total if needed
+  if (_horasPorDia > 0) {
+    swDiasPDF.forEach(d => { if (d.fecha && !swHorasPorDia[d.fecha]) swHorasPorDia[d.fecha] = +_horasPorDia.toFixed(2); });
+  }
   let totalKg=0, totalH=0;
   const rows=swDiasPDF.map((d,i)=>{
     const horas=d.fecha?(swHorasPorDia[d.fecha]||0):0;
