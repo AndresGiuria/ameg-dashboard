@@ -574,6 +574,16 @@
       <button class="btn btn-secondary btn-sm" onclick="swAplicarHorasManual()">✓ Aplicar horas</button>
       <span id="sw-horas-status" style="font-size:12px;color:var(--gris-500)"></span>
     </div>
+    <!-- Guardar horas directamente en semana existente -->
+    <div style="background:var(--dorado-bg);border:1px solid #fde68a;border-radius:10px;padding:14px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-top:12px">
+      <div style="flex:1">
+        <div style="font-size:13px;font-weight:600;color:var(--dorado)">💡 ¿Ya tienes los kg en Supabase?</div>
+        <div style="font-size:12px;color:var(--gris-500);margin-top:2px">Guarda solo las horas del CSV en la semana más reciente</div>
+      </div>
+      <button class="btn btn-primary btn-sm" onclick="swSoloGuardarHoras()" style="background:var(--dorado);white-space:nowrap">
+        🕐 Guardar horas ahora
+      </button>
+    </div>
   </div>
   <div id="sw-preview" style="display:none">
     <div class="card" style="margin-bottom:16px">
@@ -603,13 +613,7 @@
         </button>
         <span id="sw-save-status" style="font-size:12px;color:var(--gris-500)"></span>
       </div>
-      <!-- Guardar solo horas (cuando los kg ya están en Supabase) -->
-      <div style="background:var(--dorado-bg);border:1px solid #fde68a;border-radius:8px;padding:12px 16px;margin-top:12px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-        <span style="font-size:13px;color:var(--dorado)">💡 ¿Ya tienes los kg guardados? Solo guarda las horas:</span>
-        <button class="btn btn-secondary btn-sm" onclick="swSoloGuardarHoras()">
-          🕐 Guardar horas en semana existente
-        </button>
-      </div>
+
     </div>
   </div>
 </div>
