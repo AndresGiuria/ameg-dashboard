@@ -2855,7 +2855,7 @@ function swActualizarPreview() {
   }
 }
 
-async function swGuardarTodo() {
+async function swGuardarTodoImpl() {
   const btn = document.getElementById('sw-btn-guardar');
   const saveStatus = document.getElementById('sw-save-status');
   if (btn) { btn.disabled = true; btn.textContent = 'Guardando…'; }
@@ -3006,9 +3006,17 @@ document.querySelectorAll('#main-nav button[data-tab]').forEach(btn=>{
 // ARRANQUE
 // =====================================================================
 document.addEventListener('DOMContentLoaded', async ()=>{
+  const swBtn = document.getElementById('sw-btn-guardar');
+  if (swBtn) swBtn.setAttribute('onclick', 'swGuardarTodo()');
   await initSemanas();
   await refreshAll();
 });
+
+// Implementación pública al final del archivo para onclick del botón.
+async function swGuardarTodo() {
+  return swGuardarTodoImpl();
+}
+window.swGuardarTodo = swGuardarTodo;
 </script>
 </body>
 </html>
