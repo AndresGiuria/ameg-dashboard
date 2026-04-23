@@ -2512,6 +2512,7 @@ async function renderCalendario() {
   container.innerHTML = html;
 }
 window.renderCalendar = renderCalendario;
+window.renderCalendario = renderCalendario;
 
 async function renderChartDiarioMain() {
   const canvas=document.getElementById('chart-diario-main');
@@ -2771,6 +2772,14 @@ async function swLeerCSV(file) {
     total: findIdx(['total hours', 'hours total', 'hours worked', 'hours']),
     date: findIdx(['date', 'shift date', 'day', 'work date']),
   };
+  console.log('[swLeerCSV] headers:', header);
+  console.log('[swLeerCSV] columnas detectadas:', {
+    name: idx.name >= 0 ? header[idx.name] : null,
+    reg: idx.reg >= 0 ? header[idx.reg] : null,
+    ot: idx.ot >= 0 ? header[idx.ot] : null,
+    total: idx.total >= 0 ? header[idx.total] : null,
+    date: idx.date >= 0 ? header[idx.date] : null,
+  });
 
   if (idx.name < 0 || (idx.total < 0 && idx.reg < 0 && idx.ot < 0)) {
     throw new Error('CSV sin columnas válidas de horas (Total/Reg/OT)');
