@@ -586,9 +586,10 @@
           <tfoot id="sw-tabla-foot"></tfoot>
         </table>
       </div>
-      <div style="display:flex;gap:12px;margin-top:18px;flex-wrap:wrap;align-items:center">
-        <button class="btn btn-primary" id="sw-btn-guardar" onclick="swGuardarTodo()">
-          💾 Guardar semana completa
+      <div style="display:flex;gap:12px;margin-top:18px;flex-wrap:wrap;align-items:center;justify-content:center">
+        <button class="btn btn-primary" id="sw-btn-guardar" onclick="swGuardarTodo()"
+          style="background:#16a34a;border-color:#16a34a;color:#fff;font-size:16px;padding:14px 28px;font-weight:700;min-width:320px;justify-content:center">
+          💾 Guardar Todo en Supabase
         </button>
         <button class="btn btn-secondary" id="sw-btn-reporte" style="display:none" onclick="swGenerarReporte()">
           📄 Descargar reporte PDF
@@ -2072,7 +2073,7 @@ function showScannedPDFModal(pageImages, numPages) {
         ${pagesHTML}
         <div style="display:flex;gap:12px;align-items:center;padding-top:4px">
           <button onclick="guardarScannedDias(${numPages})" class="btn btn-primary" style="flex:1;justify-content:center;padding:13px;font-size:14px">
-            💾 Guardar ${numPages} día(s) en Supabase
+            💾 Guardar ${numPages} día(s) en Base de Datos
           </button>
           <button onclick="document.getElementById('scanned-modal').remove()" class="btn btn-secondary">Cancelar</button>
         </div>
@@ -2124,7 +2125,7 @@ async function guardarScannedDias(numPages) {
     const {error}=await db.from('dias').upsert({fecha,semana_id,prod,notas,horas:null},{onConflict:'fecha'});
     if (error) errores++; else guardados++;
   }
-  if (btn){btn.disabled=false;btn.textContent=`💾 Guardar ${numPages} día(s) en Supabase`;}
+  if (btn){btn.disabled=false;btn.textContent=`💾 Guardar ${numPages} día(s) en Base de Datos`;}
   document.getElementById('scanned-modal')?.remove();
   toast(`${guardados} día(s) guardado(s)${errores?` · ${errores} sin datos`:''}`,errores&&!guardados?'err':'ok');
   if (guardados>0) await refreshAll();
@@ -3062,7 +3063,7 @@ async function swGuardarTodoImpl() {
     if (saveStatus) saveStatus.textContent = err?.message || 'Error durante guardado.';
     toast(err?.message || 'Error durante guardado masivo.', 'err');
   } finally {
-    if (btn) { btn.disabled = false; btn.textContent = '💾 Guardar semana completa'; }
+    if (btn) { btn.disabled = false; btn.textContent = '💾 Confirmar y Guardar Semana'; }
   }
 }
 
@@ -3151,7 +3152,116 @@ document.addEventListener('DOMContentLoaded', async ()=>{
 
 // Implementación pública al final del archivo para onclick del botón.
 async function swGuardarTodo() {
-  return swGuardarTodoImpl();
+  const btn = document.getElementById('sw-btn-guardar');
+  const saveStatus = document.getElementById('sw-save-status');
+  const parseCellNum = (txt) => {
+    const cleaned = String(txt || '')
+      .replace(/[^\d.,-]/g, '')
+      .replace(/,/g, '');
+    return parseFloat(cleaned) || 0;
+  };
+
+  if (btn) { btn.disabled = true; btn.textContent = 'Guardando…'; }
+  if (saveStatus) saveStatus.textContent = 'Preparando guardado desde vista previa...';
+
+  try {
+    const trs = [...document.querySelectorAll('#sw-tabla-body tr')];
+    const rows = trs.map((tr, idx) => {
+      const tds = tr.querySelectorAll('td');
+      return {
+        idx,
+        fecha: (tds[0]?.textContent || '').trim(),
+        kgInicio: parseCellNum(tds[2]?.textContent),
+        kgFin: parseCellNum(tds[3]?.textContent),
+        kgProd: parseCellNum(tds[4]?.textContent),
+        horas: parseCellNum(tds[5]?.textContent),
+      };
+    }).filter(r => /^\d{4}-\d{2}-\d{2}$/.test(r.fecha));
+
+    if (!rows.length) {
+      toast('No hay filas válidas para guardar.', 'err');
+      return;
+    }
+
+    const semanaCache = {};
+    const toISO = x => x.toISOString().split('T')[0];
+    const meses = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+    const semanaPorFecha = async (fecha) => {
+      const semExistente = semanas.find(s => fecha >= s.fecha_inicio && fecha <= s.fecha_fin);
+      if (semExistente) return semExistente.id;
+
+      const dObj = new Date(fecha + 'T12:00:00');
+      const dow = dObj.getDay();
+      const diffLun = dow === 0 ? -6 : 1 - dow;
+      const lun = new Date(dObj); lun.setDate(dObj.getDate() + diffLun);
+      const dom = new Date(lun); dom.setDate(lun.getDate() + 6);
+      const startISO = toISO(lun);
+      const endISO = toISO(dom);
+      const key = `${startISO}|${endISO}`;
+      if (semanaCache[key]) return semanaCache[key];
+
+      const numSem = (semanas.length ? Math.max(...semanas.map(s => s.numero_semana || 0)) : 0) + 1;
+      const autoLabel = `Sem ${numSem} (${lun.getDate()}–${dom.getDate()} ${meses[lun.getMonth()]})`;
+      const { data: newSem, error: errSem } = await db.from('semanas')
+        .insert({ label: autoLabel, start_date: startISO, end_date: endISO })
+        .select().single();
+      if (errSem) throw new Error('Error creando semana: ' + errSem.message);
+
+      semanas.push({
+        ...newSem,
+        fecha_inicio: newSem.start_date,
+        fecha_fin: newSem.end_date,
+        numero_semana: numSem,
+        _local: false,
+      });
+      semanas.sort((a, b) => a.fecha_inicio.localeCompare(b.fecha_inicio));
+      semanaCache[key] = newSem.id;
+      return newSem.id;
+    };
+
+    let guardados = 0;
+    let errores = 0;
+    for (const r of rows) {
+      const statusEl = document.getElementById(`sw-row-status-${r.idx}`);
+      if (statusEl) statusEl.textContent = '⏳';
+      if (saveStatus) saveStatus.textContent = `Guardando ${guardados + errores + 1} de ${rows.length}...`;
+
+      const semana_id = await semanaPorFecha(r.fecha);
+      const notasAuto = `Inv: ${r.kgInicio.toFixed(2)} → ${r.kgFin.toFixed(2)}`;
+      const { error } = await db.from('dias').upsert({
+        fecha: r.fecha,
+        semana_id,
+        prod: r.kgProd,
+        horas: r.horas > 0 ? +r.horas.toFixed(2) : null,
+        notas: notasAuto,
+      }, { onConflict: 'fecha' });
+
+      if (error) {
+        errores++;
+        if (statusEl) statusEl.textContent = '❌';
+      } else {
+        guardados++;
+        if (statusEl) statusEl.textContent = '✅';
+      }
+    }
+
+    if (errores > 0) {
+      if (saveStatus) saveStatus.textContent = `${guardados} día(s) guardado(s) · ${errores} error(es)`;
+      toast(`${guardados} guardados, ${errores} con error.`, 'err');
+    } else {
+      if (saveStatus) saveStatus.textContent = 'Actualizando Tablero y Calendario...';
+      toast(`Semana guardada correctamente (${guardados} días).`, 'ok');
+      await appFetchAll();
+      await refreshAll();
+      if (saveStatus) saveStatus.textContent = `Semana guardada y sincronizada (${guardados} días).`;
+    }
+  } catch (err) {
+    console.error('swGuardarTodo (preview) error:', err);
+    if (saveStatus) saveStatus.textContent = err?.message || 'Error durante guardado.';
+    toast(err?.message || 'Error guardando semana.', 'err');
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = '💾 Guardar Todo en Supabase'; }
+  }
 }
 window.swGuardarTodo = swGuardarTodo;
 </script>
