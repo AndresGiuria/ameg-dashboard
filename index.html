@@ -728,6 +728,33 @@
     <label>Mes:</label>
     <select id="semanal-mes-sel" onchange="renderSemanal()"></select>
   </div>
+
+  <!-- Nueva Semana -->
+  <div class="card" style="margin-bottom:16px">
+    <h2>➕ Nueva Semana</h2>
+    <div class="form-grid" style="grid-template-columns:repeat(auto-fit,minmax(180px,1fr))">
+      <div class="form-group">
+        <label>Fecha Inicio *</label>
+        <input type="date" id="ns-start">
+      </div>
+      <div class="form-group">
+        <label>Fecha Fin *</label>
+        <input type="date" id="ns-end">
+      </div>
+      <div class="form-group">
+        <label>Horas RH (opcional)</label>
+        <input type="number" id="ns-horas" min="0" step="0.01" placeholder="Ej. 340.00">
+      </div>
+      <div class="form-group" style="justify-content:flex-end;padding-top:4px">
+        <label>&nbsp;</label>
+        <button class="btn btn-primary" onclick="crearNuevaSemana()">
+          💾 Crear Semana
+        </button>
+      </div>
+    </div>
+    <div id="ns-status" style="margin-top:10px;font-size:13px"></div>
+  </div>
+
   <div id="semanas-list"><div class="loading"><div class="spinner"></div></div></div>
 </div>
 
@@ -907,99 +934,8 @@ if (window.Chart) {
   Chart.defaults.font.family = "'Syne', system-ui, sans-serif";
 }
 
-// ─── SEED DATA ─────────────────────────────────────────────────────────
-const SEED = [
-  {
-    id:'s1', label:'Sem 1 (4 – 8 mar)', start:'2026-03-04', end:'2026-03-08', numero:9,
-    horasManual:248.82, notas:'',
-    dias:[
-      {fecha:'2026-03-04',prod:345,   start:null,    end:null,    temp:null, initials:'',         notas:''},
-      {fecha:'2026-03-05',prod:520,   start:null,    end:null,    temp:null, initials:'',         notas:''},
-      {fecha:'2026-03-06',prod:612,   start:null,    end:null,    temp:null, initials:'',         notas:''},
-      {fecha:'2026-03-07',prod:608,   start:null,    end:null,    temp:null, initials:'',         notas:''},
-      {fecha:'2026-03-08',prod:429,   start:null,    end:null,    temp:null, initials:'',         notas:''},
-    ],
-  },
-  {
-    id:'s2', label:'Sem 2 (9 – 15 mar)', start:'2026-03-09', end:'2026-03-15', numero:10,
-    horasManual:341.37, notas:'',
-    dias:[
-      {fecha:'2026-03-09',prod:480},
-      {fecha:'2026-03-10',prod:572},
-      {fecha:'2026-03-11',prod:614},
-      {fecha:'2026-03-12',prod:608},
-      {fecha:'2026-03-13',prod:829},
-      {fecha:'2026-03-14',prod:445},
-      {fecha:'2026-03-15',prod:455},
-    ],
-  },
-  {
-    id:'s3', label:'Sem 3 (16 – 22 mar)', start:'2026-03-16', end:'2026-03-22', numero:11,
-    horasManual:341.98, notas:'',
-    dias:[
-      {fecha:'2026-03-16',prod:183.00,start:965.50,  end:1148.50, temp:4,   initials:''},
-      {fecha:'2026-03-17',prod:609.90,start:838.65,  end:1448.55, temp:3.5, initials:''},
-      {fecha:'2026-03-18',prod:335.72,start:871.00,  end:1206.72, temp:4,   initials:''},
-      {fecha:'2026-03-19',prod:458.95,start:856.23,  end:1315.18, temp:3.5, initials:''},
-      {fecha:'2026-03-20',prod:540.31,start:589.04,  end:1129.35, temp:4,   initials:''},
-      {fecha:'2026-03-21',prod:625.90,start:879.67,  end:1505.57, temp:3.5, initials:''},
-      {fecha:'2026-03-22',prod:454.90,start:871.86,  end:1326.76, temp:3.5, initials:''},
-    ],
-  },
-  {
-    id:'s4', label:'Sem 4 (23 – 29 mar)', start:'2026-03-23', end:'2026-03-29', numero:12,
-    horasManual:305.32, notas:'',
-    dias:[
-      {fecha:'2026-03-23',prod:481.25,start:638.28,  end:1119.53, temp:4},
-      {fecha:'2026-03-24',prod:709.96,start:916.14,  end:1626.10, temp:3.5},
-      {fecha:'2026-03-25',prod:333.20,start:1000.94, end:1334.14, temp:4},
-      {fecha:'2026-03-26',prod:217.05,start:1178.39, end:1395.44, temp:3.5},
-      {fecha:'2026-03-27',prod:547.89,start:659.30,  end:1207.19, temp:3},
-      {fecha:'2026-03-28',prod:280.00,start:1197.65, end:1477.65, temp:3.5},
-      {fecha:'2026-03-29',prod:548.80,start:769.60,  end:1318.40, temp:3.5},
-    ],
-  },
-  {
-    id:'s5', label:'Sem 5 (30 mar – 5 abr)', start:'2026-03-30', end:'2026-04-05', numero:13,
-    horasManual:332.53, notas:'Sem 5 — horas RH sin Mario Alberto Hernandez',
-    dias:[
-      {fecha:'2026-03-30',prod:427.49, start:874.47,  end:1301.96, temp:3,    initials:'U/S'},
-      {fecha:'2026-03-31',prod:425.54, start:1085.06, end:1530.60, temp:4,    initials:'Aft/U/Mor'},
-      {fecha:'2026-04-01',prod:627.40, start:830.90,  end:1458.30, temp:3.5,  initials:'U/M'},
-      {fecha:'2026-04-02',prod:542.80, start:792.50,  end:1335.30, temp:3,    initials:'M/SU/A'},
-      {fecha:'2026-04-04',prod:1237.45,start:228.05,  end:1465.50, temp:null, initials:'M/N/A'},
-      {fecha:'2026-04-05',prod:564.00, start:994.93,  end:1558.93, temp:3,    initials:'S/Ra'},
-    ],
-  },
-];
-
-function buildSeedDias() {
-  const rows = [];
-  for (const seedSem of SEED) {
-    if (!seedSem.dias?.length) continue;
-    const horasPorDia = seedSem.horasManual
-      ? +(seedSem.horasManual / seedSem.dias.length).toFixed(2) : null;
-    for (const d of seedSem.dias) {
-      const kg_hora    = horasPorDia ? +(d.prod / horasPorDia).toFixed(2) : null;
-      const dia_nombre = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'][
-        new Date(d.fecha + 'T12:00:00').getDay()];
-      rows.push({
-        id: 'seed-' + d.fecha, fecha: d.fecha, semana_id: seedSem.id,
-        prod: d.prod, kg_producidos: d.prod, horas_rh: horasPorDia, kg_hora,
-        dia_nombre, turno: 'completo', operadores: null,
-        notas: [
-          d.initials ? 'Ops: ' + d.initials : '',
-          d.temp != null ? 'Temp: ' + d.temp : '',
-          d.start != null ? 'Inv: ' + d.start + ' → ' + d.end : '',
-          seedSem.notas || '',
-        ].filter(Boolean).join(' · '),
-        _seed: true,
-      });
-    }
-  }
-  return rows;
-}
-let localSeedDias = buildSeedDias();
+// Sin SEED — todos los datos vienen de Supabase
+let localSeedDias = [];
 
 // =====================================================================
 // STATE
@@ -1055,74 +991,29 @@ function setStatus(msg, ok=true) {
 }
 
 async function initSemanas() {
-  semanas = SEED.map(s => ({
-    id:s.id, label:s.label, numero_semana:s.numero,
-    fecha_inicio:s.start, fecha_fin:s.end, horas:s.horasManual, _local:true,
-  }));
-
   try {
-    const {data:dbSemanas, error:e1} = await db.from('semanas').select('*').order('start_date');
-    if (e1) throw e1;
+    const {data: dbSemanas, error} = await db
+      .from('semanas')
+      .select('*')
+      .order('start_date');
 
-    for (const seedSem of SEED) {
-      let dbRow = (dbSemanas||[]).find(r =>
-        r.start_date <= seedSem.end && r.end_date >= seedSem.start);
-      if (!dbRow) {
-        const {data:ins,error:e2} = await db.from('semanas').insert({
-          label:seedSem.label, start_date:seedSem.start, end_date:seedSem.end,
-          horas:seedSem.horasManual, notas:seedSem.notas||null,
-        }).select().single();
-        if (e2) { console.warn('insert semana:', e2.message); continue; }
-        dbRow = ins;
-      }
-      const idx = semanas.findIndex(s => s.id === seedSem.id);
-      if (idx >= 0) semanas[idx] = {
-        ...dbRow, fecha_inicio:dbRow.start_date, fecha_fin:dbRow.end_date,
-        numero_semana:seedSem.numero, _local:false,
-      };
-      localSeedDias.forEach(d => { if (d.semana_id === seedSem.id) d.semana_id = dbRow.id; });
-    }
+    if (error) throw error;
 
-    for (const dbRow of (dbSemanas||[])) {
-      const alreadyIn = semanas.some(s =>
-        s.fecha_inicio === dbRow.start_date && s.fecha_fin === dbRow.end_date);
-      if (!alreadyIn) {
-        const lastNum = semanas.length
-          ? Math.max(...semanas.map(s => s.numero_semana||0)) : 0;
-        semanas.push({
-          ...dbRow, fecha_inicio:dbRow.start_date, fecha_fin:dbRow.end_date,
-          numero_semana: lastNum + 1, _local:false,
-        });
-      }
-    }
-    semanas.sort((a,b) => a.fecha_inicio.localeCompare(b.fecha_inicio));
+    semanas = (dbSemanas || []).map((s, i) => ({
+      ...s,
+      fecha_inicio:   s.start_date,
+      fecha_fin:      s.end_date,
+      numero_semana:  i + 1,
+      _local:         false,
+    }));
+
     setStatus('Conectado · ' + semanas.length + ' semanas');
-
-    for (const seedSem of SEED) {
-      if (!seedSem.dias?.length) continue;
-      const dbSem = semanas.find(s => s.fecha_inicio===seedSem.start||s.fecha_fin===seedSem.end);
-      if (!dbSem||dbSem._local) continue;
-      for (const d of seedSem.dias) {
-        const {error:eu} = await db.from('dias').upsert({
-          fecha:d.fecha, semana_id:dbSem.id, prod:d.prod,
-          start_kg:d.start??null, end_kg:d.end??null, temp:d.temp??null,
-          initials:d.initials||null,
-          notas:[
-            d.initials?'Ops: '+d.initials:'',
-            d.temp!=null?'Temp: '+d.temp:'',
-            d.start!=null?'Inv: '+d.start+' → '+d.end:'',
-            seedSem.notas||'',
-          ].filter(Boolean).join(' · ')||null,
-        }, {onConflict:'fecha', ignoreDuplicates:true});
-        if (eu) console.warn('upsert dia:', d.fecha, eu.message);
-      }
-    }
-
   } catch (err) {
-    console.error('initSemanas full error:', JSON.stringify(err), err);
-    setStatus('DB error: '+(err?.message||err?.code||JSON.stringify(err)).toString().slice(0,60), false);
+    console.error('initSemanas:', err);
+    setStatus('Sin conexión — ' + (err?.message || err).toString().slice(0, 50), false);
   }
 }
+
 
 async function checkConnection() {
   setStatus('Conectando…');
@@ -1156,10 +1047,8 @@ function normalizeDiaRow(r) {
 async function fetchDiasByRange(desde, hasta) {
   const {data,error} = await db.from('dias').select('*').gte('fecha',desde).lte('fecha',hasta).order('fecha');
   if (error) console.error('fetchDias:', error.message);
-  const dbRows   = (data||[]).map(r => normalizeDiaRow(r));
-  const dbFechas = new Set(dbRows.map(r => r.fecha));
-  const seedRows = localSeedDias.filter(d => d.fecha>=desde && d.fecha<=hasta && !dbFechas.has(d.fecha));
-  const allRows  = [...dbRows, ...seedRows].sort((a,b) => a.fecha.localeCompare(b.fecha));
+  const dbRows  = (data||[]).map(r => normalizeDiaRow(r));
+  const allRows = [...dbRows].sort((a,b) => a.fecha.localeCompare(b.fecha));
 
   const semGroups = {};
   allRows.forEach(r => {
@@ -3291,6 +3180,74 @@ async function invMostrarProyeccion(){
   } catch(e){
     container.innerHTML=`<p style="color:var(--rojo);font-size:13px">Error: ${e.message}</p>`;
   }
+}
+
+
+async function crearNuevaSemana() {
+  const start    = document.getElementById('ns-start')?.value;
+  const end      = document.getElementById('ns-end')?.value;
+  const horas    = parseFloat(document.getElementById('ns-horas')?.value) || null;
+  const statusEl = document.getElementById('ns-status');
+
+  if (!start || !end) {
+    statusEl.innerHTML = '<span style="color:var(--rojo)">⚠️ Ingresa fecha inicio y fecha fin</span>';
+    return;
+  }
+  if (start > end) {
+    statusEl.innerHTML = '<span style="color:var(--rojo)">⚠️ La fecha inicio debe ser antes del fin</span>';
+    return;
+  }
+
+  // Check no overlap
+  const overlap = semanas.find(s => start <= s.fecha_fin && end >= s.fecha_inicio);
+  if (overlap) {
+    statusEl.innerHTML = `<span style="color:var(--rojo)">⚠️ Se superpone con: ${weekLabel(overlap)}</span>`;
+    return;
+  }
+
+  // Auto-generate label
+  const meses = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+  const [sy, sm, sd] = start.split('-').map(Number);
+  const [ey, em, ed] = end.split('-').map(Number);
+  const numSem = semanas.length + 1;
+  const label = sm === em
+    ? `Sem ${numSem} (${sd}–${ed} ${meses[sm-1]})`
+    : `Sem ${numSem} (${sd} ${meses[sm-1]}–${ed} ${meses[em-1]})`;
+
+  statusEl.innerHTML = '<span style="color:var(--texto-3)">Guardando…</span>';
+
+  const {data, error} = await db.from('semanas').insert({
+    label,
+    start_date: start,
+    end_date:   end,
+    horas:      horas,
+  }).select().single();
+
+  if (error) {
+    statusEl.innerHTML = `<span style="color:var(--rojo)">❌ Error: ${error.message}</span>`;
+    return;
+  }
+
+  // Add to local semanas array
+  semanas.push({
+    ...data,
+    fecha_inicio:  data.start_date,
+    fecha_fin:     data.end_date,
+    numero_semana: semanas.length + 1,
+    _local:        false,
+  });
+  semanas.sort((a,b) => a.fecha_inicio.localeCompare(b.fecha_inicio));
+
+  // Reset form
+  document.getElementById('ns-start').value = '';
+  document.getElementById('ns-end').value   = '';
+  document.getElementById('ns-horas').value = '';
+  statusEl.innerHTML = `<span style="color:var(--verde)">✅ "${label}" creada correctamente</span>`;
+
+  populateSelects();
+  populateMonthSelects();
+  toast(`Semana "${label}" creada ✓`, 'ok');
+  await renderSemanal();
 }
 
 // =====================================================================
