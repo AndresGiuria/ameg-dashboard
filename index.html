@@ -571,8 +571,8 @@
     </div>
   </div>
   <div class="semanas-strip">
-    <h3>Progreso por semana vs meta (3,600 kg)</h3>
-    <div class="semanas-bars" id="semanas-bars-strip"></div>
+    <h3>Progreso por semana vs meta</h3>
+    <div class="semanas-bars" id="semanas-bars-strip" style="overflow-x:auto;flex-wrap:nowrap;display:flex;gap:14px;padding-bottom:6px"></div>
   </div>
   <div class="chart-card" style="margin-bottom:24px">
     <h3>Comparativo mensual</h3>
@@ -1434,7 +1434,7 @@ async function renderSemanal() {
       </div>`;
     for (const {s, rows, totalKg, totalH} of weekData) {
       const efic    = totalH>0 ? totalKg/totalH : 0;
-      const metaKg6 = META_KG_DIA*6;
+      const metaKg6 = s.fecha_inicio >= '2026-05-01' ? 3900 : 3600;
       html += `<div class="semana-card">
         <div class="semana-header">
           <div><h3>${weekLabel(s)}</h3><div class="dates">${fmtDate(s.fecha_inicio)} — ${fmtDate(s.fecha_fin)}</div></div>
@@ -2400,12 +2400,13 @@ async function renderChartEficMain() {
 async function renderSemanasStrip() {
   const container=document.getElementById('semanas-bars-strip');
   if (!container) return;
-  const META_SEM=META_KG_DIA*6;
+  const META_SEM = s => s.fecha_inicio >= '2026-05-01' ? 3900 : 3600;
   if (!semanas.length){container.innerHTML='<div class="empty"><p>Sin semanas</p></div>';return;}
   const items=await Promise.all(semanas.map(async s=>{
     const dias=await fetchDiasByRange(s.fecha_inicio,s.fecha_fin);
     const total=dias.reduce((a,d)=>a+(d.kg_producidos||0),0);
-    return{label:weekLabel(s),total,pct:Math.min(total/META_SEM*100,100)};
+    const metaSem = s.fecha_inicio >= '2026-05-01' ? 3900 : 3600;
+    return{label:weekLabel(s),total,pct:Math.min(total/metaSem*100,100),metaSem};
   }));
   container.innerHTML=items.map(item=>{
     const cls=item.pct>=100?'ok':item.pct>=80?'warn':'bad';
@@ -2413,6 +2414,7 @@ async function renderSemanasStrip() {
       <div class="sem-bar-label"><span>${item.label}</span><strong>${item.pct.toFixed(0)}%</strong></div>
       <div class="sem-bar-track"><div class="sem-bar-fill ${cls}" style="width:${item.pct}%"></div></div>
       <div class="sem-bar-kg">${fmt(item.total)} kg</div>
+      <div style="font-size:9px;color:var(--texto-4);margin-top:2px">meta ${fmt(item.metaSem,0)} kg</div>
     </div>`;
   }).join('');
 }
