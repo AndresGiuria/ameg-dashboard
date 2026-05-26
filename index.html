@@ -532,6 +532,7 @@
 
 <!-- TABLERO -->
 <div class="tab-pane active" id="tab-tablero">
+  <div id="mes-top3-row" style="display:grid;grid-template-columns:1fr 2fr;gap:14px;margin-bottom:20px"></div>
   <div class="hero-grid" id="kpi-row">
     <div class="kpi-hero" id="kpi-hoy-kg">
       <div class="kh-icon">🥩</div>
@@ -558,9 +559,12 @@
       <div class="kh-meta">— días registrados</div>
     </div>
   </div>
+  <!-- Comparativo semana actual vs anterior -->
+  <div id="sem-comparativo-row" style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:20px"></div>
+
   <div class="charts-main">
     <div class="chart-card">
-      <h3>Producción diaria <span style="font-weight:400;color:var(--gris-500);font-size:11px">últimos 30 días</span></h3>
+      <h3>Producción diaria <span style="font-weight:400;color:var(--texto-3);font-size:11px">últimos 15 días</span></h3>
       <div class="chart-sub">kg producidos vs meta 600 kg/día</div>
       <div class="chart-wrap tall"><canvas id="chart-diario-main"></canvas></div>
     </div>
@@ -2336,18 +2340,244 @@ async function refreshAll() {
 // TABLERO
 // =====================================================================
 async function renderTablero() {
+  await renderKgMesYTop3();
+  await renderSemComparativo();
   await renderKPIs();
   await renderChartDiarioMain();
   await renderChartEficMain();
+  await renderAlertaInventario();
   await renderSemanasStrip();
   await renderChartMesMain();
+  await renderDiaDestacado();
+}
+
+
+async function renderKgMesYTop3() {
+  const container = document.getElementById('mes-top3-row');
+  if (!container) return;
+
+  // Get current month range
+  const now = new Date();
+  const mesInicio = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
+  const mesFin    = new Date(now.getFullYear(), now.getMonth()+1, 0).toISOString().split('T')[0];
+  const meses = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+  const mesNombre = meses[now.getMonth()];
+
+  const dias = await fetchDiasByRange(mesInicio, mesFin);
+  const totalKgMes = dias.reduce((a,d) => a+(d.kg_producidos||0), 0);
+  const diasTrabajados = dias.filter(d => (d.kg_producidos||0) > 0).length;
+
+  // Top 3 from dias_productos if available, otherwise use dias data
+  const {data: prods} = await db
+    .from('dias_productos')
+    .select('producto, kg_final, kg_inicial, fecha')
+    .gte('fecha', mesInicio)
+    .lte('fecha', mesFin);
+
+  let top3 = [];
+  if (prods && prods.length > 0) {
+    const totProd = {};
+    prods.forEach(p => {
+      const prod = p.producto || 'OTRO';
+      const kg = (p.kg_final||0) - (p.kg_inicial||0);
+      totProd[prod] = (totProd[prod]||0) + Math.max(kg,0);
+    });
+    top3 = Object.entries(totProd)
+      .sort((a,b) => b[1]-a[1])
+      .slice(0,3)
+      .map(([prod,kg]) => ({prod, kg}));
+  }
+
+  const metaMes = 3900 * 4; // aprox 4 semanas
+  const pctMes  = Math.min(totalKgMes/metaMes*100, 100);
+  const clsMes  = pctMes >= 80 ? 'ok' : pctMes >= 60 ? 'warn' : 'bad';
+
+  container.innerHTML = `
+    <!-- Kg del mes -->
+    <div class="glass" style="border-radius:var(--radio-lg);padding:22px 24px;position:relative;overflow:hidden">
+      <div class="kh-label">${mesNombre} ${now.getFullYear()} — Producción</div>
+      <div class="kh-value" style="font-size:42px;letter-spacing:-2px;margin:10px 0">${fmt(totalKgMes)}<span>kg</span></div>
+      <div style="background:rgba(0,0,0,0.07);border-radius:3px;height:5px;overflow:hidden;margin-bottom:10px">
+        <div style="height:100%;border-radius:3px;width:${pctMes}%;background:${clsMes==='ok'?'var(--verde-3)':clsMes==='warn'?'#d97706':'var(--rojo-2)'};transition:width 1s var(--ease)"></div>
+      </div>
+      <div class="kh-meta">${diasTrabajados} días trabajados · ${fmt(totalKgMes/Math.max(diasTrabajados,1),1)} kg/día prom</div>
+    </div>
+
+    <!-- Top 3 productos -->
+    <div class="glass" style="border-radius:var(--radio-lg);padding:22px 24px">
+      <div class="kh-label">Top productos — ${mesNombre}</div>
+      ${top3.length > 0 ? `
+        <div style="margin-top:14px;display:flex;flex-direction:column;gap:12px">
+          ${top3.map((p,i) => {
+            const maxKg = top3[0].kg;
+            const pct   = Math.round(p.kg/maxKg*100);
+            const icons = ['🥇','🥈','🥉'];
+            return `<div>
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px">
+                <span style="font-size:13px;font-weight:600">${icons[i]} ${p.prod}</span>
+                <span style="font-size:13px;font-weight:700;font-family:var(--mono)">${fmt(p.kg,1)} kg</span>
+              </div>
+              <div style="background:rgba(0,0,0,0.07);border-radius:3px;height:5px;overflow:hidden">
+                <div style="height:100%;border-radius:3px;width:${pct}%;background:var(--verde-3);transition:width 1s var(--ease)"></div>
+              </div>
+            </div>`;
+          }).join('')}
+        </div>
+      ` : `<div style="margin-top:14px;color:var(--texto-3);font-size:13px">Sin datos de productos este mes</div>`}
+    </div>
+  `;
+}
+
+
+// ═══════════════════════════════════════════════════════════════
+// COMPARATIVO SEMANA ACTUAL VS ANTERIOR
+// ═══════════════════════════════════════════════════════════════
+async function renderSemComparativo() {
+  const container = document.getElementById('sem-comparativo-row');
+  if (!container || semanas.length < 1) return;
+
+  const sorted  = [...semanas].sort((a,b) => b.fecha_inicio.localeCompare(a.fecha_inicio));
+  const semAct  = sorted[0];
+  const semAnt  = sorted[1];
+
+  const diasAct = await fetchDiasByRange(semAct.fecha_inicio, semAct.fecha_fin);
+  const kgAct   = diasAct.reduce((a,d) => a+(d.kg_producidos||0), 0);
+  const hAct    = semAct.horas || 0;
+  const efAct   = hAct > 0 ? kgAct/hAct : 0;
+
+  let kgAnt = 0, efAnt = 0;
+  if (semAnt) {
+    const diasAnt = await fetchDiasByRange(semAnt.fecha_inicio, semAnt.fecha_fin);
+    kgAnt = diasAnt.reduce((a,d) => a+(d.kg_producidos||0), 0);
+    const hAnt = semAnt.horas || 0;
+    efAnt = hAnt > 0 ? kgAnt/hAnt : 0;
+  }
+
+  const diffKg  = kgAct - kgAnt;
+  const diffEf  = efAct - efAnt;
+  const upKg    = diffKg >= 0;
+  const upEf    = diffEf >= 0;
+  const metaAct = semAct.fecha_inicio >= '2026-05-01' ? 3900 : 3600;
+  const pctAct  = Math.min(kgAct/metaAct*100, 100);
+
+  const cardStyle = `background:var(--glass);backdrop-filter:blur(20px) saturate(180%);-webkit-backdrop-filter:blur(20px) saturate(180%);border:1px solid var(--glass-borde);box-shadow:var(--glass-sombra);border-radius:var(--radio-lg);padding:20px 22px`;
+
+  container.innerHTML = `
+    <div style="${cardStyle}">
+      <div class="kh-label">Semana actual — ${weekLabel(semAct)}</div>
+      <div style="display:flex;align-items:baseline;gap:12px;margin:10px 0 6px">
+        <div class="kh-value" style="font-size:32px">${fmt(kgAct)}<span>kg</span></div>
+        ${semAnt ? `<span style="font-size:12px;font-weight:600;padding:3px 8px;border-radius:20px;background:${upKg?'rgba(10,110,53,0.1)':'rgba(192,25,15,0.09)'};color:${upKg?'var(--verde)':'var(--rojo)'}">
+          ${upKg?'↑':'↓'} ${fmt(Math.abs(diffKg),0)} kg vs sem anterior
+        </span>` : ''}
+      </div>
+      <div style="background:rgba(0,0,0,0.07);border-radius:3px;height:5px;overflow:hidden;margin-bottom:8px">
+        <div style="height:100%;border-radius:3px;width:${pctAct}%;background:${pctAct>=100?'var(--verde-3)':pctAct>=80?'#d97706':'var(--rojo-2)'};transition:width 1s var(--ease)"></div>
+      </div>
+      <div class="kh-meta">${pctAct.toFixed(0)}% de meta ${fmt(metaAct,0)} kg · ${diasAct.filter(d=>d.kg_producidos>0).length} días</div>
+    </div>
+    <div style="${cardStyle}">
+      <div class="kh-label">Eficiencia actual vs anterior</div>
+      <div style="display:flex;align-items:baseline;gap:12px;margin:10px 0 6px">
+        <div class="kh-value" style="font-size:32px">${fmt(efAct,2)}<span>kg/h</span></div>
+        ${semAnt ? `<span style="font-size:12px;font-weight:600;padding:3px 8px;border-radius:20px;background:${upEf?'rgba(10,110,53,0.1)':'rgba(192,25,15,0.09)'};color:${upEf?'var(--verde)':'var(--rojo)'}">
+          ${upEf?'↑':'↓'} ${fmt(Math.abs(diffEf),2)} kg/h vs ${weekLabel(semAnt)}
+        </span>` : ''}
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px">
+        <div style="background:rgba(0,0,0,0.04);border-radius:8px;padding:10px;text-align:center">
+          <div style="font-size:10px;color:var(--texto-3);margin-bottom:4px;text-transform:uppercase;letter-spacing:0.06em">Esta semana</div>
+          <div style="font-size:18px;font-weight:700">${fmt(efAct,2)}</div>
+        </div>
+        <div style="background:rgba(0,0,0,0.04);border-radius:8px;padding:10px;text-align:center">
+          <div style="font-size:10px;color:var(--texto-3);margin-bottom:4px;text-transform:uppercase;letter-spacing:0.06em">Semana anterior</div>
+          <div style="font-size:18px;font-weight:700">${fmt(efAnt,2)}</div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// ALERTA INVENTARIO > 2000 KG
+// ═══════════════════════════════════════════════════════════════
+async function renderAlertaInventario() {
+  const container = document.getElementById('alerta-inv-row');
+  if (!container) return;
+
+  // Get last day's inventory
+  const hoy   = new Date().toISOString().split('T')[0];
+  const hace7 = new Date(Date.now()-7*86400000).toISOString().split('T')[0];
+  const dias  = await fetchDiasByRange(hace7, hoy);
+  const ultimo = dias.filter(d=>d.kg_producidos>0).sort((a,b)=>b.fecha.localeCompare(a.fecha))[0];
+
+  if (!ultimo) { container.innerHTML=''; return; }
+
+  // Parse notas to get last inventory
+  const match = (ultimo.notas||'').match(/→\s*([\d,.]+)/);
+  const invActual = match ? parseFloat(match[1].replace(',','')) : 0;
+  const LIM = 2000;
+
+  if (invActual <= 0) { container.innerHTML=''; return; }
+
+  const pct  = Math.min(invActual/LIM*100, 120);
+  const cls  = invActual > LIM ? 'critico' : invActual > LIM*0.85 ? 'warn' : 'ok';
+  const msgs = {
+    critico: `⚠️ Inventario CRÍTICO: ${fmt(invActual)} kg — supera el límite de refrigeración (${fmt(LIM)} kg)`,
+    warn:    `⚡ Inventario alto: ${fmt(invActual)} kg — cerca del límite de ${fmt(LIM)} kg`,
+    ok:      `✅ Inventario normal: ${fmt(invActual)} kg de ${fmt(LIM)} kg máx`
+  };
+
+  container.innerHTML = `<div class="inv-alerta ${cls}" style="margin-bottom:0">${msgs[cls]}</div>`;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// DÍA DESTACADO — mejor y peor día histórico
+// ═══════════════════════════════════════════════════════════════
+async function renderDiaDestacado() {
+  // Get last 30 days
+  const hoy   = new Date().toISOString().split('T')[0];
+  const hace30= new Date(Date.now()-30*86400000).toISOString().split('T')[0];
+  const dias  = (await fetchDiasByRange(hace30, hoy)).filter(d=>d.kg_producidos>0);
+  if (dias.length === 0) return;
+
+  const sorted = [...dias].sort((a,b)=>(b.kg_producidos||0)-(a.kg_producidos||0));
+  const mejor  = sorted[0];
+  const peor   = sorted[sorted.length-1];
+  const dias_names = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
+
+  // Check if top-dias-row exists, if not inject it
+  let topRow = document.getElementById('top-dias-tablero');
+  if (!topRow) {
+    const strip = document.querySelector('.semanas-strip');
+    if (!strip) return;
+    topRow = document.createElement('div');
+    topRow.id = 'top-dias-tablero';
+    topRow.style.cssText = 'display:grid;grid-template-columns:1fr;gap:14px;margin-bottom:20px;max-width:480px';
+    strip.parentNode.insertBefore(topRow, strip);
+  }
+
+  const cardStyle = `background:var(--glass);backdrop-filter:blur(20px) saturate(180%);-webkit-backdrop-filter:blur(20px) saturate(180%);border:1px solid var(--glass-borde);box-shadow:var(--glass-sombra);border-radius:var(--radio-lg);padding:18px 22px`;
+
+  const fmtDia = (d) => {
+    const dt = new Date(d.fecha+'T12:00:00');
+    return `${dias_names[dt.getDay()]} ${d.fecha.slice(8)}/${d.fecha.slice(5,7)}`;
+  };
+
+  topRow.innerHTML = `
+    <div style="${cardStyle};border-top:2px solid var(--verde-3)">
+      <div class="kh-label">🏆 Mejor día — últimos 30 días</div>
+      <div class="kh-value" style="font-size:28px;margin:8px 0">${fmt(mejor.kg_producidos)}<span>kg</span></div>
+      <div class="kh-meta">${fmtDia(mejor)} · ${fmt(mejor.kg_hora||0,2)} kg/h</div>
+    </div>
+  `;
 }
 
 async function renderChartDiarioMain() {
   const canvas=document.getElementById('chart-diario-main');
   if (!canvas) return;
   const hasta=new Date().toISOString().split('T')[0];
-  const desde30=new Date(); desde30.setDate(desde30.getDate()-30);
+  const desde30=new Date(); desde30.setDate(desde30.getDate()-15);
   const rows=(await fetchDiasByRange(desde30.toISOString().split('T')[0],hasta)).sort((a,b)=>a.fecha.localeCompare(b.fecha));
   if (window._chartDiarioMain) window._chartDiarioMain.destroy();
   window._chartDiarioMain=new Chart(canvas,{
@@ -2373,7 +2603,7 @@ async function renderChartEficMain() {
   const canvas=document.getElementById('chart-efic-main');
   if (!canvas) return;
   const hasta=new Date().toISOString().split('T')[0];
-  const desde30=new Date(); desde30.setDate(desde30.getDate()-30);
+  const desde30=new Date(); desde30.setDate(desde30.getDate()-15);
   const rows=(await fetchDiasByRange(desde30.toISOString().split('T')[0],hasta))
     .filter(r=>r.kg_hora).sort((a,b)=>a.fecha.localeCompare(b.fecha));
   if (window._chartEficMain) window._chartEficMain.destroy();
