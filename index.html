@@ -1362,11 +1362,21 @@ async function renderKPIs() {
   const hoyExact = diasSem.find(d => d.fecha===hoy);
   const hoyData  = hoyExact || [...diasSem].sort((a,b) => b.fecha.localeCompare(a.fecha))[0] || null;
   const totalKgSem = diasSem.reduce((a,d) => a+(d.kg_producidos||0), 0);
-  const promDiario = diasSem.length ? totalKgSem/diasSem.length : null;
-  setKPI('kpi-hoy-kg',    hoyData?.kg_producidos??null, META_KG_DIA,   hoyExact?'Kg Hoy':'Últ. Día', 'Meta: 600 kg/día','kg');
-  setKPI('kpi-hoy-efic',  hoyData?.kg_hora??null,       META_KG_H,     'Eficiencia',        'Meta: 12 kg/h','kg/h');
-  setKPI('kpi-semana-kg', totalKgSem||null,   META_KG_DIA*6,            'Kg Semana Actual',  'Meta: 3 600 kg','kg');
-  setKPI('kpi-promedio',  promDiario,         META_KG_DIA, 'Prom. Diario', diasSem.length+' días con registro','kg');
+
+  // Promedio y eficiencia del MES actual
+  const mesInicio = hoy.slice(0,7)+'-01';
+  const mesFin    = hoy;
+  const diasMes   = await fetchDiasByRange(mesInicio, mesFin);
+  const diasMesTrab = diasMes.filter(d => (d.kg_producidos||0) > 0);
+  const totalKgMesKPI = diasMesTrab.reduce((a,d) => a+(d.kg_producidos||0), 0);
+  const promMes    = diasMesTrab.length ? totalKgMesKPI/diasMesTrab.length : null;
+  const horasMes   = diasMesTrab.reduce((a,d) => a+(d.horas||0), 0);
+  const eficMes    = horasMes > 0 ? totalKgMesKPI/horasMes : null;
+
+  setKPI('kpi-hoy-kg',    hoyData?.kg_producidos??null, META_KG_DIA, hoyExact?'Kg Hoy':'Últ. Día', 'Meta: 600 kg/día','kg');
+  setKPI('kpi-hoy-efic',  eficMes,   META_KG_H,  'Efic. Promedio Mes', 'Meta: 12 kg/h','kg/h');
+  setKPI('kpi-semana-kg', totalKgSem||null, semActual?.fecha_inicio>='2026-05-01'?3900:3600, 'Kg Semana Actual', 'Meta: 3,900 kg','kg');
+  setKPI('kpi-promedio',  promMes, META_KG_DIA, 'Prom. Diario Mes', diasMesTrab.length+' días trabajados','kg');
 }
 
 function setKPI(cardId, value, meta, label, sublabel, unit) {
