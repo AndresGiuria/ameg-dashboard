@@ -3620,15 +3620,15 @@ function renderInvCards(basement, upstairs, fecha){
         <input type="number" value="${bolsas}" min="0" step="1"
           data-inv-prod="${key}" data-inv-sec="${sec}" data-inv-ord="${ord}"
           style="font-size:26px;font-weight:800;color:var(--texto);font-family:var(--mono);width:80px;border:none;border-bottom:1.5px solid var(--borde);background:transparent;outline:none;padding:0"
-          onchange="invActualizarCard('${key}', this.value)"
+          oninput="invActualizarCard('${key}', this.value)"
           title="Editar stock actual">
         <span style="font-size:12px;color:var(--texto-3)">bolsas</span>
       </div>
       ${stock?`<div style="background:rgba(0,0,0,0.06);border-radius:3px;height:5px;overflow:hidden;margin-bottom:6px">
-        <div style="height:100%;border-radius:3px;width:${pct}%;background:${barColor};transition:width 0.6s var(--ease)"></div>
+        <div id="inv-bar-${key.replace(/\s/g,'-')}" style="height:100%;border-radius:3px;width:${pct}%;background:${barColor};transition:width 0.6s var(--ease)"></div>
       </div>
-      <div style="font-size:10px;color:var(--texto-4)">Inv:${inv} · Ped:${ord} · Mín:${stock.min} · Máx:${stock.max}</div>
-      <div style="font-size:10px;color:var(--texto-3);margin-top:2px">${(bolsas*stock.kg_bolsa).toFixed(1)} kg aprox</div>`:''}
+      <div style="font-size:10px;color:var(--texto-4)">Mín:${stock.min} · Máx:${stock.max} bolsas</div>
+      <div id="inv-kg-${key.replace(/\s/g,'-')}" style="font-size:12px;font-weight:600;color:var(--texto-2);margin-top:3px">${(bolsas*stock.kg_bolsa).toFixed(1)} kg</div>`:''}
       ${recomLine}
     </div>`;
   };
@@ -3679,11 +3679,12 @@ function invActualizarCard(prod, newVal){
   if (statusEl) statusEl.style.color = barColor;
 
   // Update bar
-  const bar = cardEl.querySelector('[style*="border-radius:3px;height:5px"]');
-  if (bar){
-    const fill = bar.querySelector('div');
-    if (fill){ fill.style.width=pct+'%'; fill.style.background=barColor; }
-  }
+  const barFill = document.getElementById('inv-bar-'+prod.replace(/\s/g,'-'));
+  if (barFill){ barFill.style.width=pct+'%'; barFill.style.background=barColor; }
+
+  // Update kg
+  const kgEl = document.getElementById('inv-kg-'+prod.replace(/\s/g,'-'));
+  if (kgEl && stock){ kgEl.textContent=(bolsas*stock.kg_bolsa).toFixed(1)+' kg'; }
 
   // Update recommendations
   const recomEl = cardEl.querySelector('[style*="display:flex;gap:8px;margin-top:8px"]');
