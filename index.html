@@ -823,16 +823,16 @@
 <!-- INVENTARIO -->
 <div class="tab-pane" id="tab-inventario">
 
-  <!-- Header: fecha + acciones -->
+  <!-- Header -->
   <div class="card" style="margin-bottom:14px">
     <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;justify-content:space-between">
       <div>
-        <h2 style="margin-bottom:6px">📦 Inventario — Bolsas</h2>
+        <h2 style="margin-bottom:8px">📦 Inventario Diario — Bolsas</h2>
         <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-          <label style="font-size:11px;font-weight:600;color:var(--texto-3)">FECHA DEL CONTEO</label>
+          <label style="font-size:11px;font-weight:600;color:var(--texto-3)">FECHA</label>
           <input type="date" id="inv-fecha-sel"
             style="border:1px solid var(--borde-2);border-radius:var(--radio);padding:7px 12px;font-size:13px;font-family:var(--font);background:rgba(255,255,255,0.8);color:var(--texto);outline:none">
-          <button class="btn btn-secondary btn-sm" onclick="invCargarFecha()">🔄 Cargar fecha</button>
+          <button class="btn btn-secondary btn-sm" onclick="invCargarDia()">🔄 Cargar día</button>
         </div>
       </div>
       <div style="display:flex;gap:10px;flex-wrap:wrap">
@@ -843,32 +843,40 @@
     <div id="inv-save-status" style="margin-top:10px;font-size:12px;color:var(--texto-3)"></div>
   </div>
 
-  <!-- Upload Excel -->
-  <div class="card" style="margin-bottom:14px">
-    <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap">
-      <div class="upload-zone" id="inv-xlsx-zone" style="flex:1;min-width:220px;padding:14px">
-        <input type="file" id="inv-xlsx-input" accept=".xlsx,.xls">
-        <div class="uz-icon" id="inv-xlsx-icon">📋</div>
-        <p id="inv-xlsx-label">Arrastra el Excel de inventario aquí</p>
-        <small>Lee automáticamente la fecha más reciente</small>
-      </div>
-      <div id="inv-fecha-badge" style="font-size:12px;color:var(--texto-3);min-width:200px"></div>
-    </div>
-  </div>
-
   <!-- Alertas -->
   <div id="inv-alertas" style="margin-bottom:14px"></div>
+
+  <!-- Resumen del día -->
+  <div id="inv-resumen-dia" style="display:none;margin-bottom:14px">
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px">
+      <div class="glass" style="border-radius:var(--radio-lg);padding:16px 20px;text-align:center">
+        <div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;color:var(--texto-3);margin-bottom:6px">Inv Inicial Total</div>
+        <div id="inv-res-inicial" style="font-size:24px;font-weight:800;font-family:var(--mono)">—</div>
+        <div style="font-size:10px;color:var(--texto-4)">bolsas</div>
+      </div>
+      <div class="glass" style="border-radius:var(--radio-lg);padding:16px 20px;text-align:center">
+        <div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;color:var(--texto-3);margin-bottom:6px">Pedidos del Día</div>
+        <div id="inv-res-pedidos" style="font-size:24px;font-weight:800;font-family:var(--mono);color:var(--rojo)">—</div>
+        <div style="font-size:10px;color:var(--texto-4)">bolsas</div>
+      </div>
+      <div class="glass" style="border-radius:var(--radio-lg);padding:16px 20px;text-align:center">
+        <div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;color:var(--texto-3);margin-bottom:6px">Inv Final Total</div>
+        <div id="inv-res-final" style="font-size:24px;font-weight:800;font-family:var(--mono);color:var(--verde)">—</div>
+        <div style="font-size:10px;color:var(--texto-4)">bolsas</div>
+      </div>
+    </div>
+  </div>
 
   <!-- Basement -->
   <div class="card" style="margin-bottom:14px">
     <h2>🧊 Basement</h2>
-    <div id="inv-carnes-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;margin-top:12px"></div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px;margin-top:12px" id="inv-carnes-grid"></div>
   </div>
 
   <!-- Upstairs -->
   <div class="card" style="margin-bottom:14px">
     <h2>🏪 Upstairs</h2>
-    <div id="inv-upstairs-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px;margin-top:12px"></div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;margin-top:12px" id="inv-upstairs-grid"></div>
   </div>
 
   <!-- Historial -->
@@ -3252,306 +3260,11 @@ function invRenderDefault(){
 }
 
 
-// ── Inventory state ─────────────────────────────────────────────
-let invBasement = {};
-let invUpstairs = {};
-let invFechaActual = new Date().toISOString().split('T')[0];
+// ═══════════════════════════════════════════════════════════════
+// MÓDULO INVENTARIO
+// Flujo: Inv Inicial (= ayer final) − Pedidos del día = Inv Final
+// ═══════════════════════════════════════════════════════════════
 
-// Init inventory tab
-function invRenderDefault(){
-  // Set today's date
-  const fechaSel = document.getElementById('inv-fecha-sel');
-  if (fechaSel && !fechaSel.value) fechaSel.value = new Date().toISOString().split('T')[0];
-
-  const bEl = document.getElementById('inv-carnes-grid');
-  if (bEl && bEl.innerHTML.trim()===''){
-    invBasement = {
-      'ASADA':        {inventory:0,ordered:0,total:0},
-      'BARBACOA':     {inventory:0,ordered:0,total:0},
-      'BIRRIA':       {inventory:0,ordered:0,total:0},
-      'CARNITAS':     {inventory:0,ordered:0,total:0},
-      'CHICKEN':      {inventory:0,ordered:0,total:0},
-      'BBJ':          {inventory:0,ordered:0,total:0},
-      'BIRRIA CONSO': {inventory:0,ordered:0,total:0},
-      'BBQ CONSO':    {inventory:0,ordered:0,total:0},
-      'BEANS':        {inventory:0,ordered:0,total:0},
-      'PASTOR':       {inventory:0,ordered:0,total:0},
-      'PAS MARINATE': {inventory:0,ordered:0,total:0},
-      'FISH VENERICA':{inventory:0,ordered:0,total:0},
-      'SONORA WHITE': {inventory:0,ordered:0,total:0},
-    };
-    invUpstairs = {
-      'MILD':            {inventory:0,ordered:0,total:0},
-      'MEDIUM':          {inventory:0,ordered:0,total:0},
-      'HOT':             {inventory:0,ordered:0,total:0},
-      'HOT JALAPEÑO':    {inventory:0,ordered:0,total:0},
-      'HOT JARS':        {inventory:0,ordered:0,total:0},
-      'MACHA':           {inventory:0,ordered:0,total:0},
-      'MAYO':            {inventory:0,ordered:0,total:0},
-      'FISH FLOUR':      {inventory:0,ordered:0,total:0},
-      'ONION':           {inventory:0,ordered:0,total:0},
-      'MUSHROOMS':       {inventory:0,ordered:0,total:0},
-      'LETTUCE':         {inventory:0,ordered:0,total:0},
-      'CILANTRO':        {inventory:0,ordered:0,total:0},
-      'PORTUGUESE BUNS': {inventory:0,ordered:0,total:0},
-      'MOZZARELLA':      {inventory:0,ordered:0,total:0},
-    };
-    renderInvCards(invBasement, invUpstairs, null);
-  }
-  invCargarHistorial();
-}
-
-// Load a specific date from Supabase
-async function invCargarFecha(){
-  const fecha = document.getElementById('inv-fecha-sel')?.value;
-  if (!fecha){ toast('Selecciona una fecha','err'); return; }
-  invFechaActual = fecha;
-
-  const {data, error} = await db
-    .from('inventario_diario')
-    .select('*')
-    .eq('fecha', fecha);
-
-  if (error){ toast('Error: '+error.message,'err'); return; }
-  if (!data || data.length === 0){
-    toast('No hay conteo para '+fecha+' — puedes crear uno nuevo','ok');
-    return;
-  }
-
-  // Rebuild basement/upstairs from DB records
-  invBasement = {};
-  invUpstairs = {};
-  for (const r of data){
-    const entry = {inventory: r.bolsas, ordered: r.ordered||0, total: r.bolsas};
-    if (r.seccion === 'upstairs') invUpstairs[r.producto] = entry;
-    else invBasement[r.producto] = entry;
-  }
-  document.getElementById('inv-fecha-badge').textContent = `📅 Conteo cargado: ${fecha}`;
-  renderInvCards(invBasement, invUpstairs, fecha);
-  toast(`Conteo del ${fecha} cargado ✓`,'ok');
-}
-
-// Save conteo to Supabase
-async function invGuardarConteo(){
-  const fecha = document.getElementById('inv-fecha-sel')?.value || invFechaActual;
-  if (!fecha){ toast('Selecciona una fecha primero','err'); return; }
-
-  const statusEl = document.getElementById('inv-save-status');
-  statusEl.textContent = 'Guardando…';
-
-  const rows = [];
-  const allInputs = document.querySelectorAll('[data-inv-prod]');
-  allInputs.forEach(inp => {
-    rows.push({
-      fecha,
-      producto: inp.dataset.invProd,
-      seccion:  inp.dataset.invSec,
-      bolsas:   parseFloat(inp.value)||0,
-      ordered:  parseFloat(inp.dataset.invOrd)||0,
-    });
-  });
-
-  if (rows.length === 0){ statusEl.textContent='Sin datos para guardar'; return; }
-
-  // Upsert — delete existing then insert
-  await db.from('inventario_diario').delete().eq('fecha', fecha);
-  const {error} = await db.from('inventario_diario').insert(rows);
-
-  if (error){
-    statusEl.textContent = '❌ Error: '+error.message;
-    toast('Error al guardar','err');
-    return;
-  }
-
-  statusEl.textContent = `✅ ${rows.length} productos guardados — ${fecha}`;
-  toast(`Conteo del ${fecha} guardado ✓`,'ok');
-  invCargarHistorial();
-}
-
-// Download as Excel
-async function invDescargarExcel(){
-  if (!window.XLSX){
-    await new Promise((res,rej)=>{
-      const s=document.createElement('script');
-      s.src='https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
-      s.onload=res; s.onerror=rej;
-      document.head.appendChild(s);
-    });
-  }
-
-  const fecha = document.getElementById('inv-fecha-sel')?.value || invFechaActual;
-  const rows  = [['Fecha','Sección','Producto','Bolsas','Ordenadas','Total','Stock Mín','Stock Máx','Para Mínimo','Para Máximo','Kg Aprox']];
-
-  const allInputs = document.querySelectorAll('[data-inv-prod]');
-  allInputs.forEach(inp => {
-    const prod   = inp.dataset.invProd;
-    const sec    = inp.dataset.invSec;
-    const bolsas = parseFloat(inp.value)||0;
-    const ord    = parseFloat(inp.dataset.invOrd)||0;
-    const stock  = getStockInfo(prod);
-    rows.push([
-      fecha, sec, prod, bolsas, ord, bolsas,
-      stock?.min||'—', stock?.max||'—',
-      stock ? Math.max(0,stock.min-bolsas) : '—',
-      stock ? Math.max(0,stock.max-bolsas) : '—',
-      stock ? (bolsas*stock.kg_bolsa).toFixed(1) : '—',
-    ]);
-  });
-
-  const ws = XLSX.utils.aoa_to_sheet(rows);
-  const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, 'Inventario');
-  XLSX.writeFile(wb, `inventario_${fecha}.xlsx`);
-  toast('Excel descargado ✓','ok');
-}
-
-// Load historial
-async function invCargarHistorial(){
-  const el = document.getElementById('inv-historial');
-  if (!el) return;
-
-  const {data, error} = await db
-    .from('inventario_diario')
-    .select('fecha, producto, bolsas, seccion')
-    .order('fecha', {ascending:false});
-
-  if (error || !data){ el.innerHTML='<p style="color:var(--texto-3);font-size:13px">Sin historial</p>'; return; }
-
-  // Group by date
-  const byDate = {};
-  for (const r of data){
-    if (!byDate[r.fecha]) byDate[r.fecha] = [];
-    byDate[r.fecha].push(r);
-  }
-
-  const dates = Object.keys(byDate).sort((a,b)=>b.localeCompare(a)).slice(0,10);
-  if (dates.length === 0){ el.innerHTML='<p style="color:var(--texto-3);font-size:13px">Sin historial guardado aún</p>'; return; }
-
-  el.innerHTML = `<div style="display:flex;flex-direction:column;gap:8px">` +
-    dates.map(fecha => {
-      const items = byDate[fecha];
-      const total = items.reduce((a,r)=>a+r.bolsas,0);
-      const criticos = items.filter(r=>{
-        const s=getStockInfo(r.producto);
-        return s && r.bolsas < s.min;
-      }).length;
-      return `<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:rgba(255,255,255,0.5);border-radius:8px;border:1px solid var(--glass-borde);cursor:pointer"
-        onclick="document.getElementById('inv-fecha-sel').value='${fecha}';invCargarFecha()">
-        <div>
-          <div style="font-size:13px;font-weight:600">${fecha}</div>
-          <div style="font-size:11px;color:var(--texto-3)">${items.length} productos · ${total} bolsas totales</div>
-        </div>
-        <div style="display:flex;gap:8px;align-items:center">
-          ${criticos>0?`<span style="font-size:10px;background:rgba(192,25,15,0.09);color:var(--rojo);padding:2px 8px;border-radius:20px;font-weight:600">${criticos} bajo mínimo</span>`:'<span style="font-size:10px;background:rgba(10,110,53,0.08);color:var(--verde);padding:2px 8px;border-radius:20px;font-weight:600">✓ OK</span>'}
-          <span style="font-size:11px;color:var(--texto-3)">›</span>
-        </div>
-      </div>`;
-    }).join('') +
-  '</div>';
-}
-
-async function invLeerXLSX(file){
-  const iconEl  = document.getElementById('inv-xlsx-icon');
-  const labelEl = document.getElementById('inv-xlsx-label');
-  iconEl.textContent='⏳'; labelEl.textContent='Leyendo inventario…';
-  try {
-    if (!window.XLSX){
-      await new Promise((res,rej)=>{
-        const s=document.createElement('script');
-        s.src='https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
-        s.onload=res; s.onerror=()=>rej(new Error('No se pudo cargar SheetJS'));
-        document.head.appendChild(s);
-      });
-    }
-    const ab  = await file.arrayBuffer();
-    const wb  = XLSX.read(ab, {type:'array', cellDates:true});
-
-    // Read all sheets into flat array of rows with their row index
-    const allRows = [];
-    for (const name of wb.SheetNames){
-      const ws  = wb.Sheets[name];
-      const raw = XLSX.utils.sheet_to_json(ws, {header:1, defval:null});
-      raw.forEach((row,i) => allRows.push({row, sheetRow:i, sheet:name}));
-    }
-
-    // Find all date blocks — date in col 0 signals start of a day
-    const blocks = []; // [{date, startRow, rows:[]}]
-    let currentBlock = null;
-    for (const {row, sheetRow} of allRows){
-      for (let c=0; c<Math.min(4, row.length); c++){
-        const cell = row[c];
-        if (cell instanceof Date && !isNaN(cell)){
-          const d = cell.toISOString().split('T')[0];
-          currentBlock = {date:d, rows:[]};
-          blocks.push(currentBlock);
-          break;
-        }
-      }
-      if (currentBlock) currentBlock.rows.push(row);
-    }
-
-    if (!blocks.length) throw new Error('No se encontraron fechas en el archivo');
-
-    // Use the most recent date block
-    blocks.sort((a,b) => b.date.localeCompare(a.date));
-    const latest = blocks[0];
-
-    // Parse products from that block
-    const CARNES_KEYS    = ['ASADA','BARBACOA','BIRRIA','CARNITAS','CHICKEN','BBJ','BIRRIA CONSO','BBQ CONSO','BEANS','PASTOR','PAS MARINATE','FISH VENERICA','FISH BASSA','SONORA'];
-    const UPSTAIRS_KEYS  = ['MILD','MEDIUM','HOT JALAPEÑO','HOT JARS','HOT','MACHA','MAYO','FISH FLOUR','ONION','MUSHROOMS','LETTUCE','CILANTRO','PORTUGUESE','MOZZARELLA'];
-
-    const basement = {}, upstairs = {};
-    let section = 'basement';
-
-    for (const row of latest.rows){
-      const cells = row.map(c => String(c===null||c===undefined?'':c).trim());
-      const rowUp = cells.join('|').toUpperCase();
-
-      if (rowUp.includes('UPSTAIRS')) { section='upstairs'; continue; }
-      if (rowUp.includes('PRODUCT') && rowUp.includes('INVENTORY')) continue;
-
-      const prod = cells[0].toUpperCase();
-      if (!prod || prod.length < 2) continue;
-
-      const isCarnes   = CARNES_KEYS.some(k => prod.startsWith(k.split(' ')[0]) || prod.includes(k));
-      const isUpstairs = UPSTAIRS_KEYS.some(k => prod.startsWith(k.split(' ')[0]) || prod.includes(k));
-
-      if (!isCarnes && !isUpstairs) continue;
-
-      const inv  = parseFloat(cells[1]);
-      const ord  = parseFloat(cells[2]);
-      const tot  = parseFloat(cells[3]);
-      if (isNaN(inv)) continue;
-
-      const entry = {
-        producto: cells[0],
-        inventory: inv,
-        ordered: isNaN(ord) ? 0 : ord,
-        total: isNaN(tot) ? inv - (isNaN(ord)?0:ord) : tot,
-      };
-
-      if (section==='upstairs' || isUpstairs) upstairs[cells[0]] = entry;
-      else basement[cells[0]] = entry;
-    }
-
-    const total = Object.keys(basement).length + Object.keys(upstairs).length;
-    if (total === 0) throw new Error('No se encontraron productos válidos');
-
-    iconEl.textContent='✅';
-    labelEl.textContent=`${total} productos — ${latest.date}`;
-    document.getElementById('inv-fecha-badge').textContent = `📅 Conteo más reciente: ${latest.date}`;
-    document.getElementById('inv-empty').style.display='none';
-
-    renderInvCards(basement, upstairs, latest.date);
-
-  } catch(e){
-    iconEl.textContent='❌';
-    labelEl.textContent='Error: '+e.message;
-    console.error(e);
-  }
-}
-
-// ── Stock mínimo y máximo (del archivo STOCK_MIN_AND_MAX_CARNES.xlsx) ──
 const INV_STOCK = {
   'ASADA':         {kg_bolsa:3,    min:70,  max:110},
   'BARBACOA':      {kg_bolsa:2,    min:40,  max:70},
@@ -3567,286 +3280,326 @@ const INV_STOCK = {
   'FISH VENERICA': {kg_bolsa:3,    min:50,  max:180},
 };
 
+const INV_BASEMENT = ['ASADA','BARBACOA','BIRRIA','CARNITAS','CHICKEN','BBJ',
+  'BIRRIA CONSO','BBQ CONSO','BEANS','PASTOR','PAS MARINATE','FISH VENERICA','SONORA WHITE'];
+const INV_UPSTAIRS = ['MILD','MEDIUM','HOT','HOT JALAPEÑO','HOT JARS','MACHA',
+  'MAYO','FISH FLOUR','ONION','MUSHROOMS','LETTUCE','CILANTRO','PORTUGUESE BUNS','MOZZARELLA'];
+
 function getStockInfo(prod){
   const up = prod.toUpperCase();
   const key = Object.keys(INV_STOCK).find(k => up.includes(k) || up.startsWith(k.split(' ')[0]));
   return key ? INV_STOCK[key] : null;
 }
 
-function renderInvCards(basement, upstairs, fecha){
-  const alertasEl = document.getElementById('inv-alertas');
-  const alertas   = [];
+function getSeccion(prod){
+  return INV_UPSTAIRS.some(k=>prod.toUpperCase().includes(k.split(' ')[0])) ? 'upstairs' : 'basement';
+}
 
-  const makeCard = (key, data, sec) => {
-    const stock  = getStockInfo(key);
-    const bolsas = Math.max(0, data.total);
+// Init inventory tab
+async function invRenderDefault(){
+  const fechaSel = document.getElementById('inv-fecha-sel');
+  if (fechaSel && !fechaSel.value){
+    fechaSel.value = new Date().toISOString().split('T')[0];
+  }
+  invRenderGrid({}, {});
+  await invCargarHistorial();
+}
 
-    const inv    = data.inventory;
-    const ord    = data.ordered;
+// Load a day — pulls yesterday's final as today's initial
+async function invCargarDia(){
+  const fecha = document.getElementById('inv-fecha-sel')?.value;
+  if (!fecha){ toast('Selecciona una fecha','err'); return; }
 
-    let barColor='var(--verde-3)', statusTxt='✓ OK', cls='ok';
-    let pct=100, paraMin=0, paraMax=0;
+  const statusEl = document.getElementById('inv-save-status');
+  statusEl.textContent = 'Cargando…';
+
+  // Get yesterday's date
+  const ayer = new Date(fecha+'T12:00:00');
+  ayer.setDate(ayer.getDate()-1);
+  const ayerStr = ayer.toISOString().split('T')[0];
+
+  // Try to load today's existing conteo
+  const {data: hoyData} = await db
+    .from('inventario_diario')
+    .select('*')
+    .eq('fecha', fecha);
+
+  // Load yesterday's final as initial
+  const {data: ayerData} = await db
+    .from('inventario_diario')
+    .select('*')
+    .eq('fecha', ayerStr);
+
+  const ayerMap = {};
+  (ayerData||[]).forEach(r => { ayerMap[r.producto] = r.inv_final||0; });
+
+  // Build state
+  const basement = {}, upstairs = {};
+  const allProds = [...INV_BASEMENT, ...INV_UPSTAIRS];
+
+  for (const prod of allProds){
+    const existing = (hoyData||[]).find(r=>r.producto===prod);
+    const invInicial = existing?.inv_inicial ?? (ayerMap[prod]||0);
+    const pedidos    = existing?.pedidos ?? 0;
+    const invFinal   = existing?.inv_final ?? Math.max(0, invInicial - pedidos);
+    const entry = {inv_inicial: invInicial, pedidos, inv_final: invFinal};
+    if (getSeccion(prod)==='upstairs') upstairs[prod]=entry;
+    else basement[prod]=entry;
+  }
+
+  statusEl.textContent = hoyData?.length > 0
+    ? `✅ Conteo del ${fecha} cargado` 
+    : ayerData?.length > 0 
+      ? `📋 Inv inicial jalado del ${ayerStr}` 
+      : '📋 Sin datos previos — inicia desde cero';
+
+  invRenderGrid(basement, upstairs);
+}
+
+// Render all cards
+function invRenderGrid(basement, upstairs){
+  const bEl = document.getElementById('inv-carnes-grid');
+  const uEl = document.getElementById('inv-upstairs-grid');
+  const resEl = document.getElementById('inv-resumen-dia');
+  if (!bEl || !uEl) return;
+
+  const makeCard = (prod, data) => {
+    const stock    = getStockInfo(prod);
+    const inicial  = data.inv_inicial || 0;
+    const pedidos  = data.pedidos || 0;
+    const final_b  = Math.max(0, inicial - pedidos);
+
+    let barColor='var(--verde-3)', statusTxt='✓ OK';
+    let pct = stock ? Math.min(Math.round(final_b/stock.max*100),100) : 0;
+    const paraMin = stock ? Math.max(0, stock.min - final_b) : 0;
+    const paraMax = stock ? Math.max(0, stock.max - final_b) : 0;
 
     if (stock){
-      pct = Math.min(Math.round(bolsas/stock.max*100),100);
-      paraMin = Math.max(0, stock.min - bolsas);
-      paraMax = Math.max(0, stock.max - bolsas);
-      if (bolsas <= 0){
-        cls='critico'; statusTxt='🚨 Sin stock'; barColor='var(--rojo-2)';
-        alertas.push({prod:key, bolsas, tipo:'critico'});
-      } else if (bolsas < stock.min * 0.6){
-        cls='critico'; statusTxt='🚨 Crítico'; barColor='var(--rojo-2)';
-        alertas.push({prod:key, bolsas, tipo:'critico'});
-      } else if (bolsas < stock.min){
-        cls='warn'; statusTxt='⚡ Bajo mínimo'; barColor='#d97706';
-        alertas.push({prod:key, bolsas, tipo:'warn'});
-      } else if (bolsas > stock.max){
-        cls='warn'; statusTxt='📈 Sobre máximo'; barColor='#d97706';
-      }
+      if (final_b <= 0)          { barColor='var(--rojo-2)'; statusTxt='🚨 Sin stock'; }
+      else if (final_b < stock.min*0.6){ barColor='var(--rojo-2)'; statusTxt='🚨 Crítico'; }
+      else if (final_b < stock.min)    { barColor='#d97706'; statusTxt='⚡ Bajo mínimo'; }
+      else if (final_b > stock.max)    { barColor='#d97706'; statusTxt='📈 Sobre máximo'; }
     }
 
-    const recomLine = stock ? `
-      <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">
-        ${paraMin>0?`<span style="font-size:10px;background:rgba(217,119,6,0.1);color:#92400e;padding:2px 8px;border-radius:20px;font-weight:600">+${paraMin} para mínimo</span>`:''}
-        ${paraMax>0?`<span style="font-size:10px;background:rgba(10,110,53,0.08);color:var(--verde);padding:2px 8px;border-radius:20px;font-weight:600">+${paraMax} para máximo</span>`:''}
-      </div>` : '';
+    const kgFinal = stock ? (final_b * stock.kg_bolsa).toFixed(1) : '—';
 
-    return `<div style="background:rgba(255,255,255,0.55);backdrop-filter:blur(12px);border:1px solid var(--glass-borde);border-radius:10px;padding:14px;border-top:2px solid ${barColor}" id="inv-card-${key.replace(/\s/g,'-')}">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
-        <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;color:var(--texto-2)">${key}</div>
+    return `<div style="background:rgba(255,255,255,0.55);backdrop-filter:blur(12px);border:1px solid var(--glass-borde);border-radius:10px;padding:14px;border-top:2px solid ${barColor}" id="inv-card-${prod.replace(/[\s/]/g,'-')}">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--texto-2)">${prod}</div>
         <div style="font-size:10px;font-weight:600;color:${barColor}">${statusTxt}</div>
       </div>
-      <div style="display:flex;align-items:baseline;gap:6px;margin-bottom:8px">
-        <input type="number" value="${bolsas}" min="0" step="1"
-          data-inv-prod="${key}" data-inv-sec="${sec}" data-inv-ord="${ord}"
-          style="font-size:26px;font-weight:800;color:var(--texto);font-family:var(--mono);width:80px;border:none;border-bottom:1.5px solid var(--borde);background:transparent;outline:none;padding:0"
-          oninput="invActualizarCard('${key}', this.value)"
-          title="Editar stock actual">
-        <span style="font-size:12px;color:var(--texto-3)">bolsas</span>
+
+      <!-- 3 campos -->
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:8px;text-align:center">
+        <div>
+          <div style="font-size:9px;color:var(--texto-4);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:3px">Inicial</div>
+          <input type="number" value="${inicial}" min="0" step="1"
+            data-inv-prod="${prod}" data-inv-field="inicial"
+            style="width:100%;font-size:16px;font-weight:700;font-family:var(--mono);text-align:center;border:1px solid var(--borde);border-radius:6px;padding:4px;background:rgba(255,255,255,0.6);outline:none;color:var(--texto)"
+            oninput="invRecalcular('${prod.replace(/'/g,"\\'")}')">
+        </div>
+        <div>
+          <div style="font-size:9px;color:var(--rojo);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:3px">Pedidos</div>
+          <input type="number" value="${pedidos}" min="0" step="1"
+            data-inv-prod="${prod}" data-inv-field="pedidos"
+            style="width:100%;font-size:16px;font-weight:700;font-family:var(--mono);text-align:center;border:1px solid var(--rojo-borde,#fecaca);border-radius:6px;padding:4px;background:rgba(255,255,255,0.6);outline:none;color:var(--rojo)"
+            oninput="invRecalcular('${prod.replace(/'/g,"\\'")}')">
+        </div>
+        <div>
+          <div style="font-size:9px;color:var(--verde);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:3px">Final</div>
+          <div id="inv-final-${prod.replace(/[\s/]/g,'-')}"
+            style="font-size:16px;font-weight:800;font-family:var(--mono);text-align:center;padding:5px;background:rgba(10,110,53,0.06);border-radius:6px;color:var(--verde)">
+            ${final_b}
+          </div>
+        </div>
       </div>
-      ${stock?`<div style="background:rgba(0,0,0,0.06);border-radius:3px;height:5px;overflow:hidden;margin-bottom:6px">
-        <div id="inv-bar-${key.replace(/\s/g,'-')}" style="height:100%;border-radius:3px;width:${pct}%;background:${barColor};transition:width 0.6s var(--ease)"></div>
+
+      ${stock?`<div style="background:rgba(0,0,0,0.06);border-radius:3px;height:4px;overflow:hidden;margin-bottom:6px">
+        <div id="inv-bar-${prod.replace(/[\s/]/g,'-')}" style="height:100%;border-radius:3px;width:${pct}%;background:${barColor};transition:width 0.4s var(--ease)"></div>
       </div>
-      <div style="font-size:10px;color:var(--texto-4)">Mín:${stock.min} · Máx:${stock.max} bolsas</div>
-      <div id="inv-kg-${key.replace(/\s/g,'-')}" style="font-size:12px;font-weight:600;color:var(--texto-2);margin-top:3px">${(bolsas*stock.kg_bolsa).toFixed(1)} kg</div>`:''}
-      ${recomLine}
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <div id="inv-kg-${prod.replace(/[\s/]/g,'-')}" style="font-size:11px;font-weight:600;color:var(--texto-2)">${kgFinal} kg</div>
+        <div style="font-size:10px;color:var(--texto-4)">Mín:${stock.min} · Máx:${stock.max}</div>
+      </div>
+      <div style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap" id="inv-recom-${prod.replace(/[\s/]/g,'-')}">
+        ${paraMin>0?`<span style="font-size:10px;background:rgba(217,119,6,0.1);color:#92400e;padding:2px 7px;border-radius:20px;font-weight:600">+${paraMin} para mínimo</span>`:''}
+        ${paraMax>0?`<span style="font-size:10px;background:rgba(10,110,53,0.08);color:var(--verde);padding:2px 7px;border-radius:20px;font-weight:600">+${paraMax} para máximo</span>`:''}
+      </div>`:''}
     </div>`;
   };
 
-  // Render basement
-  const bEl = document.getElementById('inv-carnes-grid');
-  if (bEl) bEl.innerHTML = Object.entries(basement).map(([k,v])=>makeCard(k,v,k)).join('') || '<p style="color:var(--texto-3)">Sin datos</p>';
+  bEl.innerHTML = INV_BASEMENT.map(p => makeCard(p, basement[p]||{})).join('');
+  uEl.innerHTML = INV_UPSTAIRS.map(p => makeCard(p, upstairs[p]||{})).join('');
 
-  // Render upstairs
-  const uEl = document.getElementById('inv-upstairs-grid');
-  if (uEl) uEl.innerHTML = Object.entries(upstairs).map(([k,v])=>makeCard(k,v,k)).join('') || '<p style="color:var(--texto-3)">Sin datos</p>';
-
-  // Alertas
-  if (alertasEl){
-    if (alertas.length > 0){
-      alertasEl.innerHTML = alertas.map(a=>
-        `<div class="inv-alerta ${a.tipo}" style="margin-bottom:6px">
-          ${a.tipo==='critico'?'🚨':'⚡'} <strong>${a.prod}</strong>: ${a.bolsas} bolsas — ${a.tipo==='critico'?'requiere atención inmediata':'bajo el mínimo recomendado'}
-        </div>`
-      ).join('');
-    } else {
-      alertasEl.innerHTML = '<div class="inv-alerta ok">✅ Todos los productos dentro del rango</div>';
-    }
-  }
+  if (resEl) resEl.style.display='block';
+  invActualizarResumen();
 }
 
-function invActualizarCard(prod, newVal){
-  // Recalculate status for edited card
-  const bolsas = parseInt(newVal) || 0;
-  const stock  = getStockInfo(prod);
-  if (!stock) return;
+// Recalculate final = inicial - pedidos for one product
+function invRecalcular(prod){
+  const safeId = prod.replace(/[\s/]/g,'-');
+  const inicialEl  = document.querySelector(`[data-inv-prod="${prod}"][data-inv-field="inicial"]`);
+  const pedidosEl  = document.querySelector(`[data-inv-prod="${prod}"][data-inv-field="pedidos"]`);
+  const finalEl    = document.getElementById('inv-final-'+safeId);
+  const barEl      = document.getElementById('inv-bar-'+safeId);
+  const kgEl       = document.getElementById('inv-kg-'+safeId);
+  const recomEl    = document.getElementById('inv-recom-'+safeId);
 
-  const cardEl = document.getElementById('inv-card-'+prod.replace(/\s/g,'-'));
-  if (!cardEl) return;
+  if (!inicialEl||!pedidosEl||!finalEl) return;
 
-  let barColor='var(--verde-3)', statusTxt='✓ OK';
-  let pct = Math.min(Math.round(bolsas/stock.max*100),100);
-  const paraMin = Math.max(0, stock.min - bolsas);
-  const paraMax = Math.max(0, stock.max - bolsas);
+  const inicial  = parseFloat(inicialEl.value)||0;
+  const pedidos  = parseFloat(pedidosEl.value)||0;
+  const finalVal = Math.max(0, inicial - pedidos);
+  finalEl.textContent = finalVal;
 
-  if (bolsas <= 0){ barColor='var(--rojo-2)'; statusTxt='🚨 Sin stock'; }
-  else if (bolsas < stock.min*0.6){ barColor='var(--rojo-2)'; statusTxt='🚨 Crítico'; }
-  else if (bolsas < stock.min){ barColor='#d97706'; statusTxt='⚡ Bajo mínimo'; }
-  else if (bolsas > stock.max){ barColor='#d97706'; statusTxt='📈 Sobre máximo'; }
-
-  cardEl.style.borderTopColor = barColor;
-  const statusEl = cardEl.querySelector('div > div:last-child');
-  if (statusEl) statusEl.style.color = barColor;
-
-  // Update bar
-  const barFill = document.getElementById('inv-bar-'+prod.replace(/\s/g,'-'));
-  if (barFill){ barFill.style.width=pct+'%'; barFill.style.background=barColor; }
-
-  // Update kg
-  const kgEl = document.getElementById('inv-kg-'+prod.replace(/\s/g,'-'));
-  if (kgEl && stock){ kgEl.textContent=(bolsas*stock.kg_bolsa).toFixed(1)+' kg'; }
-
-  // Update recommendations
-  const recomEl = cardEl.querySelector('[style*="display:flex;gap:8px;margin-top:8px"]');
-  if (recomEl){
-    recomEl.innerHTML = `
-      ${paraMin>0?`<span style="font-size:10px;background:rgba(217,119,6,0.1);color:#92400e;padding:2px 8px;border-radius:20px;font-weight:600">+${paraMin} para mínimo</span>`:''}
-      ${paraMax>0?`<span style="font-size:10px;background:rgba(10,110,53,0.08);color:var(--verde);padding:2px 8px;border-radius:20px;font-weight:600">+${paraMax} para máximo</span>`:''}
-    `;
+  const stock = getStockInfo(prod);
+  if (stock){
+    const pct = Math.min(Math.round(finalVal/stock.max*100),100);
+    let barColor='var(--verde-3)';
+    if (finalVal<=0) barColor='var(--rojo-2)';
+    else if (finalVal<stock.min*0.6) barColor='var(--rojo-2)';
+    else if (finalVal<stock.min) barColor='#d97706';
+    else if (finalVal>stock.max) barColor='#d97706';
+    if (barEl){ barEl.style.width=pct+'%'; barEl.style.background=barColor; }
+    if (kgEl) kgEl.textContent=(finalVal*stock.kg_bolsa).toFixed(1)+' kg';
+    if (recomEl){
+      const paraMin=Math.max(0,stock.min-finalVal);
+      const paraMax=Math.max(0,stock.max-finalVal);
+      recomEl.innerHTML=
+        (paraMin>0?`<span style="font-size:10px;background:rgba(217,119,6,0.1);color:#92400e;padding:2px 7px;border-radius:20px;font-weight:600">+${paraMin} para mínimo</span>`:'')+
+        (paraMax>0?`<span style="font-size:10px;background:rgba(10,110,53,0.08);color:var(--verde);padding:2px 7px;border-radius:20px;font-weight:600">+${paraMax} para máximo</span>`:'');
+    }
   }
+  invActualizarResumen();
 }
 
+// Update summary totals
+function invActualizarResumen(){
+  const iniciales = [...document.querySelectorAll('[data-inv-field="inicial"]')].reduce((a,el)=>a+(parseFloat(el.value)||0),0);
+  const pedidos   = [...document.querySelectorAll('[data-inv-field="pedidos"]')].reduce((a,el)=>a+(parseFloat(el.value)||0),0);
+  const finales   = iniciales - pedidos;
+  const resIni = document.getElementById('inv-res-inicial');
+  const resPed = document.getElementById('inv-res-pedidos');
+  const resFin = document.getElementById('inv-res-final');
+  if (resIni) resIni.textContent = iniciales;
+  if (resPed) resPed.textContent = pedidos;
+  if (resFin) resFin.textContent = Math.max(0,finales);
+}
 
-async function invMostrarProyeccion(){
-  const container=document.getElementById('inv-proyeccion');
-  const mesSel=document.getElementById('inv-mes-sel')?.value||'all';
-  container.innerHTML='<div class="loading"><div class="spinner"></div></div>';
-  try {
-    let query=db.from('dias_productos').select('producto,kg_fin,fecha').order('fecha',{ascending:false});
-    if (mesSel!=='all'){
-      const [y,m]=mesSel.split('-').map(Number);
-      query=query.gte('fecha',mesSel+'-01').lte('fecha',new Date(y,m,0).toISOString().split('T')[0]);
-    }
-    const {data:diasProds,error}=await query.limit(200);
-    if (error||!diasProds?.length){container.innerHTML='<p style="color:var(--gris-500);font-size:13px">Sin datos. Captura primero los días con desglose por producto.</p>';return;}
-    const fechasUnicas=[...new Set(diasProds.map(r=>r.fecha))].sort().reverse();
-    const fechaRef=fechasUnicas[0];
-    const stockActual={};
-    for (const r of diasProds){if (r.fecha===fechaRef&&!stockActual[r.producto]) stockActual[r.producto]=r.kg_fin;}
-    const mesConsumo=mesSel!=='all'?mesSel:'2026-04';
-    const consumoMes=CONSUMO_POR_MES[mesConsumo]||CONSUMO_POR_MES['2026-04']||{};
-    const prods=['ASADA','BARBACOA','BIRRIA','CARNITAS','CHICKEN','RAW PASTOR','FISH BASSA','BB JUICE','BIRRIA CONSOME','CONSOME BBQ','BEANS','PASTOR MARINATE'];
-    const items=prods.map(prod=>{
-      const stock=stockActual[prod]??null;
-      const consumo=consumoMes[prod]||CONSUMO_PROMEDIO[prod]||null;
-      const dias=stock!==null&&consumo?+(stock/consumo).toFixed(1):null;
-      const bolsaInfo=BOLSA_KG[prod]||null;
-      const numBolsas=bolsaInfo&&stock!==null?Math.floor(stock/bolsaInfo.kg):null;
-      const bolsaLabel=bolsaInfo?(bolsaInfo.kg<1?bolsaInfo.kg*1000+'g':bolsaInfo.kg+bolsaInfo.unidad):'';
-      let est=dias===null?'ok':dias<2?'crit':dias<3?'warn':'ok';
-      const pct=Math.min((dias||0)/7*100,100);
-      const badgeCls=est==='crit'?'badge-bad':est==='warn'?'badge-warn':'badge-ok';
-      const diasCls=est==='crit'?'color:#c0392b':est==='warn'?'color:#d68910':'color:#1e8449';
-      return{est,html:`
-        <div style="background:var(--gris-50);border:1px solid var(--borde);border-radius:12px;padding:14px 16px;">
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
-            <span style="font-size:13px;font-weight:600">${prod}</span>
-            <span class="badge ${badgeCls}" style="font-size:11px">${est==='crit'?'Crítico':est==='warn'?'Bajo':'OK'}</span>
-          </div>
-          <div style="display:flex;align-items:baseline;gap:6px;margin-bottom:3px">
-            <span style="font-size:22px;font-weight:700">${stock!==null?stock.toFixed(1):'—'}</span>
-            <span style="font-size:13px;color:var(--gris-500)">kg</span>
-          </div>
-          <div style="font-size:13px;color:var(--gris-500);margin-bottom:10px">
-            ${numBolsas!==null?`<strong style="font-size:15px;color:var(--gris-800)">${numBolsas}</strong> bolsas de ${bolsaLabel}`:'—'}
-          </div>
-          <div style="height:0.5px;background:var(--borde);margin-bottom:8px"></div>
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
-            <span style="font-size:11px;color:var(--gris-500)">Días estimados</span>
-            <span style="font-size:18px;font-weight:600;${diasCls}">${dias!==null?dias:'—'}</span>
-          </div>
-          <div style="height:5px;background:var(--borde);border-radius:3px;overflow:hidden;margin-bottom:6px">
-            <div style="height:100%;width:${pct}%;border-radius:3px;background:${est==='ok'?'#27ae60':est==='warn'?'#d68910':'#c0392b'}"></div>
-          </div>
-          <div style="font-size:11px;color:var(--gris-400)">Consumo ~${consumo||'—'} kg/día</div>
-        </div>`};
+// Save conteo to Supabase
+async function invGuardarConteo(){
+  const fecha = document.getElementById('inv-fecha-sel')?.value;
+  if (!fecha){ toast('Selecciona una fecha primero','err'); return; }
+
+  const statusEl = document.getElementById('inv-save-status');
+  statusEl.textContent = 'Guardando…';
+
+  const rows = [];
+  const allProds = [...INV_BASEMENT, ...INV_UPSTAIRS];
+
+  for (const prod of allProds){
+    const inicialEl = document.querySelector(`[data-inv-prod="${prod}"][data-inv-field="inicial"]`);
+    const pedidosEl = document.querySelector(`[data-inv-prod="${prod}"][data-inv-field="pedidos"]`);
+    if (!inicialEl||!pedidosEl) continue;
+    const inv_inicial = parseFloat(inicialEl.value)||0;
+    const pedidos     = parseFloat(pedidosEl.value)||0;
+    const inv_final   = Math.max(0, inv_inicial - pedidos);
+    rows.push({fecha, producto:prod, seccion:getSeccion(prod), inv_inicial, pedidos, inv_final});
+  }
+
+  // Delete existing then insert fresh
+  await db.from('inventario_diario').delete().eq('fecha', fecha);
+  const {error} = await db.from('inventario_diario').insert(rows);
+
+  if (error){
+    statusEl.textContent = '❌ Error: '+error.message;
+    toast('Error al guardar','err');
+    return;
+  }
+
+  statusEl.textContent = `✅ ${rows.length} productos guardados — ${fecha}`;
+  toast(`Conteo del ${fecha} guardado ✓`,'ok');
+  await invCargarHistorial();
+}
+
+// Download as Excel
+async function invDescargarExcel(){
+  if (!window.XLSX){
+    await new Promise((res,rej)=>{
+      const s=document.createElement('script');
+      s.src='https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+      s.onload=res; s.onerror=rej;
+      document.head.appendChild(s);
     });
-    const criticos=items.filter(i=>i.est==='crit').length;
-    const bajos=items.filter(i=>i.est==='warn').length;
-    const ok=items.filter(i=>i.est==='ok').length;
-    container.innerHTML=`
-      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px">
-        <div style="background:var(--gris-50);border-radius:8px;padding:12px 14px;border:1px solid var(--borde)">
-          <div style="font-size:11px;color:var(--gris-500);margin-bottom:4px">Críticos (&lt;2 días)</div>
-          <div style="font-size:22px;font-weight:700;color:#c0392b">${criticos}</div>
+  }
+  const fecha = document.getElementById('inv-fecha-sel')?.value || new Date().toISOString().split('T')[0];
+  const rows  = [['Fecha','Sección','Producto','Inv Inicial','Pedidos','Inv Final','Stock Mín','Stock Máx','Para Mínimo','Para Máximo','Kg Final']];
+
+  for (const prod of [...INV_BASEMENT,...INV_UPSTAIRS]){
+    const inicialEl = document.querySelector(`[data-inv-prod="${prod}"][data-inv-field="inicial"]`);
+    const pedidosEl = document.querySelector(`[data-inv-prod="${prod}"][data-inv-field="pedidos"]`);
+    const inv_i = parseFloat(inicialEl?.value)||0;
+    const ped   = parseFloat(pedidosEl?.value)||0;
+    const inv_f = Math.max(0,inv_i-ped);
+    const stock = getStockInfo(prod);
+    rows.push([fecha, getSeccion(prod), prod, inv_i, ped, inv_f,
+      stock?.min||'—', stock?.max||'—',
+      stock?Math.max(0,stock.min-inv_f):'—',
+      stock?Math.max(0,stock.max-inv_f):'—',
+      stock?(inv_f*stock.kg_bolsa).toFixed(1):'—',
+    ]);
+  }
+
+  const ws = XLSX.utils.aoa_to_sheet(rows);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,'Inventario');
+  XLSX.writeFile(wb,`inventario_${fecha}.xlsx`);
+  toast('Excel descargado ✓','ok');
+}
+
+// Load historial
+async function invCargarHistorial(){
+  const el = document.getElementById('inv-historial');
+  if (!el) return;
+
+  const {data,error} = await db
+    .from('inventario_diario')
+    .select('fecha,producto,inv_final,seccion')
+    .order('fecha',{ascending:false});
+
+  if (error||!data||data.length===0){
+    el.innerHTML='<p style="color:var(--texto-3);font-size:13px">Sin historial guardado aún</p>';
+    return;
+  }
+
+  const byDate={};
+  for (const r of data){
+    if (!byDate[r.fecha]) byDate[r.fecha]=[];
+    byDate[r.fecha].push(r);
+  }
+
+  const dates=Object.keys(byDate).sort((a,b)=>b.localeCompare(a)).slice(0,10);
+  el.innerHTML=`<div style="display:flex;flex-direction:column;gap:8px">`+
+    dates.map(fecha=>{
+      const items=byDate[fecha];
+      const totalFinal=items.reduce((a,r)=>a+(r.inv_final||0),0);
+      const criticos=items.filter(r=>{const s=getStockInfo(r.producto);return s&&(r.inv_final||0)<s.min;}).length;
+      return `<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:rgba(255,255,255,0.5);border-radius:8px;border:1px solid var(--glass-borde);cursor:pointer"
+        onclick="document.getElementById('inv-fecha-sel').value='${fecha}';invCargarDia()">
+        <div>
+          <div style="font-size:13px;font-weight:600">${fecha}</div>
+          <div style="font-size:11px;color:var(--texto-3)">${items.length} productos · ${totalFinal} bolsas finales</div>
         </div>
-        <div style="background:var(--gris-50);border-radius:8px;padding:12px 14px;border:1px solid var(--borde)">
-          <div style="font-size:11px;color:var(--gris-500);margin-bottom:4px">Bajos (2-3 días)</div>
-          <div style="font-size:22px;font-weight:700;color:#d68910">${bajos}</div>
+        <div style="display:flex;gap:8px;align-items:center">
+          ${criticos>0
+            ?`<span style="font-size:10px;background:rgba(192,25,15,0.09);color:var(--rojo);padding:2px 8px;border-radius:20px;font-weight:600">${criticos} bajo mínimo</span>`
+            :`<span style="font-size:10px;background:rgba(10,110,53,0.08);color:var(--verde);padding:2px 8px;border-radius:20px;font-weight:600">✓ OK</span>`}
+          <span style="color:var(--texto-3)">›</span>
         </div>
-        <div style="background:var(--gris-50);border-radius:8px;padding:12px 14px;border:1px solid var(--borde)">
-          <div style="font-size:11px;color:var(--gris-500);margin-bottom:4px">OK (&gt;3 días)</div>
-          <div style="font-size:22px;font-weight:700;color:#1e8449">${ok}</div>
-        </div>
-      </div>
-      <div style="font-size:11px;color:var(--gris-400);margin:10px 0 14px">
-        Stock: Kg Day Ending del <strong>${fmtDate(fechaRef)}</strong>
-      </div>
-      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:12px">
-        ${items.map(i=>i.html).join('')}
       </div>`;
-  } catch(e){
-    container.innerHTML=`<p style="color:var(--rojo);font-size:13px">Error: ${e.message}</p>`;
-  }
+    }).join('')+`</div>`;
 }
 
-
-async function crearNuevaSemana() {
-  const start    = document.getElementById('ns-start')?.value;
-  const end      = document.getElementById('ns-end')?.value;
-  const horas    = parseFloat(document.getElementById('ns-horas')?.value) || null;
-  const statusEl = document.getElementById('ns-status');
-
-  if (!start || !end) {
-    statusEl.innerHTML = '<span style="color:var(--rojo)">⚠️ Ingresa fecha inicio y fecha fin</span>';
-    return;
-  }
-  if (start > end) {
-    statusEl.innerHTML = '<span style="color:var(--rojo)">⚠️ La fecha inicio debe ser antes del fin</span>';
-    return;
-  }
-
-  // Check no overlap
-  const overlap = semanas.find(s => start <= s.fecha_fin && end >= s.fecha_inicio);
-  if (overlap) {
-    statusEl.innerHTML = `<span style="color:var(--rojo)">⚠️ Se superpone con: ${weekLabel(overlap)}</span>`;
-    return;
-  }
-
-  // Auto-generate label
-  const meses = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
-  const [sy, sm, sd] = start.split('-').map(Number);
-  const [ey, em, ed] = end.split('-').map(Number);
-  const numSem = semanas.length + 1;
-  const label = sm === em
-    ? `Sem ${numSem} (${sd}–${ed} ${meses[sm-1]})`
-    : `Sem ${numSem} (${sd} ${meses[sm-1]}–${ed} ${meses[em-1]})`;
-
-  statusEl.innerHTML = '<span style="color:var(--texto-3)">Guardando…</span>';
-
-  const {data, error} = await db.from('semanas').insert({
-    label,
-    start_date: start,
-    end_date:   end,
-    horas:      horas,
-  }).select().single();
-
-  if (error) {
-    statusEl.innerHTML = `<span style="color:var(--rojo)">❌ Error: ${error.message}</span>`;
-    return;
-  }
-
-  // Add to local semanas array
-  semanas.push({
-    ...data,
-    fecha_inicio:  data.start_date,
-    fecha_fin:     data.end_date,
-    numero_semana: semanas.length + 1,
-    _local:        false,
-  });
-  semanas.sort((a,b) => a.fecha_inicio.localeCompare(b.fecha_inicio));
-
-  // Reset form
-  document.getElementById('ns-start').value = '';
-  document.getElementById('ns-end').value   = '';
-  document.getElementById('ns-horas').value = '';
-  statusEl.innerHTML = `<span style="color:var(--verde)">✅ "${label}" creada correctamente</span>`;
-
-  populateSelects();
-  populateMonthSelects();
-  toast(`Semana "${label}" creada ✓`, 'ok');
-  await renderSemanal();
-}
 
 // =====================================================================
 // NAVEGACIÓN
