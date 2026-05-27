@@ -846,37 +846,68 @@
   <!-- Alertas -->
   <div id="inv-alertas" style="margin-bottom:14px"></div>
 
-  <!-- Resumen del día -->
-  <div id="inv-resumen-dia" style="display:none;margin-bottom:14px">
-    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px">
-      <div class="glass" style="border-radius:var(--radio-lg);padding:16px 20px;text-align:center">
-        <div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;color:var(--texto-3);margin-bottom:6px">Inv Inicial Total</div>
-        <div id="inv-res-inicial" style="font-size:24px;font-weight:800;font-family:var(--mono)">—</div>
-        <div style="font-size:10px;color:var(--texto-4)">bolsas</div>
-      </div>
-      <div class="glass" style="border-radius:var(--radio-lg);padding:16px 20px;text-align:center">
-        <div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;color:var(--texto-3);margin-bottom:6px">Pedidos del Día</div>
-        <div id="inv-res-pedidos" style="font-size:24px;font-weight:800;font-family:var(--mono);color:var(--rojo)">—</div>
-        <div style="font-size:10px;color:var(--texto-4)">bolsas</div>
-      </div>
-      <div class="glass" style="border-radius:var(--radio-lg);padding:16px 20px;text-align:center">
-        <div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;color:var(--texto-3);margin-bottom:6px">Inv Final Total</div>
-        <div id="inv-res-final" style="font-size:24px;font-weight:800;font-family:var(--mono);color:var(--verde)">—</div>
-        <div style="font-size:10px;color:var(--texto-4)">bolsas</div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Basement -->
+  <!-- Resumen Basement -->
   <div class="card" style="margin-bottom:14px">
     <h2>🧊 Basement</h2>
-    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px;margin-top:12px" id="inv-carnes-grid"></div>
+    <div id="inv-resumen-basement" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:16px;padding:14px;background:rgba(0,0,0,0.03);border-radius:var(--radio)">
+      <div style="text-align:center">
+        <div style="font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;color:var(--texto-3);margin-bottom:4px">Inv Cierre</div>
+        <div id="inv-b-cierre" style="font-size:20px;font-weight:800;font-family:var(--mono)">—</div>
+      </div>
+      <div style="text-align:center;align-self:center;font-size:16px;color:var(--texto-4)">−</div>
+      <div style="text-align:center">
+        <div style="font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;color:var(--rojo);margin-bottom:4px">Pedidos</div>
+        <div id="inv-b-pedidos" style="font-size:20px;font-weight:800;font-family:var(--mono);color:var(--rojo)">—</div>
+      </div>
+      <div style="text-align:center;align-self:center;font-size:16px;color:var(--texto-4)">=</div>
+      <div style="text-align:center">
+        <div style="font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;color:var(--texto-3);margin-bottom:4px">Inv Inicial Día</div>
+        <div id="inv-b-inicial" style="font-size:20px;font-weight:800;font-family:var(--mono)">—</div>
+      </div>
+      <div style="text-align:center;align-self:center;font-size:16px;color:var(--texto-4)">+</div>
+      <div style="text-align:center">
+        <div style="font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;color:var(--verde);margin-bottom:4px">Producido</div>
+        <div id="inv-b-producido" style="font-size:20px;font-weight:800;font-family:var(--mono);color:var(--verde)">—</div>
+      </div>
+      <div style="text-align:center;align-self:center;font-size:16px;color:var(--texto-4)">=</div>
+      <div style="text-align:center">
+        <div style="font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;color:var(--verde);margin-bottom:4px">Inv Final</div>
+        <div id="inv-b-final" style="font-size:20px;font-weight:800;font-family:var(--mono);color:var(--verde)">—</div>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px" id="inv-carnes-grid"></div>
   </div>
 
-  <!-- Upstairs -->
+  <!-- Resumen Upstairs -->
   <div class="card" style="margin-bottom:14px">
     <h2>🏪 Upstairs</h2>
-    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;margin-top:12px" id="inv-upstairs-grid"></div>
+    <div id="inv-resumen-upstairs" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:16px;padding:14px;background:rgba(0,0,0,0.03);border-radius:var(--radio)">
+      <div style="text-align:center">
+        <div style="font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;color:var(--texto-3);margin-bottom:4px">Inv Cierre</div>
+        <div id="inv-u-cierre" style="font-size:20px;font-weight:800;font-family:var(--mono)">—</div>
+      </div>
+      <div style="text-align:center;align-self:center;font-size:16px;color:var(--texto-4)">−</div>
+      <div style="text-align:center">
+        <div style="font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;color:var(--rojo);margin-bottom:4px">Pedidos</div>
+        <div id="inv-u-pedidos" style="font-size:20px;font-weight:800;font-family:var(--mono);color:var(--rojo)">—</div>
+      </div>
+      <div style="text-align:center;align-self:center;font-size:16px;color:var(--texto-4)">=</div>
+      <div style="text-align:center">
+        <div style="font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;color:var(--texto-3);margin-bottom:4px">Inv Inicial Día</div>
+        <div id="inv-u-inicial" style="font-size:20px;font-weight:800;font-family:var(--mono)">—</div>
+      </div>
+      <div style="text-align:center;align-self:center;font-size:16px;color:var(--texto-4)">+</div>
+      <div style="text-align:center">
+        <div style="font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;color:var(--verde);margin-bottom:4px">Producido</div>
+        <div id="inv-u-producido" style="font-size:20px;font-weight:800;font-family:var(--mono);color:var(--verde)">—</div>
+      </div>
+      <div style="text-align:center;align-self:center;font-size:16px;color:var(--texto-4)">=</div>
+      <div style="text-align:center">
+        <div style="font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;color:var(--verde);margin-bottom:4px">Inv Final</div>
+        <div id="inv-u-final" style="font-size:20px;font-weight:800;font-family:var(--mono);color:var(--verde)">—</div>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px" id="inv-upstairs-grid"></div>
   </div>
 
   <!-- Historial -->
@@ -3262,7 +3293,8 @@ function invRenderDefault(){
 
 // ═══════════════════════════════════════════════════════════════
 // MÓDULO INVENTARIO
-// Flujo: Inv Inicial (= ayer final) − Pedidos del día = Inv Final
+// Flujo: Inv Cierre − Pedidos = Inv Inicial Día + Producido = Inv Final
+// Inv Final → Inv Cierre del día siguiente
 // ═══════════════════════════════════════════════════════════════
 
 const INV_STOCK = {
@@ -3290,296 +3322,308 @@ function getStockInfo(prod){
   const key = Object.keys(INV_STOCK).find(k => up.includes(k) || up.startsWith(k.split(' ')[0]));
   return key ? INV_STOCK[key] : null;
 }
-
 function getSeccion(prod){
-  return INV_UPSTAIRS.some(k=>prod.toUpperCase().includes(k.split(' ')[0])) ? 'upstairs' : 'basement';
+  return INV_UPSTAIRS.some(k=>prod.toUpperCase().includes(k.split(' ')[0]))?'upstairs':'basement';
 }
 
-// Init inventory tab
 async function invRenderDefault(){
   const fechaSel = document.getElementById('inv-fecha-sel');
-  if (fechaSel && !fechaSel.value){
-    fechaSel.value = new Date().toISOString().split('T')[0];
-  }
-  invRenderGrid({}, {});
+  if (fechaSel && !fechaSel.value) fechaSel.value = new Date().toISOString().split('T')[0];
+  invRenderGrid({},{});
   await invCargarHistorial();
 }
 
-// Load a day — pulls yesterday's final as today's initial
 async function invCargarDia(){
   const fecha = document.getElementById('inv-fecha-sel')?.value;
   if (!fecha){ toast('Selecciona una fecha','err'); return; }
-
   const statusEl = document.getElementById('inv-save-status');
   statusEl.textContent = 'Cargando…';
 
-  // Get yesterday's date
+  // Get yesterday
   const ayer = new Date(fecha+'T12:00:00');
   ayer.setDate(ayer.getDate()-1);
   const ayerStr = ayer.toISOString().split('T')[0];
 
-  // Try to load today's existing conteo
-  const {data: hoyData} = await db
-    .from('inventario_diario')
-    .select('*')
-    .eq('fecha', fecha);
-
-  // Load yesterday's final as initial
-  const {data: ayerData} = await db
-    .from('inventario_diario')
-    .select('*')
-    .eq('fecha', ayerStr);
+  // Load today's existing conteo
+  const {data: hoyData} = await db.from('inventario_diario').select('*').eq('fecha',fecha);
+  // Load yesterday's inv_final as today's inv_cierre
+  const {data: ayerData} = await db.from('inventario_diario').select('*').eq('fecha',ayerStr);
 
   const ayerMap = {};
-  (ayerData||[]).forEach(r => { ayerMap[r.producto] = r.inv_final||0; });
+  (ayerData||[]).forEach(r=>{ ayerMap[r.producto] = r.inv_final||0; });
 
-  // Build state
-  const basement = {}, upstairs = {};
-  const allProds = [...INV_BASEMENT, ...INV_UPSTAIRS];
-
-  for (const prod of allProds){
+  const basement={}, upstairs={};
+  for (const prod of [...INV_BASEMENT,...INV_UPSTAIRS]){
     const existing = (hoyData||[]).find(r=>r.producto===prod);
-    const invInicial = existing?.inv_inicial ?? (ayerMap[prod]||0);
-    const pedidos    = existing?.pedidos ?? 0;
-    const invFinal   = existing?.inv_final ?? Math.max(0, invInicial - pedidos);
-    const entry = {inv_inicial: invInicial, pedidos, inv_final: invFinal};
+    const inv_cierre  = existing?.inv_cierre  ?? (ayerMap[prod]||0);
+    const pedidos     = existing?.pedidos     ?? 0;
+    const inv_inicial = existing?.inv_inicial ?? Math.max(0, inv_cierre - pedidos);
+    const producido   = existing?.producido   ?? 0;
+    const inv_final   = existing?.inv_final   ?? (inv_inicial + producido);
+    const entry = {inv_cierre, pedidos, inv_inicial, producido, inv_final};
     if (getSeccion(prod)==='upstairs') upstairs[prod]=entry;
     else basement[prod]=entry;
   }
 
-  statusEl.textContent = hoyData?.length > 0
-    ? `✅ Conteo del ${fecha} cargado` 
-    : ayerData?.length > 0 
-      ? `📋 Inv inicial jalado del ${ayerStr}` 
+  statusEl.textContent = hoyData?.length>0
+    ? `✅ Conteo del ${fecha} cargado`
+    : ayerData?.length>0
+      ? `📋 Inv cierre jalado del ${ayerStr}`
       : '📋 Sin datos previos — inicia desde cero';
 
   invRenderGrid(basement, upstairs);
 }
 
-// Render all cards
 function invRenderGrid(basement, upstairs){
   const bEl = document.getElementById('inv-carnes-grid');
   const uEl = document.getElementById('inv-upstairs-grid');
-  const resEl = document.getElementById('inv-resumen-dia');
-  if (!bEl || !uEl) return;
+  if (!bEl||!uEl) return;
 
   const makeCard = (prod, data) => {
-    const stock    = getStockInfo(prod);
-    const inicial  = data.inv_inicial || 0;
-    const pedidos  = data.pedidos || 0;
-    const final_b  = Math.max(0, inicial - pedidos);
+    const stock      = getStockInfo(prod);
+    const inv_cierre = data.inv_cierre  || 0;
+    const pedidos    = data.pedidos     || 0;
+    const inv_inicial= Math.max(0, inv_cierre - pedidos);
+    const producido  = data.producido   || 0;
+    const inv_final  = inv_inicial + producido;
 
     let barColor='var(--verde-3)', statusTxt='✓ OK';
-    let pct = stock ? Math.min(Math.round(final_b/stock.max*100),100) : 0;
-    const paraMin = stock ? Math.max(0, stock.min - final_b) : 0;
-    const paraMax = stock ? Math.max(0, stock.max - final_b) : 0;
+    const pct = stock ? Math.min(Math.round(inv_final/stock.max*100),100) : 0;
+    const paraMin = stock ? Math.max(0,stock.min-inv_final) : 0;
+    const paraMax = stock ? Math.max(0,stock.max-inv_final) : 0;
 
     if (stock){
-      if (final_b <= 0)          { barColor='var(--rojo-2)'; statusTxt='🚨 Sin stock'; }
-      else if (final_b < stock.min*0.6){ barColor='var(--rojo-2)'; statusTxt='🚨 Crítico'; }
-      else if (final_b < stock.min)    { barColor='#d97706'; statusTxt='⚡ Bajo mínimo'; }
-      else if (final_b > stock.max)    { barColor='#d97706'; statusTxt='📈 Sobre máximo'; }
+      if (inv_final<=0)              { barColor='var(--rojo-2)'; statusTxt='🚨 Sin stock'; }
+      else if (inv_final<stock.min*0.6){ barColor='var(--rojo-2)'; statusTxt='🚨 Crítico'; }
+      else if (inv_final<stock.min)  { barColor='#d97706';        statusTxt='⚡ Bajo mínimo'; }
+      else if (inv_final>stock.max)  { barColor='#d97706';        statusTxt='📈 Sobre máximo'; }
     }
 
-    const kgFinal = stock ? (final_b * stock.kg_bolsa).toFixed(1) : '—';
+    const safeId = prod.replace(/[\s/]/g,'-');
+    const kgFinal = stock ? (inv_final*stock.kg_bolsa).toFixed(1)+' kg' : '—';
 
-    return `<div style="background:rgba(255,255,255,0.55);backdrop-filter:blur(12px);border:1px solid var(--glass-borde);border-radius:10px;padding:14px;border-top:2px solid ${barColor}" id="inv-card-${prod.replace(/[\s/]/g,'-')}">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+    return `<div style="background:rgba(255,255,255,0.55);backdrop-filter:blur(12px);border:1px solid var(--glass-borde);border-radius:10px;padding:14px;border-top:2px solid ${barColor}" id="inv-card-${safeId}">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
         <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--texto-2)">${prod}</div>
         <div style="font-size:10px;font-weight:600;color:${barColor}">${statusTxt}</div>
       </div>
 
-      <!-- 3 campos -->
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:8px;text-align:center">
-        <div>
-          <div style="font-size:9px;color:var(--texto-4);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:3px">Inicial</div>
-          <input type="number" value="${inicial}" min="0" step="1"
-            data-inv-prod="${prod}" data-inv-field="inicial"
-            style="width:100%;font-size:16px;font-weight:700;font-family:var(--mono);text-align:center;border:1px solid var(--borde);border-radius:6px;padding:4px;background:rgba(255,255,255,0.6);outline:none;color:var(--texto)"
-            oninput="invRecalcular('${prod.replace(/'/g,"\\'")}')">
+      <!-- 5 campos: Cierre / Pedidos / Inicial / Producido / Final -->
+      <div style="display:grid;grid-template-columns:1fr auto 1fr auto 1fr;gap:4px;align-items:center;margin-bottom:10px">
+        <!-- Inv Cierre -->
+        <div style="text-align:center">
+          <div style="font-size:8px;color:var(--texto-4);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:3px">Cierre</div>
+          <input type="number" value="${inv_cierre}" min="0" step="1"
+            data-inv-prod="${prod}" data-inv-field="cierre"
+            style="width:100%;font-size:15px;font-weight:700;font-family:var(--mono);text-align:center;border:1px solid var(--borde);border-radius:6px;padding:4px 2px;background:rgba(255,255,255,0.6);outline:none;color:var(--texto)"
+            oninput="invRecalcular('${prod.replace(/'/g,"\\'")}')" title="Inventario de cierre (ayer)">
         </div>
-        <div>
-          <div style="font-size:9px;color:var(--rojo);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:3px">Pedidos</div>
+        <div style="text-align:center;font-size:12px;color:var(--texto-4);padding:0 2px">−</div>
+        <!-- Pedidos -->
+        <div style="text-align:center">
+          <div style="font-size:8px;color:var(--rojo);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:3px">Pedidos</div>
           <input type="number" value="${pedidos}" min="0" step="1"
             data-inv-prod="${prod}" data-inv-field="pedidos"
-            style="width:100%;font-size:16px;font-weight:700;font-family:var(--mono);text-align:center;border:1px solid var(--rojo-borde,#fecaca);border-radius:6px;padding:4px;background:rgba(255,255,255,0.6);outline:none;color:var(--rojo)"
-            oninput="invRecalcular('${prod.replace(/'/g,"\\'")}')">
+            style="width:100%;font-size:15px;font-weight:700;font-family:var(--mono);text-align:center;border:1px solid rgba(192,25,15,0.25);border-radius:6px;padding:4px 2px;background:rgba(255,255,255,0.6);outline:none;color:var(--rojo)"
+            oninput="invRecalcular('${prod.replace(/'/g,"\\'")}')" title="Pedidos del día">
         </div>
-        <div>
-          <div style="font-size:9px;color:var(--verde);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:3px">Final</div>
-          <div id="inv-final-${prod.replace(/[\s/]/g,'-')}"
-            style="font-size:16px;font-weight:800;font-family:var(--mono);text-align:center;padding:5px;background:rgba(10,110,53,0.06);border-radius:6px;color:var(--verde)">
-            ${final_b}
-          </div>
+        <div style="text-align:center;font-size:12px;color:var(--texto-4);padding:0 2px">=</div>
+        <!-- Inv Inicial Día -->
+        <div style="text-align:center">
+          <div style="font-size:8px;color:var(--texto-3);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:3px">Ini Día</div>
+          <div id="inv-ini-${safeId}" style="font-size:15px;font-weight:800;font-family:var(--mono);text-align:center;padding:5px 2px;background:rgba(0,0,0,0.04);border-radius:6px">${inv_inicial}</div>
+        </div>
+      </div>
+
+      <!-- Producido + Final -->
+      <div style="display:grid;grid-template-columns:1fr auto 1fr;gap:4px;align-items:center;margin-bottom:10px">
+        <div style="text-align:center">
+          <div style="font-size:8px;color:var(--verde);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:3px">Producido</div>
+          <input type="number" value="${producido}" min="0" step="1"
+            data-inv-prod="${prod}" data-inv-field="producido"
+            style="width:100%;font-size:15px;font-weight:700;font-family:var(--mono);text-align:center;border:1px solid rgba(10,110,53,0.25);border-radius:6px;padding:4px 2px;background:rgba(255,255,255,0.6);outline:none;color:var(--verde)"
+            oninput="invRecalcular('${prod.replace(/'/g,"\\'")}')" title="Producido hoy">
+        </div>
+        <div style="text-align:center;font-size:12px;color:var(--texto-4);padding:0 2px">=</div>
+        <div style="text-align:center">
+          <div style="font-size:8px;color:var(--verde);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:3px">Inv Final</div>
+          <div id="inv-final-${safeId}" style="font-size:15px;font-weight:800;font-family:var(--mono);text-align:center;padding:5px 2px;background:rgba(10,110,53,0.07);border-radius:6px;color:var(--verde)">${inv_final}</div>
         </div>
       </div>
 
       ${stock?`<div style="background:rgba(0,0,0,0.06);border-radius:3px;height:4px;overflow:hidden;margin-bottom:6px">
-        <div id="inv-bar-${prod.replace(/[\s/]/g,'-')}" style="height:100%;border-radius:3px;width:${pct}%;background:${barColor};transition:width 0.4s var(--ease)"></div>
+        <div id="inv-bar-${safeId}" style="height:100%;border-radius:3px;width:${pct}%;background:${barColor};transition:width 0.4s"></div>
       </div>
-      <div style="display:flex;justify-content:space-between;align-items:center">
-        <div id="inv-kg-${prod.replace(/[\s/]/g,'-')}" style="font-size:11px;font-weight:600;color:var(--texto-2)">${kgFinal} kg</div>
+      <div style="display:flex;justify-content:space-between">
+        <div id="inv-kg-${safeId}" style="font-size:11px;font-weight:600;color:var(--texto-2)">${kgFinal}</div>
         <div style="font-size:10px;color:var(--texto-4)">Mín:${stock.min} · Máx:${stock.max}</div>
       </div>
-      <div style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap" id="inv-recom-${prod.replace(/[\s/]/g,'-')}">
-        ${paraMin>0?`<span style="font-size:10px;background:rgba(217,119,6,0.1);color:#92400e;padding:2px 7px;border-radius:20px;font-weight:600">+${paraMin} para mínimo</span>`:''}
-        ${paraMax>0?`<span style="font-size:10px;background:rgba(10,110,53,0.08);color:var(--verde);padding:2px 7px;border-radius:20px;font-weight:600">+${paraMax} para máximo</span>`:''}
+      <div style="display:flex;gap:5px;margin-top:5px;flex-wrap:wrap" id="inv-recom-${safeId}">
+        ${paraMin>0?`<span style="font-size:10px;background:rgba(217,119,6,0.1);color:#92400e;padding:1px 7px;border-radius:20px;font-weight:600">+${paraMin} para mínimo</span>`:''}
+        ${paraMax>0?`<span style="font-size:10px;background:rgba(10,110,53,0.08);color:var(--verde);padding:1px 7px;border-radius:20px;font-weight:600">+${paraMax} para máximo</span>`:''}
       </div>`:''}
     </div>`;
   };
 
-  bEl.innerHTML = INV_BASEMENT.map(p => makeCard(p, basement[p]||{})).join('');
-  uEl.innerHTML = INV_UPSTAIRS.map(p => makeCard(p, upstairs[p]||{})).join('');
-
-  if (resEl) resEl.style.display='block';
+  bEl.innerHTML = INV_BASEMENT.map(p=>makeCard(p,basement[p]||{})).join('');
+  uEl.innerHTML = INV_UPSTAIRS.map(p=>makeCard(p,upstairs[p]||{})).join('');
   invActualizarResumen();
+  invActualizarAlertas();
 }
 
-// Recalculate final = inicial - pedidos for one product
 function invRecalcular(prod){
-  const safeId = prod.replace(/[\s/]/g,'-');
-  const inicialEl  = document.querySelector(`[data-inv-prod="${prod}"][data-inv-field="inicial"]`);
-  const pedidosEl  = document.querySelector(`[data-inv-prod="${prod}"][data-inv-field="pedidos"]`);
-  const finalEl    = document.getElementById('inv-final-'+safeId);
-  const barEl      = document.getElementById('inv-bar-'+safeId);
-  const kgEl       = document.getElementById('inv-kg-'+safeId);
-  const recomEl    = document.getElementById('inv-recom-'+safeId);
+  const safeId    = prod.replace(/[\s/]/g,'-');
+  const cierreEl  = document.querySelector(`[data-inv-prod="${prod}"][data-inv-field="cierre"]`);
+  const pedidosEl = document.querySelector(`[data-inv-prod="${prod}"][data-inv-field="pedidos"]`);
+  const prodEl    = document.querySelector(`[data-inv-prod="${prod}"][data-inv-field="producido"]`);
+  const iniEl     = document.getElementById('inv-ini-'+safeId);
+  const finalEl   = document.getElementById('inv-final-'+safeId);
+  const barEl     = document.getElementById('inv-bar-'+safeId);
+  const kgEl      = document.getElementById('inv-kg-'+safeId);
+  const recomEl   = document.getElementById('inv-recom-'+safeId);
 
-  if (!inicialEl||!pedidosEl||!finalEl) return;
+  if (!cierreEl||!pedidosEl||!prodEl) return;
 
-  const inicial  = parseFloat(inicialEl.value)||0;
+  const cierre   = parseFloat(cierreEl.value)||0;
   const pedidos  = parseFloat(pedidosEl.value)||0;
-  const finalVal = Math.max(0, inicial - pedidos);
-  finalEl.textContent = finalVal;
+  const producido= parseFloat(prodEl.value)||0;
+  const ini      = Math.max(0, cierre - pedidos);
+  const final_v  = ini + producido;
+
+  if (iniEl)   iniEl.textContent   = ini;
+  if (finalEl) finalEl.textContent = final_v;
 
   const stock = getStockInfo(prod);
   if (stock){
-    const pct = Math.min(Math.round(finalVal/stock.max*100),100);
+    const pct = Math.min(Math.round(final_v/stock.max*100),100);
     let barColor='var(--verde-3)';
-    if (finalVal<=0) barColor='var(--rojo-2)';
-    else if (finalVal<stock.min*0.6) barColor='var(--rojo-2)';
-    else if (finalVal<stock.min) barColor='#d97706';
-    else if (finalVal>stock.max) barColor='#d97706';
+    if (final_v<=0)           barColor='var(--rojo-2)';
+    else if (final_v<stock.min*0.6) barColor='var(--rojo-2)';
+    else if (final_v<stock.min)     barColor='#d97706';
+    else if (final_v>stock.max)     barColor='#d97706';
     if (barEl){ barEl.style.width=pct+'%'; barEl.style.background=barColor; }
-    if (kgEl) kgEl.textContent=(finalVal*stock.kg_bolsa).toFixed(1)+' kg';
+    if (kgEl)  kgEl.textContent=(final_v*stock.kg_bolsa).toFixed(1)+' kg';
     if (recomEl){
-      const paraMin=Math.max(0,stock.min-finalVal);
-      const paraMax=Math.max(0,stock.max-finalVal);
+      const pm=Math.max(0,stock.min-final_v), px=Math.max(0,stock.max-final_v);
       recomEl.innerHTML=
-        (paraMin>0?`<span style="font-size:10px;background:rgba(217,119,6,0.1);color:#92400e;padding:2px 7px;border-radius:20px;font-weight:600">+${paraMin} para mínimo</span>`:'')+
-        (paraMax>0?`<span style="font-size:10px;background:rgba(10,110,53,0.08);color:var(--verde);padding:2px 7px;border-radius:20px;font-weight:600">+${paraMax} para máximo</span>`:'');
+        (pm>0?`<span style="font-size:10px;background:rgba(217,119,6,0.1);color:#92400e;padding:1px 7px;border-radius:20px;font-weight:600">+${pm} para mínimo</span>`:'')+
+        (px>0?`<span style="font-size:10px;background:rgba(10,110,53,0.08);color:var(--verde);padding:1px 7px;border-radius:20px;font-weight:600">+${px} para máximo</span>`:'');
     }
   }
   invActualizarResumen();
 }
 
-// Update summary totals
 function invActualizarResumen(){
-  const iniciales = [...document.querySelectorAll('[data-inv-field="inicial"]')].reduce((a,el)=>a+(parseFloat(el.value)||0),0);
-  const pedidos   = [...document.querySelectorAll('[data-inv-field="pedidos"]')].reduce((a,el)=>a+(parseFloat(el.value)||0),0);
-  const finales   = iniciales - pedidos;
-  const resIni = document.getElementById('inv-res-inicial');
-  const resPed = document.getElementById('inv-res-pedidos');
-  const resFin = document.getElementById('inv-res-final');
-  if (resIni) resIni.textContent = iniciales;
-  if (resPed) resPed.textContent = pedidos;
-  if (resFin) resFin.textContent = Math.max(0,finales);
+  const calcSec = (prods) => {
+    let cierre=0,pedidos=0,inicial=0,producido=0,final=0;
+    for (const prod of prods){
+      const c = parseFloat(document.querySelector(`[data-inv-prod="${prod}"][data-inv-field="cierre"]`)?.value)||0;
+      const p = parseFloat(document.querySelector(`[data-inv-prod="${prod}"][data-inv-field="pedidos"]`)?.value)||0;
+      const pr= parseFloat(document.querySelector(`[data-inv-prod="${prod}"][data-inv-field="producido"]`)?.value)||0;
+      const ini=Math.max(0,c-p);
+      cierre+=c; pedidos+=p; inicial+=ini; producido+=pr; final+=ini+pr;
+    }
+    return {cierre,pedidos,inicial,producido,final};
+  };
+
+  const b = calcSec(INV_BASEMENT);
+  const u = calcSec(INV_UPSTAIRS);
+
+  const set=(id,v)=>{ const el=document.getElementById(id); if(el) el.textContent=v; };
+  set('inv-b-cierre',b.cierre);   set('inv-b-pedidos',b.pedidos);
+  set('inv-b-inicial',b.inicial); set('inv-b-producido',b.producido); set('inv-b-final',b.final);
+  set('inv-u-cierre',u.cierre);   set('inv-u-pedidos',u.pedidos);
+  set('inv-u-inicial',u.inicial); set('inv-u-producido',u.producido); set('inv-u-final',u.final);
 }
 
-// Save conteo to Supabase
+function invActualizarAlertas(){
+  const alertasEl = document.getElementById('inv-alertas');
+  if (!alertasEl) return;
+  const alertas=[];
+  for (const prod of [...INV_BASEMENT,...INV_UPSTAIRS]){
+    const finalEl = document.getElementById('inv-final-'+prod.replace(/[\s/]/g,'-'));
+    const final_v = parseFloat(finalEl?.textContent)||0;
+    const stock = getStockInfo(prod);
+    if (!stock) continue;
+    if (final_v<=0)             alertas.push({prod,final_v,tipo:'critico',msg:'Sin stock'});
+    else if (final_v<stock.min*0.6) alertas.push({prod,final_v,tipo:'critico',msg:'Crítico'});
+    else if (final_v<stock.min)     alertas.push({prod,final_v,tipo:'warn',msg:'Bajo mínimo'});
+  }
+  if (alertas.length>0){
+    alertasEl.innerHTML=alertas.map(a=>
+      `<div class="inv-alerta ${a.tipo}" style="margin-bottom:6px">
+        ${a.tipo==='critico'?'🚨':'⚡'} <strong>${a.prod}</strong>: ${a.final_v} bolsas — ${a.msg}
+      </div>`).join('');
+  } else {
+    alertasEl.innerHTML='<div class="inv-alerta ok">✅ Todos los productos dentro del rango</div>';
+  }
+}
+
 async function invGuardarConteo(){
   const fecha = document.getElementById('inv-fecha-sel')?.value;
   if (!fecha){ toast('Selecciona una fecha primero','err'); return; }
-
   const statusEl = document.getElementById('inv-save-status');
-  statusEl.textContent = 'Guardando…';
+  statusEl.textContent='Guardando…';
 
-  const rows = [];
-  const allProds = [...INV_BASEMENT, ...INV_UPSTAIRS];
-
-  for (const prod of allProds){
-    const inicialEl = document.querySelector(`[data-inv-prod="${prod}"][data-inv-field="inicial"]`);
-    const pedidosEl = document.querySelector(`[data-inv-prod="${prod}"][data-inv-field="pedidos"]`);
-    if (!inicialEl||!pedidosEl) continue;
-    const inv_inicial = parseFloat(inicialEl.value)||0;
+  const rows=[];
+  for (const prod of [...INV_BASEMENT,...INV_UPSTAIRS]){
+    const cierreEl = document.querySelector(`[data-inv-prod="${prod}"][data-inv-field="cierre"]`);
+    const pedidosEl= document.querySelector(`[data-inv-prod="${prod}"][data-inv-field="pedidos"]`);
+    const prodEl   = document.querySelector(`[data-inv-prod="${prod}"][data-inv-field="producido"]`);
+    const safeId   = prod.replace(/[\s/]/g,'-');
+    const iniEl    = document.getElementById('inv-ini-'+safeId);
+    const finalEl  = document.getElementById('inv-final-'+safeId);
+    if (!cierreEl||!pedidosEl||!prodEl) continue;
+    const inv_cierre  = parseFloat(cierreEl.value)||0;
     const pedidos     = parseFloat(pedidosEl.value)||0;
-    const inv_final   = Math.max(0, inv_inicial - pedidos);
-    rows.push({fecha, producto:prod, seccion:getSeccion(prod), inv_inicial, pedidos, inv_final});
+    const producido   = parseFloat(prodEl.value)||0;
+    const inv_inicial = parseFloat(iniEl?.textContent)||Math.max(0,inv_cierre-pedidos);
+    const inv_final   = parseFloat(finalEl?.textContent)||inv_inicial+producido;
+    rows.push({fecha,producto:prod,seccion:getSeccion(prod),inv_cierre,pedidos,inv_inicial,producido,inv_final});
   }
 
-  // Delete existing then insert fresh
-  await db.from('inventario_diario').delete().eq('fecha', fecha);
-  const {error} = await db.from('inventario_diario').insert(rows);
-
-  if (error){
-    statusEl.textContent = '❌ Error: '+error.message;
-    toast('Error al guardar','err');
-    return;
-  }
-
-  statusEl.textContent = `✅ ${rows.length} productos guardados — ${fecha}`;
+  await db.from('inventario_diario').delete().eq('fecha',fecha);
+  const {error}=await db.from('inventario_diario').insert(rows);
+  if (error){ statusEl.textContent='❌ Error: '+error.message; toast('Error al guardar','err'); return; }
+  statusEl.textContent=`✅ ${rows.length} productos guardados — ${fecha}`;
   toast(`Conteo del ${fecha} guardado ✓`,'ok');
   await invCargarHistorial();
 }
 
-// Download as Excel
 async function invDescargarExcel(){
   if (!window.XLSX){
     await new Promise((res,rej)=>{
       const s=document.createElement('script');
       s.src='https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
-      s.onload=res; s.onerror=rej;
-      document.head.appendChild(s);
+      s.onload=res; s.onerror=rej; document.head.appendChild(s);
     });
   }
-  const fecha = document.getElementById('inv-fecha-sel')?.value || new Date().toISOString().split('T')[0];
-  const rows  = [['Fecha','Sección','Producto','Inv Inicial','Pedidos','Inv Final','Stock Mín','Stock Máx','Para Mínimo','Para Máximo','Kg Final']];
-
+  const fecha=document.getElementById('inv-fecha-sel')?.value||new Date().toISOString().split('T')[0];
+  const rows=[['Fecha','Sección','Producto','Inv Cierre','Pedidos','Inv Inicial Día','Producido','Inv Final','Stock Mín','Stock Máx','Kg Final']];
   for (const prod of [...INV_BASEMENT,...INV_UPSTAIRS]){
-    const inicialEl = document.querySelector(`[data-inv-prod="${prod}"][data-inv-field="inicial"]`);
-    const pedidosEl = document.querySelector(`[data-inv-prod="${prod}"][data-inv-field="pedidos"]`);
-    const inv_i = parseFloat(inicialEl?.value)||0;
-    const ped   = parseFloat(pedidosEl?.value)||0;
-    const inv_f = Math.max(0,inv_i-ped);
-    const stock = getStockInfo(prod);
-    rows.push([fecha, getSeccion(prod), prod, inv_i, ped, inv_f,
-      stock?.min||'—', stock?.max||'—',
-      stock?Math.max(0,stock.min-inv_f):'—',
-      stock?Math.max(0,stock.max-inv_f):'—',
-      stock?(inv_f*stock.kg_bolsa).toFixed(1):'—',
-    ]);
+    const c =parseFloat(document.querySelector(`[data-inv-prod="${prod}"][data-inv-field="cierre"]`)?.value)||0;
+    const p =parseFloat(document.querySelector(`[data-inv-prod="${prod}"][data-inv-field="pedidos"]`)?.value)||0;
+    const pr=parseFloat(document.querySelector(`[data-inv-prod="${prod}"][data-inv-field="producido"]`)?.value)||0;
+    const ini=Math.max(0,c-p); const fin=ini+pr;
+    const stock=getStockInfo(prod);
+    rows.push([fecha,getSeccion(prod),prod,c,p,ini,pr,fin,stock?.min||'—',stock?.max||'—',stock?(fin*stock.kg_bolsa).toFixed(1):'—']);
   }
-
-  const ws = XLSX.utils.aoa_to_sheet(rows);
-  const wb = XLSX.utils.book_new();
+  const ws=XLSX.utils.aoa_to_sheet(rows);
+  const wb=XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb,ws,'Inventario');
   XLSX.writeFile(wb,`inventario_${fecha}.xlsx`);
   toast('Excel descargado ✓','ok');
 }
 
-// Load historial
 async function invCargarHistorial(){
-  const el = document.getElementById('inv-historial');
+  const el=document.getElementById('inv-historial');
   if (!el) return;
-
-  const {data,error} = await db
-    .from('inventario_diario')
-    .select('fecha,producto,inv_final,seccion')
-    .order('fecha',{ascending:false});
-
-  if (error||!data||data.length===0){
-    el.innerHTML='<p style="color:var(--texto-3);font-size:13px">Sin historial guardado aún</p>';
-    return;
-  }
-
+  const {data,error}=await db.from('inventario_diario').select('fecha,producto,inv_final,seccion').order('fecha',{ascending:false});
+  if (error||!data||data.length===0){ el.innerHTML='<p style="color:var(--texto-3);font-size:13px">Sin historial guardado aún</p>'; return; }
   const byDate={};
-  for (const r of data){
-    if (!byDate[r.fecha]) byDate[r.fecha]=[];
-    byDate[r.fecha].push(r);
-  }
-
+  for (const r of data){ if (!byDate[r.fecha]) byDate[r.fecha]=[]; byDate[r.fecha].push(r); }
   const dates=Object.keys(byDate).sort((a,b)=>b.localeCompare(a)).slice(0,10);
-  el.innerHTML=`<div style="display:flex;flex-direction:column;gap:8px">`+
+  el.innerHTML='<div style="display:flex;flex-direction:column;gap:8px">'+
     dates.map(fecha=>{
       const items=byDate[fecha];
       const totalFinal=items.reduce((a,r)=>a+(r.inv_final||0),0);
@@ -3591,13 +3635,11 @@ async function invCargarHistorial(){
           <div style="font-size:11px;color:var(--texto-3)">${items.length} productos · ${totalFinal} bolsas finales</div>
         </div>
         <div style="display:flex;gap:8px;align-items:center">
-          ${criticos>0
-            ?`<span style="font-size:10px;background:rgba(192,25,15,0.09);color:var(--rojo);padding:2px 8px;border-radius:20px;font-weight:600">${criticos} bajo mínimo</span>`
-            :`<span style="font-size:10px;background:rgba(10,110,53,0.08);color:var(--verde);padding:2px 8px;border-radius:20px;font-weight:600">✓ OK</span>`}
+          ${criticos>0?`<span style="font-size:10px;background:rgba(192,25,15,0.09);color:var(--rojo);padding:2px 8px;border-radius:20px;font-weight:600">${criticos} bajo mínimo</span>`:`<span style="font-size:10px;background:rgba(10,110,53,0.08);color:var(--verde);padding:2px 8px;border-radius:20px;font-weight:600">✓ OK</span>`}
           <span style="color:var(--texto-3)">›</span>
         </div>
       </div>`;
-    }).join('')+`</div>`;
+    }).join('')+'</div>';
 }
 
 
