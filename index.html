@@ -928,8 +928,10 @@ function progClass(pct) {
 // DB INIT
 // =====================================================================
 function setStatus(msg, ok=true) {
-  document.getElementById('db-dot').className = ok ? 'dot' : 'dot off';
-  document.getElementById('db-status').textContent = msg;
+  const dotEl = document.getElementById('db-dot');
+  const lblEl = document.getElementById('db-status');
+  if (dotEl) dotEl.className = ok ? 'conn-dot' : 'conn-dot off';
+  if (lblEl) lblEl.textContent = msg;
 }
 
 async function initSemanas() {
@@ -952,7 +954,9 @@ async function initSemanas() {
     setStatus('Conectado · ' + semanas.length + ' semanas');
   } catch (err) {
     console.error('initSemanas:', err);
-    setStatus('Sin conexión — ' + (err?.message || err).toString().slice(0, 50), false);
+    setStatus('Sin conexión — revisa allowlist Supabase', false);
+    semanas = [];
+    await refreshAll();
   }
 }
 
@@ -1976,6 +1980,7 @@ function extractSingleDayFromLines(lines) {
 
 (function initPDFUpload() {
   const zone=document.getElementById('pdf-zone'), input=document.getElementById('pdf-input');
+  if (!zone || !input) return;
   zone.addEventListener('click', ()=>input.click());
   zone.addEventListener('dragover', e=>{e.preventDefault();zone.classList.add('drag');});
   zone.addEventListener('dragleave', ()=>zone.classList.remove('drag'));
