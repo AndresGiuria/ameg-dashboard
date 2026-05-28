@@ -3393,72 +3393,64 @@ function invRenderGrid(basement, upstairs){
     const paraMax = stock ? Math.max(0,stock.max-inv_final) : 0;
 
     if (stock){
-      if (inv_final<=0)              { barColor='var(--rojo-2)'; statusTxt='🚨 Sin stock'; }
+      if (inv_final<=0)               { barColor='var(--rojo-2)'; statusTxt='🚨 Sin stock'; }
       else if (inv_final<stock.min*0.6){ barColor='var(--rojo-2)'; statusTxt='🚨 Crítico'; }
-      else if (inv_final<stock.min)  { barColor='#d97706';        statusTxt='⚡ Bajo mínimo'; }
-      else if (inv_final>stock.max)  { barColor='#d97706';        statusTxt='📈 Sobre máximo'; }
+      else if (inv_final<stock.min)    { barColor='#d97706';       statusTxt='⚡ Bajo mínimo'; }
+      else if (inv_final>stock.max)    { barColor='#d97706';       statusTxt='📈 Sobre máximo'; }
     }
 
-    const safeId = prod.replace(/[\s/]/g,'-');
+    const safeId  = prod.replace(/[\s/]/g,'-');
     const kgFinal = stock ? (inv_final*stock.kg_bolsa).toFixed(1)+' kg' : '—';
+    const p2      = prod.replace(/'/g,"\\'");
+    const badgeBg = barColor==='var(--verde-3)'?'rgba(10,110,53,0.08)':barColor==='#d97706'?'rgba(217,119,6,0.1)':'rgba(192,25,15,0.09)';
+    const badgeClr= barColor==='var(--verde-3)'?'var(--verde)':barColor==='#d97706'?'#92400e':'var(--rojo)';
 
-    return `<div style="background:rgba(255,255,255,0.55);backdrop-filter:blur(12px);border:1px solid var(--glass-borde);border-radius:10px;padding:14px;border-top:2px solid ${barColor}" id="inv-card-${safeId}">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
-        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--texto-2)">${prod}</div>
-        <div style="font-size:10px;font-weight:600;color:${barColor}">${statusTxt}</div>
+    return `<div style="background:rgba(255,255,255,0.55);backdrop-filter:blur(12px);border:0.5px solid var(--glass-borde);border-radius:12px;padding:14px;border-top:2px solid ${barColor}" id="inv-card-${safeId}">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+        <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;color:var(--texto-2)">${prod}</div>
+        <div style="font-size:10px;font-weight:600;padding:2px 8px;border-radius:20px;background:${badgeBg};color:${badgeClr}">${statusTxt}</div>
       </div>
-
-      <!-- 5 campos: Cierre / Pedidos / Inicial / Producido / Final -->
-      <div style="display:grid;grid-template-columns:1fr auto 1fr auto 1fr;gap:4px;align-items:center;margin-bottom:10px">
-        <!-- Inv Cierre -->
-        <div style="text-align:center">
-          <div style="font-size:8px;color:var(--texto-4);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:3px">Cierre</div>
+      <div style="font-size:30px;font-weight:700;line-height:1;color:var(--texto);margin-bottom:2px" id="inv-big-${safeId}">${inv_final}</div>
+      <div style="font-size:11px;color:var(--texto-3);margin-bottom:8px" id="inv-kg-${safeId}">${kgFinal}</div>
+      ${stock?`<div style="background:rgba(0,0,0,0.07);border-radius:3px;height:4px;overflow:hidden;margin-bottom:10px">
+        <div id="inv-bar-${safeId}" style="height:100%;border-radius:3px;width:${pct}%;background:${barColor};transition:width 0.4s"></div>
+      </div>`:''}
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:8px">
+        <div>
+          <div style="font-size:9px;color:var(--texto-3);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:3px">Cierre</div>
           <input type="number" value="${inv_cierre}" min="0" step="1"
             data-inv-prod="${prod}" data-inv-field="cierre"
-            style="width:100%;font-size:15px;font-weight:700;font-family:var(--mono);text-align:center;border:1px solid var(--borde);border-radius:6px;padding:4px 2px;background:rgba(255,255,255,0.6);outline:none;color:var(--texto)"
-            oninput="invRecalcular('${prod.replace(/'/g,"\\'")}')" title="Inventario de cierre (ayer)">
+            style="width:100%;font-size:14px;font-weight:600;font-family:var(--mono);text-align:center;border:0.5px solid var(--borde-2);border-radius:6px;padding:5px 2px;background:rgba(255,255,255,0.7);outline:none;color:var(--texto)"
+            oninput="invRecalcular('${p2}')">
         </div>
-        <div style="text-align:center;font-size:12px;color:var(--texto-4);padding:0 2px">−</div>
-        <!-- Pedidos -->
-        <div style="text-align:center">
-          <div style="font-size:8px;color:var(--rojo);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:3px">Pedidos</div>
+        <div>
+          <div style="font-size:9px;color:var(--rojo);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:3px">Pedidos</div>
           <input type="number" value="${pedidos}" min="0" step="1"
             data-inv-prod="${prod}" data-inv-field="pedidos"
-            style="width:100%;font-size:15px;font-weight:700;font-family:var(--mono);text-align:center;border:1px solid rgba(192,25,15,0.25);border-radius:6px;padding:4px 2px;background:rgba(255,255,255,0.6);outline:none;color:var(--rojo)"
-            oninput="invRecalcular('${prod.replace(/'/g,"\\'")}')" title="Pedidos del día">
+            style="width:100%;font-size:14px;font-weight:600;font-family:var(--mono);text-align:center;border:0.5px solid rgba(192,25,15,0.2);border-radius:6px;padding:5px 2px;background:rgba(255,240,240,0.6);outline:none;color:var(--rojo)"
+            oninput="invRecalcular('${p2}')">
         </div>
-        <div style="text-align:center;font-size:12px;color:var(--texto-4);padding:0 2px">=</div>
-        <!-- Inv Inicial Día -->
-        <div style="text-align:center">
-          <div style="font-size:8px;color:var(--texto-3);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:3px">Ini Día</div>
-          <div id="inv-ini-${safeId}" style="font-size:15px;font-weight:800;font-family:var(--mono);text-align:center;padding:5px 2px;background:rgba(0,0,0,0.04);border-radius:6px">${inv_inicial}</div>
+        <div>
+          <div style="font-size:9px;color:#185FA5;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:3px">Ini día</div>
+          <input type="number" value="${inv_inicial}" min="0" step="1"
+            data-inv-prod="${prod}" data-inv-field="ini"
+            style="width:100%;font-size:14px;font-weight:600;font-family:var(--mono);text-align:center;border:0.5px solid rgba(24,95,165,0.2);border-radius:6px;padding:5px 2px;background:rgba(230,241,251,0.6);outline:none;color:#185FA5"
+            oninput="invRecalcularDirecto('${p2}')">
         </div>
-      </div>
-
-      <!-- Producido + Final -->
-      <div style="display:grid;grid-template-columns:1fr auto 1fr;gap:4px;align-items:center;margin-bottom:10px">
-        <div style="text-align:center">
-          <div style="font-size:8px;color:var(--verde);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:3px">Producido</div>
+        <div>
+          <div style="font-size:9px;color:var(--verde);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:3px">Producido</div>
           <input type="number" value="${producido}" min="0" step="1"
             data-inv-prod="${prod}" data-inv-field="producido"
-            style="width:100%;font-size:15px;font-weight:700;font-family:var(--mono);text-align:center;border:1px solid rgba(10,110,53,0.25);border-radius:6px;padding:4px 2px;background:rgba(255,255,255,0.6);outline:none;color:var(--verde)"
-            oninput="invRecalcular('${prod.replace(/'/g,"\\'")}')" title="Producido hoy">
-        </div>
-        <div style="text-align:center;font-size:12px;color:var(--texto-4);padding:0 2px">=</div>
-        <div style="text-align:center">
-          <div style="font-size:8px;color:var(--verde);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:3px">Inv Final</div>
-          <div id="inv-final-${safeId}" style="font-size:15px;font-weight:800;font-family:var(--mono);text-align:center;padding:5px 2px;background:rgba(10,110,53,0.07);border-radius:6px;color:var(--verde)">${inv_final}</div>
+            style="width:100%;font-size:14px;font-weight:600;font-family:var(--mono);text-align:center;border:0.5px solid rgba(10,110,53,0.2);border-radius:6px;padding:5px 2px;background:rgba(234,243,222,0.6);outline:none;color:var(--verde)"
+            oninput="invRecalcular('${p2}')">
         </div>
       </div>
-
-      ${stock?`<div style="background:rgba(0,0,0,0.06);border-radius:3px;height:4px;overflow:hidden;margin-bottom:6px">
-        <div id="inv-bar-${safeId}" style="height:100%;border-radius:3px;width:${pct}%;background:${barColor};transition:width 0.4s"></div>
+      <div style="display:flex;align-items:center;justify-content:space-between;background:rgba(0,0,0,0.04);border-radius:6px;padding:5px 10px;margin-bottom:6px">
+        <span style="font-size:11px;color:var(--texto-3)">Inv final</span>
+        <strong id="inv-final-${safeId}" style="font-size:14px;font-weight:700;font-family:var(--mono);color:var(--verde)">${inv_final}</strong>
       </div>
-      <div style="display:flex;justify-content:space-between">
-        <div id="inv-kg-${safeId}" style="font-size:11px;font-weight:600;color:var(--texto-2)">${kgFinal}</div>
-        <div style="font-size:10px;color:var(--texto-4)">Mín:${stock.min} · Máx:${stock.max}</div>
-      </div>
-      <div style="display:flex;gap:5px;margin-top:5px;flex-wrap:wrap" id="inv-recom-${safeId}">
+      ${stock?`<div style="font-size:10px;color:var(--texto-4);margin-bottom:5px">Mín:${stock.min} · Máx:${stock.max} bolsas</div>
+      <div style="display:flex;gap:4px;flex-wrap:wrap" id="inv-recom-${safeId}">
         ${paraMin>0?`<span style="font-size:10px;background:rgba(217,119,6,0.1);color:#92400e;padding:1px 7px;border-radius:20px;font-weight:600">+${paraMin} para mínimo</span>`:''}
         ${paraMax>0?`<span style="font-size:10px;background:rgba(10,110,53,0.08);color:var(--verde);padding:1px 7px;border-radius:20px;font-weight:600">+${paraMax} para máximo</span>`:''}
       </div>`:''}
@@ -3473,11 +3465,12 @@ function invRenderGrid(basement, upstairs){
 
 function invRecalcular(prod){
   const safeId    = prod.replace(/[\s/]/g,'-');
-  const cierreEl  = document.querySelector(`[data-inv-prod="${prod}"][data-inv-field="cierre"]`);
-  const pedidosEl = document.querySelector(`[data-inv-prod="${prod}"][data-inv-field="pedidos"]`);
-  const prodEl    = document.querySelector(`[data-inv-prod="${prod}"][data-inv-field="producido"]`);
-  const iniEl     = document.getElementById('inv-ini-'+safeId);
+  const cierreEl  = document.querySelector('[data-inv-prod="'+prod+'"][data-inv-field="cierre"]');
+  const pedidosEl = document.querySelector('[data-inv-prod="'+prod+'"][data-inv-field="pedidos"]');
+  const prodEl    = document.querySelector('[data-inv-prod="'+prod+'"][data-inv-field="producido"]');
+  const iniInputEl= document.querySelector('[data-inv-prod="'+prod+'"][data-inv-field="ini"]');
   const finalEl   = document.getElementById('inv-final-'+safeId);
+  const bigEl     = document.getElementById('inv-big-'+safeId);
   const barEl     = document.getElementById('inv-bar-'+safeId);
   const kgEl      = document.getElementById('inv-kg-'+safeId);
   const recomEl   = document.getElementById('inv-recom-'+safeId);
@@ -3490,8 +3483,9 @@ function invRecalcular(prod){
   const ini      = Math.max(0, cierre - pedidos);
   const final_v  = ini + producido;
 
-  if (iniEl)   iniEl.textContent   = ini;
+  if (iniInputEl) iniInputEl.value = ini;
   if (finalEl) finalEl.textContent = final_v;
+  if (bigEl)   bigEl.textContent   = final_v;
 
   const stock = getStockInfo(prod);
   if (stock){
@@ -3507,7 +3501,40 @@ function invRecalcular(prod){
       const pm=Math.max(0,stock.min-final_v), px=Math.max(0,stock.max-final_v);
       recomEl.innerHTML=
         (pm>0?`<span style="font-size:10px;background:rgba(217,119,6,0.1);color:#92400e;padding:1px 7px;border-radius:20px;font-weight:600">+${pm} para mínimo</span>`:'')+
-        (px>0?`<span style="font-size:10px;background:rgba(10,110,53,0.08);color:var(--verde);padding:1px 7px;border-radius:20px;font-weight:600">+${px} para máximo</span>`:'');
+        (px>0?`<span style="font-size:10px;background:rgba(10,110,53,0.08);
+function invRecalcularDirecto(prod){
+  const safeId   = prod.replace(/[\s/]/g,'-');
+  const iniEl    = document.querySelector('[data-inv-prod="'+prod+'"][data-inv-field="ini"]');
+  const prodEl   = document.querySelector('[data-inv-prod="'+prod+'"][data-inv-field="producido"]');
+  const finalEl  = document.getElementById('inv-final-'+safeId);
+  const bigEl    = document.getElementById('inv-big-'+safeId);
+  const barEl    = document.getElementById('inv-bar-'+safeId);
+  const kgEl     = document.getElementById('inv-kg-'+safeId);
+  const recomEl  = document.getElementById('inv-recom-'+safeId);
+  if (!iniEl||!prodEl) return;
+  const ini      = parseFloat(iniEl.value)||0;
+  const producido= parseFloat(prodEl.value)||0;
+  const final_v  = ini + producido;
+  if (finalEl) finalEl.textContent = final_v;
+  if (bigEl)   bigEl.textContent   = final_v;
+  const stock = getStockInfo(prod);
+  if (stock){
+    const pct=Math.min(Math.round(final_v/stock.max*100),100);
+    let bc='var(--verde-3)';
+    if (final_v<=0) bc='var(--rojo-2)'; else if(final_v<stock.min*0.6) bc='var(--rojo-2)'; else if(final_v<stock.min) bc='#d97706'; else if(final_v>stock.max) bc='#d97706';
+    if (barEl){barEl.style.width=pct+'%';barEl.style.background=bc;}
+    if (kgEl) kgEl.textContent=(final_v*stock.kg_bolsa).toFixed(1)+' kg';
+    if (recomEl){
+      const pm=Math.max(0,stock.min-final_v), px=Math.max(0,stock.max-final_v);
+      recomEl.innerHTML=
+        (pm>0?'<span style="font-size:10px;background:rgba(217,119,6,0.1);color:#92400e;padding:1px 7px;border-radius:20px;font-weight:600">+'+pm+' para mínimo</span>':'')+
+        (px>0?'<span style="font-size:10px;background:rgba(10,110,53,0.08);color:var(--verde);padding:1px 7px;border-radius:20px;font-weight:600">+'+px+' para máximo</span>':'');
+    }
+  }
+  invActualizarResumen();
+}
+
+color:var(--verde);padding:1px 7px;border-radius:20px;font-weight:600">+${px} para máximo</span>`:'');
     }
   }
   invActualizarResumen();
