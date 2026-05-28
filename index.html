@@ -1226,7 +1226,7 @@ async function handleFormDiaSubmit(e) {
 
 async function renderRecientes() {
   const container = document.getElementById('tabla-recientes');
-  const mesSel    = document.getElementById('captura-mes-sel').value;
+  const mesSel    = (document.getElementById('captura-mes-sel')?.value || 'all');
   let desde, hasta;
   if (mesSel !== 'all') {
     const [y,m] = mesSel.split('-').map(Number);
@@ -1290,7 +1290,7 @@ async function eliminarDia(id, fecha) {
 }
 
 async function renderKPIs() {
-  const mesSel = document.getElementById('captura-mes-sel').value;
+  const mesSel = (document.getElementById('captura-mes-sel')?.value || 'all');
   const hoy    = new Date().toISOString().split('T')[0];
   let semActual;
   if (mesSel !== 'all') {
@@ -1344,7 +1344,7 @@ function setKPI(cardId, value, meta, label, sublabel, unit) {
 // =====================================================================
 async function renderSemanal() {
   const container = document.getElementById('semanas-list');
-  const mesSel    = document.getElementById('semanal-mes-sel').value;
+  const mesSel    = (document.getElementById('semanal-mes-sel')?.value || 'all');
   if (!semanas.length) {
     container.innerHTML = '<div class="empty"><div class="icon">📭</div><p>Sin semanas</p></div>';
     return;
@@ -1422,7 +1422,7 @@ async function renderSemanal() {
 // =====================================================================
 async function renderMes() {
   const container = document.getElementById('mes-content');
-  const mesSel    = document.getElementById('mes-mes-sel').value;
+  const mesSel    = (document.getElementById('mes-mes-sel')?.value || 'all');
   container.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
   const {desde, hasta} = getAllDateRange();
   const allRows = await fetchDiasByRange(desde, hasta);
@@ -1533,8 +1533,8 @@ function destroyChart(key) {
 }
 
 async function renderGraficas() {
-  const mesSel  = document.getElementById('graf-mes-sel').value;
-  const semSel  = document.getElementById('graf-semana-sel').value;
+  const mesSel  = (document.getElementById('graf-mes-sel')?.value || 'all');
+  const semSel  = (document.getElementById('graf-semana-sel')?.value || 'all');
   let allRows;
   if (semSel !== 'all') {
     const sem = semanas.find(s=>s.id===semSel);
