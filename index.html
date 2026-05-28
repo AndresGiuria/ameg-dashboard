@@ -838,7 +838,115 @@
     <div style="font-size:38px;margin-bottom:12px">📄</div>
     <p style="font-size:14px">Selecciona un período y presiona <strong>Generar reporte</strong></p>
   </div>
+
+<!-- INVENTARIO -->
+<div class="tab-pane" id="tab-inventario">
+  <div class="card" style="margin-bottom:14px">
+    <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;justify-content:space-between">
+      <div>
+        <h2 style="margin-bottom:8px">📦 Inventario Diario — Bolsas</h2>
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+          <label style="font-size:11px;font-weight:600;color:var(--texto-3)">FECHA</label>
+          <input type="date" id="inv-fecha-sel" style="border:1px solid var(--borde-2);border-radius:var(--radio);padding:7px 12px;font-size:13px;font-family:var(--font);background:rgba(255,255,255,0.8);color:var(--texto);outline:none">
+          <button class="btn btn-secondary btn-sm" onclick="invCargarDia()">🔄 Cargar día</button>
+        </div>
+      </div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap">
+        <button class="btn btn-primary btn-sm" onclick="invGuardarConteo()">💾 Guardar conteo</button>
+        <button class="btn btn-secondary btn-sm" onclick="invDescargarExcel()">⬇️ Descargar Excel</button>
+      </div>
+    </div>
+    <div id="inv-save-status" style="margin-top:10px;font-size:12px;color:var(--texto-3)"></div>
+  </div>
+  <div id="inv-alertas" style="margin-bottom:14px"></div>
+  <div id="alerta-inv-row" style="margin-bottom:14px"></div>
+  <div class="card" style="margin-bottom:14px">
+    <h2>🧊 Basement</h2>
+    <div id="inv-resumen-basement" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:16px;padding:14px;background:rgba(0,0,0,0.03);border-radius:var(--radio)">
+      <div style="text-align:center"><div style="font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;color:var(--texto-3);margin-bottom:4px">Cierre</div><div id="inv-b-cierre" style="font-size:20px;font-weight:800;font-family:var(--mono)">—</div></div>
+      <div style="text-align:center;align-self:center;font-size:16px;color:var(--texto-4)">−</div>
+      <div style="text-align:center"><div style="font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;color:var(--rojo);margin-bottom:4px">Pedidos</div><div id="inv-b-pedidos" style="font-size:20px;font-weight:800;font-family:var(--mono);color:var(--rojo)">—</div></div>
+      <div style="text-align:center;align-self:center;font-size:16px;color:var(--texto-4)">=</div>
+      <div style="text-align:center"><div style="font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;color:var(--texto-3);margin-bottom:4px">Ini Día</div><div id="inv-b-inicial" style="font-size:20px;font-weight:800;font-family:var(--mono)">—</div></div>
+      <div style="text-align:center;align-self:center;font-size:16px;color:var(--texto-4)">+</div>
+      <div style="text-align:center"><div style="font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;color:var(--verde);margin-bottom:4px">Producido</div><div id="inv-b-producido" style="font-size:20px;font-weight:800;font-family:var(--mono);color:var(--verde)">—</div></div>
+      <div style="text-align:center;align-self:center;font-size:16px;color:var(--texto-4)">=</div>
+      <div style="text-align:center"><div style="font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;color:var(--verde);margin-bottom:4px">Final</div><div id="inv-b-final" style="font-size:20px;font-weight:800;font-family:var(--verde)">—</div></div>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px" id="inv-carnes-grid"></div>
+  </div>
+  <div class="card" style="margin-bottom:14px">
+    <h2>🏪 Upstairs</h2>
+    <div id="inv-resumen-upstairs" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:16px;padding:14px;background:rgba(0,0,0,0.03);border-radius:var(--radio)">
+      <div style="text-align:center"><div style="font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;color:var(--texto-3);margin-bottom:4px">Cierre</div><div id="inv-u-cierre" style="font-size:20px;font-weight:800;font-family:var(--mono)">—</div></div>
+      <div style="text-align:center;align-self:center;font-size:16px;color:var(--texto-4)">−</div>
+      <div style="text-align:center"><div style="font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;color:var(--rojo);margin-bottom:4px">Pedidos</div><div id="inv-u-pedidos" style="font-size:20px;font-weight:800;font-family:var(--mono);color:var(--rojo)">—</div></div>
+      <div style="text-align:center;align-self:center;font-size:16px;color:var(--texto-4)">=</div>
+      <div style="text-align:center"><div style="font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;color:var(--texto-3);margin-bottom:4px">Ini Día</div><div id="inv-u-inicial" style="font-size:20px;font-weight:800;font-family:var(--mono)">—</div></div>
+      <div style="text-align:center;align-self:center;font-size:16px;color:var(--texto-4)">+</div>
+      <div style="text-align:center"><div style="font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;color:var(--verde);margin-bottom:4px">Producido</div><div id="inv-u-producido" style="font-size:20px;font-weight:800;font-family:var(--mono);color:var(--verde)">—</div></div>
+      <div style="text-align:center;align-self:center;font-size:16px;color:var(--texto-4)">=</div>
+      <div style="text-align:center"><div style="font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;color:var(--verde);margin-bottom:4px">Final</div><div id="inv-u-final" style="font-size:20px;font-weight:800;font-family:var(--mono);color:var(--verde)">—</div></div>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px" id="inv-upstairs-grid"></div>
+  </div>
+  <div class="card"><h2>📅 Historial de conteos</h2><div id="inv-historial" style="margin-top:12px"><div class="loading"><div class="spinner"></div></div></div></div>
 </div>
+
+<!-- POR MES -->
+<div class="tab-pane" id="tab-mes">
+  <div class="filter-bar">
+    <label>Mes:</label>
+    <select id="mes-mes-sel" onchange="renderMes()">
+      <option value="all">Todos</option>
+    </select>
+  </div>
+  <div id="mes-content"><div class="loading"><div class="spinner"></div></div></div>
+</div>
+
+<!-- GRÁFICAS -->
+<div class="tab-pane" id="tab-graficas">
+  <div class="filter-bar">
+    <label>Mes:</label>
+    <select id="graf-mes-sel" onchange="renderGraficas()"></select>
+    <span class="filter-sep">|</span>
+    <label>Semana:</label>
+    <select id="graf-semana-sel" onchange="renderGraficas()"></select>
+  </div>
+  <div id="graficas-content"><div class="loading"><div class="spinner"></div></div></div>
+  <div class="charts-grid" id="graficas-charts"></div>
+</div>
+
+<!-- SEMANAS -->
+<div class="tab-pane" id="tab-semanas">
+  <div class="card" style="margin-bottom:16px">
+    <h2>➕ Nueva Semana</h2>
+    <div class="form-grid" style="grid-template-columns:repeat(auto-fit,minmax(180px,1fr))">
+      <div class="form-group"><label>Fecha Inicio *</label><input type="date" id="ns-start2"></div>
+      <div class="form-group"><label>Fecha Fin *</label><input type="date" id="ns-end2"></div>
+      <div class="form-group"><label>Horas RH</label><input type="number" id="ns-horas2" min="0" step="0.01" placeholder="Ej. 340.00"></div>
+      <div class="form-group" style="justify-content:flex-end;padding-top:4px">
+        <label>&nbsp;</label>
+        <button class="btn btn-primary" onclick="crearNuevaSemana()">💾 Crear Semana</button>
+      </div>
+    </div>
+    <div id="ns-status" style="margin-top:10px;font-size:13px"></div>
+  </div>
+  <div id="semanas-list"><div class="loading"><div class="spinner"></div></div></div>
+</div>
+
+<!-- HISTORIAL -->
+<div class="tab-pane" id="tab-historial">
+  <div class="filter-bar">
+    <label>Mes:</label>
+    <select id="hist-mes-sel" onchange="renderHistorial()"></select>
+    <span class="filter-sep">|</span>
+    <label>Semana:</label>
+    <select id="hist-semana-sel" onchange="renderHistorial()"></select>
+  </div>
+  <div id="tabla-historial"><div class="loading"><div class="spinner"></div></div></div>
+</div>
+
 
 </main>
 <div id="toast"></div>
