@@ -667,257 +667,145 @@
 
 <!-- CAPTURA DÍA SUELTO -->
 <div class="tab-pane" id="tab-captura">
-  <div class="filter-bar">
-    <label>Mes:</label>
-    <select id="captura-mes-sel" onchange="renderRecientes()"></select>
-  </div>
-  <div class="card" style="margin-bottom:16px">
-    <h2>📄 Importar desde Bitácora PDF</h2>
-    <div class="upload-zone" id="pdf-zone">
-      <input type="file" id="pdf-input" accept=".pdf" multiple>
-      <div class="uz-icon" id="pdf-icon">📋</div>
-      <p id="pdf-label">Clic aquí o arrastra uno o varios PDFs de bitácora</p>
-      <small>Puedes subir varios días a la vez — extrae fila TOTAL de cada PDF</small>
-    </div>
-    <div id="pdf-result"></div>
-  </div>
-  <div class="card">
-    <h2>📋 Captura de Día Suelto</h2>
-    <form id="form-dia" autocomplete="off">
-      <div class="form-grid">
+  <div class="card" style="margin-bottom:14px">
+    <h2 style="margin-bottom:4px">Registrar día de producción</h2>
+    <p style="font-size:13px;color:var(--texto-3);margin-bottom:18px">Llena los datos del día y guarda.</p>
+    <form id="form-dia">
+      <div class="form-grid" style="grid-template-columns:1fr 1fr 1fr;margin-bottom:14px">
         <div class="form-group">
-          <label>Fecha *</label>
+          <label>Fecha <span style="color:var(--rojo)">*</span></label>
           <input type="date" id="f-fecha" required>
         </div>
         <div class="form-group">
-          <label>Semana</label>
-          <select id="f-semana-id"></select>
+          <label>Kg producidos <span style="color:var(--rojo)">*</span></label>
+          <input type="number" id="f-kg" min="0" step="0.01" placeholder="Ej. 620" required>
         </div>
         <div class="form-group">
-          <label>Kg producidos *</label>
-          <input type="number" id="f-kg" min="0" step="0.1" placeholder="Ej. 620.5" required>
-        </div>
-        <div class="form-group">
-          <label>Horas RH (excl. Mario A.H.) *</label>
-          <input type="number" id="f-horas" min="0" step="0.25" placeholder="Ej. 52.0" required>
-        </div>
-        <div class="form-group">
-          <label>Turno</label>
-          <select id="f-turno">
-            <option value="completo">Día completo</option>
-            <option value="mañana">Mañana</option>
-            <option value="tarde">Tarde</option>
-          </select>
-        </div>
-        <div class="form-group" style="grid-column:1/-1">
-          <label>Notas / incidencias</label>
-          <textarea id="f-notas" placeholder="Paros, mantenimiento, observaciones…"></textarea>
+          <label>Horas RH <span style="color:var(--rojo)">*</span></label>
+          <input type="number" id="f-horas" min="0" step="0.01" placeholder="Ej. 52">
         </div>
       </div>
-      <div class="form-actions">
-        <button type="submit" class="btn btn-primary" id="btn-guardar">💾 Guardar Registro</button>
-        <button type="button" class="btn btn-secondary" id="btn-limpiar">✕ Limpiar</button>
+      <div class="form-group" style="margin-bottom:16px">
+        <label>Notas (opcional)</label>
+        <textarea id="f-notas" placeholder="Paros, incidencias, observaciones…" style="min-height:60px"></textarea>
+      </div>
+      <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+        <button type="submit" class="btn btn-primary">💾 Guardar día</button>
+        <button type="button" class="btn btn-secondary btn-sm" onclick="invShowPDFImport()" style="font-size:11px">📄 Importar desde PDF</button>
       </div>
     </form>
   </div>
-  <br>
+
+  <!-- PDF import (oculto por defecto) -->
+  <div id="captura-pdf-section" style="display:none;margin-bottom:14px">
+    <div class="card">
+      <h2 style="margin-bottom:12px">Importar desde bitácora PDF</h2>
+      <div class="upload-zone" id="f-pdf-zone" onclick="document.getElementById('f-pdf-input').click()" ondragover="this.classList.add('drag');event.preventDefault()" ondragleave="this.classList.remove('drag')" ondrop="this.classList.remove('drag');event.preventDefault();handlePDFDrop(event.dataTransfer.files)">
+        <input type="file" id="f-pdf-input" accept=".pdf" multiple onchange="handlePDFFiles(this.files)">
+        <div class="uz-icon">📄</div>
+        <p>Arrastra el PDF de la bitácora aquí</p>
+        <small>Extrae el TOTAL automáticamente</small>
+      </div>
+      <div id="f-pdf-result" style="margin-top:12px"></div>
+    </div>
+  </div>
+
   <div class="card">
-    <h2>📅 Registros Recientes</h2>
-    <div id="tabla-recientes" class="table-wrap"><div class="loading"><div class="spinner"></div></div></div>
+    <h2 style="margin-bottom:12px">Registros recientes</h2>
+    <div id="captura-recientes"><div class="loading"><div class="spinner"></div></div></div>
   </div>
 </div>
 
 <!-- SEMANAL -->
-<div class="tab-pane" id="tab-semanal">
-  <div class="filter-bar">
-    <label>Mes:</label>
-    <select id="semanal-mes-sel" onchange="renderSemanal()"></select>
-  </div>
-
-  <!-- Nueva Semana -->
-  <div class="card" style="margin-bottom:16px">
-    <h2>➕ Nueva Semana</h2>
-    <div class="form-grid" style="grid-template-columns:repeat(auto-fit,minmax(180px,1fr))">
-      <div class="form-group">
-        <label>Fecha Inicio *</label>
-        <input type="date" id="ns-start">
-      </div>
-      <div class="form-group">
-        <label>Fecha Fin *</label>
-        <input type="date" id="ns-end">
-      </div>
-      <div class="form-group">
-        <label>Horas RH (opcional)</label>
-        <input type="number" id="ns-horas" min="0" step="0.01" placeholder="Ej. 340.00">
-      </div>
-      <div class="form-group" style="justify-content:flex-end;padding-top:4px">
-        <label>&nbsp;</label>
-        <button class="btn btn-primary" onclick="crearNuevaSemana()">
-          💾 Crear Semana
-        </button>
-      </div>
-    </div>
-    <div id="ns-status" style="margin-top:10px;font-size:13px"></div>
-  </div>
-
-  <div id="semanas-list"><div class="loading"><div class="spinner"></div></div></div>
-</div>
-
-<!-- POR MES -->
-<div class="tab-pane" id="tab-mes">
-  <div class="filter-bar">
-    <label>Mes:</label>
-    <select id="mes-mes-sel" onchange="renderMes()"></select>
-  </div>
-  <div id="mes-content"><div class="loading"><div class="spinner"></div></div></div>
-</div>
-
-<!-- HISTORIAL -->
-<div class="tab-pane" id="tab-historial">
-  <div class="filter-bar">
-    <label>Mes:</label>
-    <select id="hist-mes-sel" onchange="renderHistorial()"></select>
-    <span class="filter-sep">|</span>
-    <label>Semana:</label>
-    <select id="hist-semana-sel" onchange="renderHistorial()"></select>
-    <button class="btn btn-secondary btn-sm" onclick="exportCSV()" style="margin-left:auto">⬇ Exportar CSV</button>
-  </div>
+<div class="tab-pane" id="tab-semana-import">
   <div class="card">
-    <h2>📁 Historial Completo</h2>
-    <div id="tabla-historial" class="table-wrap"><div class="loading"><div class="spinner"></div></div></div>
-  </div>
-</div>
+    <h2 style="margin-bottom:4px">Cargar semana completa</h2>
+    <p style="font-size:13px;color:var(--texto-3);margin-bottom:24px">Sigue los pasos en orden.</p>
 
-<!-- GRÁFICAS -->
-<div class="tab-pane" id="tab-graficas">
-  <div class="filter-bar">
-    <label>Mes:</label>
-    <select id="graf-mes-sel" onchange="renderGraficas()"></select>
-    <span class="filter-sep">|</span>
-    <label>Semana:</label>
-    <select id="graf-semana-sel" onchange="renderGraficas()"></select>
-  </div>
-  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(480px,1fr));gap:16px">
-    <div class="chart-card">
-      <h3>📦 Kg Producidos vs Meta (600 kg/día)</h3>
-      <div class="chart-sub">barras por día — verde = meta cumplida</div>
-      <div class="chart-wrap tall"><canvas id="chart-kg"></canvas></div>
-    </div>
-    <div class="chart-card">
-      <h3>⚡ Eficiencia kg/h vs Meta (12 kg/h)</h3>
-      <div class="chart-sub">línea por día</div>
-      <div class="chart-wrap tall"><canvas id="chart-efic"></canvas></div>
-    </div>
-    <div class="chart-card">
-      <h3>📊 Kg por Semana</h3>
-      <div class="chart-sub">vs meta semanal 3,600 kg</div>
-      <div class="chart-wrap tall"><canvas id="chart-semanas"></canvas></div>
-    </div>
-    <div class="chart-card">
-      <h3>🕐 Horas RH por Semana</h3>
-      <div class="chart-sub">total horas sin Mario A.H.</div>
-      <div class="chart-wrap tall"><canvas id="chart-rh"></canvas></div>
-    </div>
-  </div>
-</div>
-
-<!-- INVENTARIO -->
-<div class="tab-pane" id="tab-inventario">
-
-  <!-- Header -->
-  <div class="card" style="margin-bottom:14px">
-    <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;justify-content:space-between">
-      <div>
-        <h2 style="margin-bottom:8px">📦 Inventario Diario — Bolsas</h2>
-        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-          <label style="font-size:11px;font-weight:600;color:var(--texto-3)">FECHA</label>
-          <input type="date" id="inv-fecha-sel"
-            style="border:1px solid var(--borde-2);border-radius:var(--radio);padding:7px 12px;font-size:13px;font-family:var(--font);background:rgba(255,255,255,0.8);color:var(--texto);outline:none">
-          <button class="btn btn-secondary btn-sm" onclick="invCargarDia()">🔄 Cargar día</button>
+    <!-- Paso 1: Semana -->
+    <div style="display:flex;gap:14px;margin-bottom:24px">
+      <div style="width:28px;height:28px;border-radius:50%;background:rgba(10,110,53,0.1);border:1px solid rgba(10,110,53,0.3);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:600;color:var(--verde);flex-shrink:0;margin-top:2px">1</div>
+      <div style="flex:1">
+        <div style="font-size:14px;font-weight:600;color:var(--texto);margin-bottom:4px">Selecciona o crea la semana</div>
+        <div style="font-size:12px;color:var(--texto-3);margin-bottom:10px">¿Ya existe? Selecciónala. Si no, créala aquí.</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+          <select id="sw-semana-sel" onchange="swSeleccionarSemana(this.value)" style="flex:1;min-width:180px;border:1px solid var(--borde-2);border-radius:var(--radio);padding:8px 12px;font-size:13px;background:rgba(255,255,255,0.8);font-family:var(--font);outline:none;color:var(--texto)">
+            <option value="">— Selecciona una semana —</option>
+          </select>
+          <button class="btn btn-secondary btn-sm" onclick="swToggleNuevaSemana()">➕ Nueva semana</button>
+        </div>
+        <!-- Form nueva semana inline -->
+        <div id="sw-nueva-sem-form" style="display:none;margin-top:12px;padding:14px;background:rgba(0,0,0,0.03);border-radius:var(--radio);border:1px solid var(--borde)">
+          <div class="form-grid" style="grid-template-columns:1fr 1fr;margin-bottom:10px">
+            <div class="form-group"><label>Fecha inicio *</label><input type="date" id="ns-start"></div>
+            <div class="form-group"><label>Fecha fin *</label><input type="date" id="ns-end"></div>
+          </div>
+          <div style="font-size:12px;color:var(--texto-3);margin-bottom:10px">Label: <span id="ns-label-preview" style="font-weight:600;color:var(--texto)">—</span></div>
+          <button class="btn btn-primary btn-sm" onclick="crearNuevaSemana()">💾 Crear semana</button>
         </div>
       </div>
-      <div style="display:flex;gap:10px;flex-wrap:wrap">
-        <button class="btn btn-primary btn-sm" onclick="invGuardarConteo()">💾 Guardar conteo</button>
-        <button class="btn btn-secondary btn-sm" onclick="invDescargarExcel()">⬇️ Descargar Excel</button>
+    </div>
+
+    <!-- Paso 2: PDFs -->
+    <div style="display:flex;gap:14px;margin-bottom:24px">
+      <div style="width:28px;height:28px;border-radius:50%;background:var(--surface-2);border:1px solid var(--borde);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:600;color:var(--texto-3);flex-shrink:0;margin-top:2px">2</div>
+      <div style="flex:1">
+        <div style="font-size:14px;font-weight:600;color:var(--texto);margin-bottom:4px">Sube los PDFs de bitácora <span style="font-size:11px;font-weight:400;color:var(--texto-3)">(hasta 7)</span></div>
+        <div style="font-size:12px;color:var(--texto-3);margin-bottom:10px">Uno por día — el sistema extrae los kg del TOTAL automáticamente.</div>
+        <div class="upload-zone" id="sw-pdf-zone" onclick="document.getElementById('sw-pdf-input').click()" ondragover="this.classList.add('drag');event.preventDefault()" ondragleave="this.classList.remove('drag')" ondrop="this.classList.remove('drag');event.preventDefault();swHandlePDFs(event.dataTransfer.files)" style="padding:18px">
+          <input type="file" id="sw-pdf-input" accept=".pdf" multiple onchange="swHandlePDFs(this.files)">
+          <div class="uz-icon" id="sw-pdf-icon">📄</div>
+          <p id="sw-pdf-label">Arrastra los PDFs aquí o haz clic</p>
+          <small>Puedes subir hasta 7 PDFs a la vez</small>
+        </div>
+        <div id="sw-pdf-result" style="margin-top:10px"></div>
       </div>
     </div>
-    <div id="inv-save-status" style="margin-top:10px;font-size:12px;color:var(--texto-3)"></div>
-  </div>
 
-  <!-- Alertas -->
-  <div id="inv-alertas" style="margin-bottom:14px"></div>
-
-  <!-- Resumen Basement -->
-  <div class="card" style="margin-bottom:14px">
-    <h2>🧊 Basement</h2>
-    <div id="inv-resumen-basement" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:16px;padding:14px;background:rgba(0,0,0,0.03);border-radius:var(--radio)">
-      <div style="text-align:center">
-        <div style="font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;color:var(--texto-3);margin-bottom:4px">Inv Cierre</div>
-        <div id="inv-b-cierre" style="font-size:20px;font-weight:800;font-family:var(--mono)">—</div>
-      </div>
-      <div style="text-align:center;align-self:center;font-size:16px;color:var(--texto-4)">−</div>
-      <div style="text-align:center">
-        <div style="font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;color:var(--rojo);margin-bottom:4px">Pedidos</div>
-        <div id="inv-b-pedidos" style="font-size:20px;font-weight:800;font-family:var(--mono);color:var(--rojo)">—</div>
-      </div>
-      <div style="text-align:center;align-self:center;font-size:16px;color:var(--texto-4)">=</div>
-      <div style="text-align:center">
-        <div style="font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;color:var(--texto-3);margin-bottom:4px">Inv Inicial Día</div>
-        <div id="inv-b-inicial" style="font-size:20px;font-weight:800;font-family:var(--mono)">—</div>
-      </div>
-      <div style="text-align:center;align-self:center;font-size:16px;color:var(--texto-4)">+</div>
-      <div style="text-align:center">
-        <div style="font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;color:var(--verde);margin-bottom:4px">Producido</div>
-        <div id="inv-b-producido" style="font-size:20px;font-weight:800;font-family:var(--mono);color:var(--verde)">—</div>
-      </div>
-      <div style="text-align:center;align-self:center;font-size:16px;color:var(--texto-4)">=</div>
-      <div style="text-align:center">
-        <div style="font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;color:var(--verde);margin-bottom:4px">Inv Final</div>
-        <div id="inv-b-final" style="font-size:20px;font-weight:800;font-family:var(--mono);color:var(--verde)">—</div>
+    <!-- Paso 3: CSV horas -->
+    <div style="display:flex;gap:14px;margin-bottom:24px">
+      <div style="width:28px;height:28px;border-radius:50%;background:var(--surface-2);border:1px solid var(--borde);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:600;color:var(--texto-3);flex-shrink:0;margin-top:2px">3</div>
+      <div style="flex:1">
+        <div style="font-size:14px;font-weight:600;color:var(--texto);margin-bottom:4px">Sube el CSV de horas 7shifts <span style="font-size:11px;font-weight:400;color:var(--texto-3)">(opcional)</span></div>
+        <div style="font-size:12px;color:var(--texto-3);margin-bottom:10px">Mario Alberto se excluye automáticamente.</div>
+        <div class="upload-zone" id="sw-csv-zone" onclick="document.getElementById('sw-csv-input').click()" ondragover="this.classList.add('drag');event.preventDefault()" ondragleave="this.classList.remove('drag')" ondrop="this.classList.remove('drag');event.preventDefault();swProcesarHoras(event.dataTransfer.files[0])" style="padding:18px">
+          <input type="file" id="sw-csv-input" accept=".csv,.xlsx,.xls" onchange="swProcesarHoras(this.files[0])">
+          <div class="uz-icon" id="sw-csv-icon">📊</div>
+          <p id="sw-csv-label">Arrastra el CSV aquí o haz clic</p>
+          <small>Mario Alberto se excluye automáticamente</small>
+        </div>
+        <!-- Horas manuales -->
+        <div style="display:flex;align-items:center;gap:10px;margin-top:10px;flex-wrap:wrap">
+          <span style="font-size:12px;color:var(--texto-3)">¿Sin CSV? Ingresa las horas manualmente:</span>
+          <input type="number" id="sw-horas-manual" min="0" step="0.01" placeholder="Ej. 326.32" style="width:120px;border:1px solid var(--borde-2);border-radius:var(--radio);padding:6px 10px;font-size:13px;font-family:var(--font);background:rgba(255,255,255,0.8);outline:none">
+          <button class="btn btn-secondary btn-sm" onclick="swAplicarHorasManual()">✓ Aplicar</button>
+          <span id="sw-horas-status" style="font-size:12px;color:var(--texto-3)"></span>
+        </div>
       </div>
     </div>
-    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px" id="inv-carnes-grid"></div>
-  </div>
 
-  <!-- Resumen Upstairs -->
-  <div class="card" style="margin-bottom:14px">
-    <h2>🏪 Upstairs</h2>
-    <div id="inv-resumen-upstairs" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:16px;padding:14px;background:rgba(0,0,0,0.03);border-radius:var(--radio)">
-      <div style="text-align:center">
-        <div style="font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;color:var(--texto-3);margin-bottom:4px">Inv Cierre</div>
-        <div id="inv-u-cierre" style="font-size:20px;font-weight:800;font-family:var(--mono)">—</div>
-      </div>
-      <div style="text-align:center;align-self:center;font-size:16px;color:var(--texto-4)">−</div>
-      <div style="text-align:center">
-        <div style="font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;color:var(--rojo);margin-bottom:4px">Pedidos</div>
-        <div id="inv-u-pedidos" style="font-size:20px;font-weight:800;font-family:var(--mono);color:var(--rojo)">—</div>
-      </div>
-      <div style="text-align:center;align-self:center;font-size:16px;color:var(--texto-4)">=</div>
-      <div style="text-align:center">
-        <div style="font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;color:var(--texto-3);margin-bottom:4px">Inv Inicial Día</div>
-        <div id="inv-u-inicial" style="font-size:20px;font-weight:800;font-family:var(--mono)">—</div>
-      </div>
-      <div style="text-align:center;align-self:center;font-size:16px;color:var(--texto-4)">+</div>
-      <div style="text-align:center">
-        <div style="font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;color:var(--verde);margin-bottom:4px">Producido</div>
-        <div id="inv-u-producido" style="font-size:20px;font-weight:800;font-family:var(--mono);color:var(--verde)">—</div>
-      </div>
-      <div style="text-align:center;align-self:center;font-size:16px;color:var(--texto-4)">=</div>
-      <div style="text-align:center">
-        <div style="font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;color:var(--verde);margin-bottom:4px">Inv Final</div>
-        <div id="inv-u-final" style="font-size:20px;font-weight:800;font-family:var(--mono);color:var(--verde)">—</div>
+    <!-- Paso 4: Guardar -->
+    <div style="display:flex;gap:14px">
+      <div style="width:28px;height:28px;border-radius:50%;background:var(--surface-2);border:1px solid var(--borde);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:600;color:var(--texto-3);flex-shrink:0;margin-top:2px">4</div>
+      <div style="flex:1">
+        <div style="font-size:14px;font-weight:600;color:var(--texto);margin-bottom:4px">Guarda la semana</div>
+        <div style="font-size:12px;color:var(--texto-3);margin-bottom:10px">Se guardan los kg y las horas en Supabase.</div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap">
+          <button class="btn btn-primary" onclick="swGuardarTodo()">💾 Guardar semana completa</button>
+          <button class="btn btn-secondary btn-sm" onclick="swSoloGuardarHoras()">🕐 Guardar solo horas</button>
+        </div>
+        <div id="sw-save-status" style="margin-top:8px;font-size:12px;color:var(--texto-3)"></div>
       </div>
     </div>
-    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px" id="inv-upstairs-grid"></div>
-  </div>
 
-  <!-- Historial -->
-  <div class="card">
-    <h2>📅 Historial de conteos</h2>
-    <div id="inv-historial" style="margin-top:12px"><div class="loading"><div class="spinner"></div></div></div>
+    <!-- Preview -->
+    <div id="sw-preview" style="display:none;margin-top:20px;padding-top:20px;border-top:1px solid var(--borde)">
+      <h2 style="margin-bottom:12px">Vista previa</h2>
+      <div id="sw-preview-content"></div>
+    </div>
   </div>
-
 </div>
+
 
 <!-- CALENDARIO -->
 <div class="tab-pane" id="tab-calendario">
@@ -926,6 +814,30 @@
     <select id="cal-mes-sel" onchange="renderCalendario()"></select>
   </div>
   <div id="cal-content"><div class="loading"><div class="spinner"></div></div></div>
+</div>
+
+<!-- REPORTE EJECUTIVO -->
+<div class="tab-pane" id="tab-reporte">
+  <div class="card" style="margin-bottom:14px">
+    <h2>📄 Reporte Ejecutivo</h2>
+    <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-top:8px">
+      <div style="display:flex;align-items:center;gap:8px">
+        <label style="font-size:11px;font-weight:600;color:var(--texto-3)">PERÍODO:</label>
+        <select id="rep-periodo" style="border:1px solid var(--borde-2);border-radius:var(--radio);padding:7px 12px;font-size:13px;background:rgba(255,255,255,0.8);font-family:var(--font);outline:none;color:var(--texto)">
+          <option value="mes" selected>Mes actual</option>
+          <option value="semana">Semana actual</option>
+          <option value="semana-ant">Semana anterior</option>
+        </select>
+      </div>
+      <button class="btn btn-primary" onclick="repGenerar()">🔄 Generar reporte</button>
+      <button class="btn btn-secondary" id="rep-btn-pdf" style="display:none" onclick="repDescargarPDF()">⬇️ Descargar PDF</button>
+    </div>
+  </div>
+  <div id="rep-preview" style="display:none"></div>
+  <div id="rep-empty" style="text-align:center;padding:48px;color:var(--texto-3)">
+    <div style="font-size:38px;margin-bottom:12px">📄</div>
+    <p style="font-size:14px">Selecciona un período y presiona <strong>Generar reporte</strong></p>
+  </div>
 </div>
 
 </main>
@@ -1231,6 +1143,7 @@ async function handleNuevaSemanaSubmit(e) {
   semanas.sort((a,b) => a.fecha_inicio.localeCompare(b.fecha_inicio));
   populateSelects();
   populateMonthSelects();
+  swPopulateSemanaSelect();
   toast('Semana "' + label + '" creada ✓', 'ok');
   document.getElementById('form-nueva-semana').reset();
   document.getElementById('ns-label')._userEdited = false;
@@ -2361,6 +2274,7 @@ function renderCSVResult(employees,totalIncluido,totalExcluido) {
 async function refreshAll() {
   populateSelects();
   populateMonthSelects();
+  swPopulateSemanaSelect();
   await renderKPIs();
   await renderRecientes();
   const activeTab=document.querySelector('.tab-pane.active')?.id;
@@ -3902,6 +3816,55 @@ async function repDescargarPDF() {
   }).from(el).save().then(()=>{ toast('PDF descargado ✓','ok'); });
 }
 
+
+// ── Día Suelto helpers ───────────────────────────────────────
+function invShowPDFImport(){
+  const el = document.getElementById('captura-pdf-section');
+  if (el) el.style.display = el.style.display==='none' ? 'block' : 'none';
+}
+
+// ── Semanal helpers ──────────────────────────────────────────
+function swSeleccionarSemana(semId){
+  swSemanaId = semId || null;
+}
+
+function swToggleNuevaSemana(){
+  const el = document.getElementById('sw-nueva-sem-form');
+  if (el) el.style.display = el.style.display==='none' ? 'block' : 'none';
+}
+
+function swHandlePDFs(files){
+  if (!files||!files.length) return;
+  swProcesarPDFs(Array.from(files));
+}
+
+// Update semana select options
+function swPopulateSemanaSelect(){
+  const sel = document.getElementById('sw-semana-sel');
+  if (!sel || !semanas.length) return;
+  const current = sel.value;
+  sel.innerHTML = '<option value="">— Selecciona una semana —</option>' +
+    [...semanas].sort((a,b)=>b.fecha_inicio.localeCompare(a.fecha_inicio))
+      .map(s=>'<option value="'+s.id+'"'+(s.id===current?' selected':'')+'>'+weekLabel(s)+'</option>')
+      .join('');
+}
+
+// Update label preview in nueva semana form
+function swUpdateNsPreview(){
+  const start = document.getElementById('ns-start')?.value;
+  const end   = document.getElementById('ns-end')?.value;
+  const prev  = document.getElementById('ns-label-preview');
+  if (!prev) return;
+  if (!start||!end){ prev.textContent='—'; return; }
+  const meses=['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+  const [sy,sm,sd]=start.split('-').map(Number);
+  const [ey,em,ed]=end.split('-').map(Number);
+  const n = semanas.length+1;
+  prev.textContent = sm===em
+    ? 'Sem '+n+' ('+sd+'–'+ed+' '+meses[sm-1]+')'
+    : 'Sem '+n+' ('+sd+' '+meses[sm-1]+'–'+ed+' '+meses[em-1]+')';
+}
+
 // =====================================================================
 // NAVEGACIÓN
 // =====================================================================
@@ -3942,8 +3905,8 @@ document.addEventListener('DOMContentLoaded', async ()=>{
   const formNuevaSem = document.getElementById('form-nueva-semana');
 
   if (nsLabel) nsLabel.addEventListener('input', function() { this._userEdited = !!this.value; });
-  if (nsStart) nsStart.addEventListener('change', autoFillWeekLabel);
-  if (nsEnd)   nsEnd.addEventListener('change', autoFillWeekLabel);
+  if (nsStart) nsStart.addEventListener('change', ()=>{ autoFillWeekLabel(); swUpdateNsPreview(); });
+  if (nsEnd)   nsEnd.addEventListener('change', ()=>{ autoFillWeekLabel(); swUpdateNsPreview(); });
   if (fFecha)  fFecha.addEventListener('change', e => autoSelectSemana(e.target.value));
   if (formDia) formDia.addEventListener('submit', handleFormDiaSubmit);
   if (btnLimpiar) btnLimpiar.addEventListener('click', () => { document.getElementById('form-dia').reset(); setTodayDate(); });
