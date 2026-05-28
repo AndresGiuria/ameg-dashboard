@@ -1124,11 +1124,11 @@ function sugerirSiguienteSemana() {
 async function handleNuevaSemanaSubmit(e) {
   e.preventDefault();
   const btn   = document.getElementById('btn-crear-semana');
-  const label = document.getElementById('ns-label').value.trim();
+  const label = (document.getElementById('ns-label')?.value || '').trim();
   const start = document.getElementById('ns-start').value;
   const end   = document.getElementById('ns-end').value;
-  const horas = parseFloat(document.getElementById('ns-horas').value) || null;
-  const notas = document.getElementById('ns-notas').value.trim() || null;
+  const horas = parseFloat((document.getElementById('ns-horas')?.value || '')) || null;
+  const notas = (document.getElementById('ns-notas')?.value || '').trim() || null;
   if (!label || !start || !end) { toast('Completa los campos obligatorios', 'err'); return; }
   if (start > end) { toast('La fecha inicio debe ser antes de la fecha fin', 'err'); return; }
   const overlap = semanas.find(s => start <= s.fecha_fin && end >= s.fecha_inicio);
@@ -1177,10 +1177,10 @@ async function handleFormDiaSubmit(e) {
   const btn = document.getElementById('btn-guardar');
   btn.disabled = true; btn.textContent = 'Guardando…';
   const fecha     = document.getElementById('f-fecha').value;
-  let   semana_id = document.getElementById('f-semana-id').value || null;
+  let   semana_id = (document.getElementById('f-semana-id')?.value || '') || null;
   const kg        = parseFloat(document.getElementById('f-kg').value);
   const horas     = parseFloat(document.getElementById('f-horas').value) || null;
-  const turno     = document.getElementById('f-turno').value || null;
+  const turno     = (document.getElementById('f-turno')?.value || '') || null;
   const notas     = document.getElementById('f-notas').value.trim();
 
   if (!semana_id || semana_id === '') {
@@ -1488,8 +1488,8 @@ async function renderMes() {
 // TAB: HISTORIAL
 // =====================================================================
 async function renderHistorial() {
-  const mesSel    = document.getElementById('hist-mes-sel').value;
-  const semanaSel = document.getElementById('hist-semana-sel').value;
+  const mesSel    = (document.getElementById('hist-mes-sel')?.value || '');
+  const semanaSel = (document.getElementById('hist-semana-sel')?.value || '');
   const container = document.getElementById('tabla-historial');
   container.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
   let rows;
@@ -3544,7 +3544,7 @@ async function invCargarHistorial(){
       const totalFinal=items.reduce((a,r)=>a+(r.inv_final||0),0);
       const criticos=items.filter(r=>{const s=getStockInfo(r.producto);return s&&(r.inv_final||0)<s.min;}).length;
       return `<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:rgba(255,255,255,0.5);border-radius:8px;border:1px solid var(--glass-borde);cursor:pointer"
-        onclick="document.getElementById('inv-fecha-sel').value='${fecha}';invCargarDia()">
+        onclick="(document.getElementById('inv-fecha-sel')?.value || '')='${fecha}';invCargarDia()">
         <div>
           <div style="font-size:13px;font-weight:600">${fecha}</div>
           <div style="font-size:11px;color:var(--texto-3)">${items.length} productos · ${totalFinal} bolsas finales</div>
