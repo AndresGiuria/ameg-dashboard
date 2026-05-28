@@ -714,6 +714,11 @@
     <h2 style="margin-bottom:12px">Registros recientes</h2>
     <div id="captura-recientes"><div class="loading"><div class="spinner"></div></div></div>
   </div>
+  <div class="card" style="margin-top:14px">
+    <h2 style="margin-bottom:12px">Registros recientes</h2>
+    <div id="tabla-recientes"><div class="loading"><div class="spinner"></div></div></div>
+  </div>
+
 </div>
 
 <!-- SEMANAL -->
@@ -913,8 +918,19 @@
     <label>Semana:</label>
     <select id="graf-semana-sel" onchange="renderGraficas()"></select>
   </div>
-  <div id="graficas-content"><div class="loading"><div class="spinner"></div></div></div>
-  <div class="charts-grid" id="graficas-charts"></div>
+  <div id="graficas-content"></div>
+  <div class="charts-grid" id="graficas-charts">
+    <div class="chart-card">
+      <h3>Kg producidos por día</h3>
+      <div class="chart-sub">vs meta 600 kg/día</div>
+      <div class="chart-wrap tall"><canvas id="chart-kg"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <h3>Eficiencia kg/h</h3>
+      <div class="chart-sub">por día — meta 12 kg/h</div>
+      <div class="chart-wrap tall"><canvas id="chart-efic"></canvas></div>
+    </div>
+  </div>
 </div>
 
 <!-- SEMANAS -->
@@ -2433,7 +2449,7 @@ async function renderKgMesYTop3() {
   // Top 3 from dias_productos if available, otherwise use dias data
   const {data: prods} = await db
     .from('dias_productos')
-    .select('producto, kg_final, kg_inicial, fecha')
+    .select('producto, kg_fin, kg_inicio, fecha')
     .gte('fecha', mesInicio)
     .lte('fecha', mesFin);
 
@@ -2442,7 +2458,7 @@ async function renderKgMesYTop3() {
     const totProd = {};
     prods.forEach(p => {
       const prod = p.producto || 'OTRO';
-      const kg = (p.kg_final||0) - (p.kg_inicial||0);
+      const kg = (p.kg_fin||0) - (p.kg_inicio||0);
       totProd[prod] = (totProd[prod]||0) + Math.max(kg,0);
     });
     top3 = Object.entries(totProd)
