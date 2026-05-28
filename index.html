@@ -3368,7 +3368,7 @@ async function invCargarDia(){
   statusEl.textContent = hoyData?.length>0
     ? `✅ Conteo del ${fecha} cargado`
     : ayerData?.length>0
-      ? `📋 Inv cierre jalado del ${ayerStr}`
+      ? '📋 Inv cierre jalado del '+ayerStr
       : '📋 Sin datos previos — inicia desde cero';
 
   invRenderGrid(basement, upstairs);
@@ -3432,10 +3432,10 @@ function invRenderGrid(basement, upstairs){
         </div>
         <div>
           <div style="font-size:9px;color:#185FA5;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:3px">Ini día</div>
-          <input type="number" value="${inv_inicial}" min="0" step="1"
-            data-inv-prod="${prod}" data-inv-field="ini"
-            style="width:100%;font-size:14px;font-weight:600;font-family:var(--mono);text-align:center;border:0.5px solid rgba(24,95,165,0.2);border-radius:6px;padding:5px 2px;background:rgba(230,241,251,0.6);outline:none;color:#185FA5"
-            oninput="invRecalcularDirecto('${p2}')">
+          <div id="inv-ini-${safeId}"
+            style="width:100%;font-size:14px;font-weight:600;font-family:var(--mono);text-align:center;border:0.5px solid rgba(24,95,165,0.2);border-radius:6px;padding:5px 2px;background:rgba(230,241,251,0.6);color:#185FA5">
+            ${inv_inicial}
+          </div>
         </div>
         <div>
           <div style="font-size:9px;color:var(--verde);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:3px">Producido</div>
@@ -3468,7 +3468,7 @@ function invRecalcular(prod){
   const cierreEl  = document.querySelector('[data-inv-prod="'+prod+'"][data-inv-field="cierre"]');
   const pedidosEl = document.querySelector('[data-inv-prod="'+prod+'"][data-inv-field="pedidos"]');
   const prodEl    = document.querySelector('[data-inv-prod="'+prod+'"][data-inv-field="producido"]');
-  const iniInputEl= document.querySelector('[data-inv-prod="'+prod+'"][data-inv-field="ini"]');
+  const iniDiv    = document.getElementById('inv-ini-'+safeId);
   const finalEl   = document.getElementById('inv-final-'+safeId);
   const bigEl     = document.getElementById('inv-big-'+safeId);
   const barEl     = document.getElementById('inv-bar-'+safeId);
@@ -3477,53 +3477,26 @@ function invRecalcular(prod){
 
   if (!cierreEl||!pedidosEl||!prodEl) return;
 
-  const cierre   = parseFloat(cierreEl.value)||0;
-  const pedidos  = parseFloat(pedidosEl.value)||0;
-  const producido= parseFloat(prodEl.value)||0;
-  const ini      = Math.max(0, cierre - pedidos);
-  const final_v  = ini + producido;
+  const cierre    = parseFloat(cierreEl.value)||0;
+  const pedidos   = parseFloat(pedidosEl.value)||0;
+  const producido = parseFloat(prodEl.value)||0;
+  const ini       = Math.max(0, cierre - pedidos);
+  const final_v   = ini + producido;
 
-  if (iniInputEl) iniInputEl.value = ini;
-  if (finalEl) finalEl.textContent = final_v;
-  if (bigEl)   bigEl.textContent   = final_v;
+  if (iniDiv)  iniDiv.textContent   = ini;
+  if (finalEl) finalEl.textContent  = final_v;
+  if (bigEl)   bigEl.textContent    = final_v;
 
   const stock = getStockInfo(prod);
   if (stock){
     const pct = Math.min(Math.round(final_v/stock.max*100),100);
-    let barColor='var(--verde-3)';
-    if (final_v<=0)           barColor='var(--rojo-2)';
-    else if (final_v<stock.min*0.6) barColor='var(--rojo-2)';
-    else if (final_v<stock.min)     barColor='#d97706';
-    else if (final_v>stock.max)     barColor='#d97706';
-    if (barEl){ barEl.style.width=pct+'%'; barEl.style.background=barColor; }
+    let bc = 'var(--verde-3)';
+    if (final_v<=0)              bc='var(--rojo-2)';
+    else if (final_v<stock.min*0.6) bc='var(--rojo-2)';
+    else if (final_v<stock.min)     bc='#d97706';
+    else if (final_v>stock.max)     bc='#d97706';
+    if (barEl){ barEl.style.width=pct+'%'; barEl.style.background=bc; }
     if (kgEl)  kgEl.textContent=(final_v*stock.kg_bolsa).toFixed(1)+' kg';
-    if (recomEl){
-      const pm=Math.max(0,stock.min-final_v), px=Math.max(0,stock.max-final_v);
-      recomEl.innerHTML=
-        (pm>0?`<span style="font-size:10px;background:rgba(217,119,6,0.1);color:#92400e;padding:1px 7px;border-radius:20px;font-weight:600">+${pm} para mínimo</span>`:'')+
-        (px>0?`<span style="font-size:10px;background:rgba(10,110,53,0.08);
-function invRecalcularDirecto(prod){
-  const safeId   = prod.replace(/[\s/]/g,'-');
-  const iniEl    = document.querySelector('[data-inv-prod="'+prod+'"][data-inv-field="ini"]');
-  const prodEl   = document.querySelector('[data-inv-prod="'+prod+'"][data-inv-field="producido"]');
-  const finalEl  = document.getElementById('inv-final-'+safeId);
-  const bigEl    = document.getElementById('inv-big-'+safeId);
-  const barEl    = document.getElementById('inv-bar-'+safeId);
-  const kgEl     = document.getElementById('inv-kg-'+safeId);
-  const recomEl  = document.getElementById('inv-recom-'+safeId);
-  if (!iniEl||!prodEl) return;
-  const ini      = parseFloat(iniEl.value)||0;
-  const producido= parseFloat(prodEl.value)||0;
-  const final_v  = ini + producido;
-  if (finalEl) finalEl.textContent = final_v;
-  if (bigEl)   bigEl.textContent   = final_v;
-  const stock = getStockInfo(prod);
-  if (stock){
-    const pct=Math.min(Math.round(final_v/stock.max*100),100);
-    let bc='var(--verde-3)';
-    if (final_v<=0) bc='var(--rojo-2)'; else if(final_v<stock.min*0.6) bc='var(--rojo-2)'; else if(final_v<stock.min) bc='#d97706'; else if(final_v>stock.max) bc='#d97706';
-    if (barEl){barEl.style.width=pct+'%';barEl.style.background=bc;}
-    if (kgEl) kgEl.textContent=(final_v*stock.kg_bolsa).toFixed(1)+' kg';
     if (recomEl){
       const pm=Math.max(0,stock.min-final_v), px=Math.max(0,stock.max-final_v);
       recomEl.innerHTML=
@@ -3534,19 +3507,14 @@ function invRecalcularDirecto(prod){
   invActualizarResumen();
 }
 
-color:var(--verde);padding:1px 7px;border-radius:20px;font-weight:600">+${px} para máximo</span>`:'');
-    }
-  }
-  invActualizarResumen();
-}
 
 function invActualizarResumen(){
   const calcSec = (prods) => {
     let cierre=0,pedidos=0,inicial=0,producido=0,final=0;
     for (const prod of prods){
-      const c = parseFloat(document.querySelector(`[data-inv-prod="${prod}"][data-inv-field="cierre"]`)?.value)||0;
-      const p = parseFloat(document.querySelector(`[data-inv-prod="${prod}"][data-inv-field="pedidos"]`)?.value)||0;
-      const pr= parseFloat(document.querySelector(`[data-inv-prod="${prod}"][data-inv-field="producido"]`)?.value)||0;
+      const c = parseFloat(document.querySelector('[data-inv-prod="'+prod+'"][data-inv-field="cierre"]')?.value)||0;
+      const p = parseFloat(document.querySelector('[data-inv-prod="'+prod+'"][data-inv-field="pedidos"]')?.value)||0;
+      const pr= parseFloat(document.querySelector('[data-inv-prod="'+prod+'"][data-inv-field="producido"]')?.value)||0;
       const ini=Math.max(0,c-p);
       cierre+=c; pedidos+=p; inicial+=ini; producido+=pr; final+=ini+pr;
     }
@@ -3578,9 +3546,9 @@ function invActualizarAlertas(){
   }
   if (alertas.length>0){
     alertasEl.innerHTML=alertas.map(a=>
-      `<div class="inv-alerta ${a.tipo}" style="margin-bottom:6px">
-        ${a.tipo==='critico'?'🚨':'⚡'} <strong>${a.prod}</strong>: ${a.final_v} bolsas — ${a.msg}
-      </div>`).join('');
+      '<div class="inv-alerta '+a.tipo+'" style="margin-bottom:6px">'+
+      (a.tipo==='critico'?'🚨':'⚡')+' <strong>'+a.prod+'</strong>: '+a.final_v+' bolsas — '+a.msg+
+      '</div>').join('');
   } else {
     alertasEl.innerHTML='<div class="inv-alerta ok">✅ Todos los productos dentro del rango</div>';
   }
@@ -3594,9 +3562,9 @@ async function invGuardarConteo(){
 
   const rows=[];
   for (const prod of [...INV_BASEMENT,...INV_UPSTAIRS]){
-    const cierreEl = document.querySelector(`[data-inv-prod="${prod}"][data-inv-field="cierre"]`);
-    const pedidosEl= document.querySelector(`[data-inv-prod="${prod}"][data-inv-field="pedidos"]`);
-    const prodEl   = document.querySelector(`[data-inv-prod="${prod}"][data-inv-field="producido"]`);
+    const cierreEl = document.querySelector('[data-inv-prod="'+prod+'"][data-inv-field="cierre"');
+    const pedidosEl= document.querySelector('[data-inv-prod="'+prod+'"][data-inv-field="pedidos"');
+    const prodEl   = document.querySelector('[data-inv-prod="'+prod+'"][data-inv-field="producido"');
     const safeId   = prod.replace(/[\s/]/g,'-');
     const iniEl    = document.getElementById('inv-ini-'+safeId);
     const finalEl  = document.getElementById('inv-final-'+safeId);
@@ -3612,8 +3580,8 @@ async function invGuardarConteo(){
   await db.from('inventario_diario').delete().eq('fecha',fecha);
   const {error}=await db.from('inventario_diario').insert(rows);
   if (error){ statusEl.textContent='❌ Error: '+error.message; toast('Error al guardar','err'); return; }
-  statusEl.textContent=`✅ ${rows.length} productos guardados — ${fecha}`;
-  toast(`Conteo del ${fecha} guardado ✓`,'ok');
+  statusEl.textContent='✅ '+rows.length+' productos guardados — '+fecha;
+  toast('Conteo del '+fecha+' guardado ✓','ok');
   await invCargarHistorial();
 }
 
@@ -3628,9 +3596,9 @@ async function invDescargarExcel(){
   const fecha=document.getElementById('inv-fecha-sel')?.value||new Date().toISOString().split('T')[0];
   const rows=[['Fecha','Sección','Producto','Inv Cierre','Pedidos','Inv Inicial Día','Producido','Inv Final','Stock Mín','Stock Máx','Kg Final']];
   for (const prod of [...INV_BASEMENT,...INV_UPSTAIRS]){
-    const c =parseFloat(document.querySelector(`[data-inv-prod="${prod}"][data-inv-field="cierre"]`)?.value)||0;
-    const p =parseFloat(document.querySelector(`[data-inv-prod="${prod}"][data-inv-field="pedidos"]`)?.value)||0;
-    const pr=parseFloat(document.querySelector(`[data-inv-prod="${prod}"][data-inv-field="producido"]`)?.value)||0;
+    const c =parseFloat(document.querySelector('[data-inv-prod="'+prod+'"][data-inv-field="cierre"')?.value)||0;
+    const p =parseFloat(document.querySelector('[data-inv-prod="'+prod+'"][data-inv-field="pedidos"')?.value)||0;
+    const pr=parseFloat(document.querySelector('[data-inv-prod="'+prod+'"][data-inv-field="producido"')?.value)||0;
     const ini=Math.max(0,c-p); const fin=ini+pr;
     const stock=getStockInfo(prod);
     rows.push([fecha,getSeccion(prod),prod,c,p,ini,pr,fin,stock?.min||'—',stock?.max||'—',stock?(fin*stock.kg_bolsa).toFixed(1):'—']);
@@ -3638,7 +3606,7 @@ async function invDescargarExcel(){
   const ws=XLSX.utils.aoa_to_sheet(rows);
   const wb=XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb,ws,'Inventario');
-  XLSX.writeFile(wb,`inventario_${fecha}.xlsx`);
+  XLSX.writeFile(wb,'inventario_'+fecha+'.xlsx');
   toast('Excel descargado ✓','ok');
 }
 
