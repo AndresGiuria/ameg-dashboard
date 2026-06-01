@@ -2456,20 +2456,21 @@ async function renderKgMesYTop3() {
   const totalKgMes = dias.reduce((a,d) => a+(d.kg_producidos||0), 0);
   const diasTrabajados = dias.filter(d => (d.kg_producidos||0) > 0).length;
 
-  // Top 3 from dias_productos if available, otherwise use dias data
+  // Top 3 del año completo desde dias_productos
+  const anoInicio = `${now.getFullYear()}-01-01`;
+  const anoFin    = `${now.getFullYear()}-12-31`;
   const {data: prods} = await db
     .from('dias_productos')
-    .select('producto, kg_final, kg_inicial, fecha')
-    .gte('fecha', mesInicio)
-    .lte('fecha', mesFin);
+    .select('producto, kg_prod')
+    .gte('fecha', anoInicio)
+    .lte('fecha', anoFin);
 
   let top3 = [];
   if (prods && prods.length > 0) {
     const totProd = {};
     prods.forEach(p => {
       const prod = p.producto || 'OTRO';
-      const kg = (p.kg_final||0) - (p.kg_inicial||0);
-      totProd[prod] = (totProd[prod]||0) + Math.max(kg,0);
+      totProd[prod] = (totProd[prod]||0) + Math.max(p.kg_prod||0, 0);
     });
     top3 = Object.entries(totProd)
       .sort((a,b) => b[1]-a[1])
@@ -2494,7 +2495,7 @@ async function renderKgMesYTop3() {
 
     <!-- Top 3 productos -->
     <div class="glass" style="border-radius:var(--radio-lg);padding:22px 24px">
-      <div class="kh-label">Top productos — ${mesNombre}</div>
+      <div class="kh-label">Top productos — ${now.getFullYear()}</div>
       ${top3.length > 0 ? `
         <div style="margin-top:14px;display:flex;flex-direction:column;gap:12px">
           ${top3.map((p,i) => {
@@ -2512,7 +2513,7 @@ async function renderKgMesYTop3() {
             </div>`;
           }).join('')}
         </div>
-      ` : `<div style="margin-top:14px;color:var(--texto-3);font-size:13px">Sin datos de productos este mes</div>`}
+      ` : `<div style="margin-top:14px;color:var(--texto-3);font-size:13px">Sin datos de productos este año</div>`}
     </div>
   `;
 }
