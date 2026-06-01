@@ -538,6 +538,8 @@
 
 <!-- TABLERO -->
 <div class="tab-pane active" id="tab-tablero">
+  <div id="db-diag-panel" style="display:none;background:var(--glass);border-radius:var(--radio-lg);padding:16px 20px;margin-bottom:16px;font-size:12px;font-family:var(--mono)"></div>
+  <div style="margin-bottom:12px;text-align:right"><button onclick="diagTablas()" style="font-size:11px;padding:4px 12px;border-radius:6px;border:1px solid var(--borde);background:transparent;cursor:pointer;color:var(--texto-3)">🔍 Buscar tablas con productos</button></div>
   <div id="mes-top3-row" style="display:grid;grid-template-columns:1fr 2fr;gap:14px;margin-bottom:20px"></div>
   <div class="hero-grid" id="kpi-row">
     <div class="kpi-hero" id="kpi-hoy-kg">
@@ -2375,6 +2377,52 @@ async function refreshAll() {
   if (activeTab==='tab-historial')    await renderHistorial();
   if (activeTab==='tab-graficas')     await renderGraficas();
   if (activeTab==='tab-calendario')   await renderCalendario();
+}
+
+// =====================================================================
+// DIAGNÓSTICO — busca tablas con datos de productos
+// =====================================================================
+async function diagTablas() {
+  const panel = document.getElementById('db-diag-panel');
+  panel.style.display = 'block';
+  panel.innerHTML = '⏳ Consultando Supabase...';
+
+  const tablasProbar = [
+    'dias_productos','produccion_productos','productos_dia','produccion_diaria',
+    'produccion','registros_produccion','kg_productos','carnes','inventario',
+    'inventario_diario','dias','semanas','production','products'
+  ];
+
+  const resultados = [];
+  for (const tabla of tablasProbar) {
+    try {
+      const {data, error} = await db.from(tabla).select('*').limit(3);
+      if (!error && data && data.length > 0) {
+        const cols = Object.keys(data[0]).join(', ');
+        resultados.push({tabla, cols, filas: data.length, muestra: data});
+      } else if (!error && data && data.length === 0) {
+        resultados.push({tabla, cols: '(vacía)', filas: 0, muestra: []});
+      }
+    } catch(e) {}
+  }
+
+  if (!resultados.length) {
+    panel.innerHTML = '❌ No se encontraron tablas accesibles.';
+    return;
+  }
+
+  let html = '<strong>Tablas encontradas:</strong><br><br>';
+  for (const r of resultados) {
+    const color = r.filas > 0 ? 'var(--verde-2)' : 'var(--texto-3)';
+    html += `<div style="margin-bottom:10px;padding:8px;background:rgba(0,0,0,0.04);border-radius:6px">`;
+    html += `<span style="color:${color};font-weight:700">${r.tabla}</span> — ${r.filas} filas<br>`;
+    html += `<span style="color:var(--texto-3)">Columnas: ${r.cols}</span>`;
+    if (r.filas > 0) {
+      html += `<br><span style="color:var(--texto-3)">Muestra: ${JSON.stringify(r.muestra[0]).slice(0,120)}...</span>`;
+    }
+    html += `</div>`;
+  }
+  panel.innerHTML = html;
 }
 
 // =====================================================================
