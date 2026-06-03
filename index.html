@@ -8,7 +8,6 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
   <script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
   <style>
   :root {
     --bg:          #f2f3f4;
@@ -3901,7 +3900,19 @@ async function repGenerar() {
 async function repDescargarPDF() {
   const body = document.getElementById('rep-body');
   if (!body) { showToast('Genera el reporte primero'); return; }
-  if (typeof html2pdf === 'undefined') { showToast('html2pdf no disponible'); return; }
+  
+  // Cargar html2pdf solo cuando se necesita
+  if (typeof html2pdf === 'undefined') {
+    showToast('Cargando PDF...');
+    await new Promise((resolve, reject) => {
+      const s = document.createElement('script');
+      s.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js';
+      s.onload = resolve;
+      s.onerror = reject;
+      document.head.appendChild(s);
+    });
+  }
+
   const periodo = document.getElementById('rep-periodo-sel')?.value || 'mes';
   html2pdf().set({
     margin: 10,
@@ -3911,5 +3922,6 @@ async function repDescargarPDF() {
     jsPDF: { unit:'mm', format:'letter', orientation:'portrait' }
   }).from(body).save();
 }
+</script>
 </body>
 </html>
