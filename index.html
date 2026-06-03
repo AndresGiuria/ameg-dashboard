@@ -3825,18 +3825,18 @@ async function repGenerar() {
     periodoLabel = now.toLocaleString('es',{month:'long',year:'numeric'});
   }
 
-  // Consultar dias
-  const {data: dias} = await db.from('dias').select('*').gte('fecha',fechaIni).lte('fecha',fechaFin).order('fecha');
+  // Usar fetchDiasByRange igual que renderMes para tener horas_rh correctas
+  const allRows = await fetchDiasByRange(fechaIni, fechaFin);
+  const diasData = allRows.filter(r => (r.kg_producidos||0) > 0);
+
   // Consultar dias_productos
   const {data: prods} = await db.from('dias_productos').select('*').gte('fecha',fechaIni).lte('fecha',fechaFin);
-
-  const diasData = dias || [];
   const prodsData = prods || [];
 
   // KPIs
-  const totalKg = diasData.reduce((s,d)=>s+(d.prod||0),0);
-  const totalHoras = diasData.filter(d=>d.horas>0).reduce((s,d)=>s+(d.horas||0),0);
-  const diasTrab = diasData.filter(d=>(d.prod||0)>0).length;
+  const totalKg = diasData.reduce((s,d)=>s+(d.kg_producidos||0),0);
+  const totalHoras = diasData.reduce((s,d)=>s+(d.horas_rh||0),0);
+  const diasTrab = diasData.length;
   const efic = totalHoras>0 ? (totalKg/totalHoras) : 0;
   const promDia = diasTrab>0 ? (totalKg/diasTrab) : 0;
   const meta = periodo==='mes' ? 600*diasTrab : (periodo==='semana'||periodo==='ant') ? 3900 : 3900;
@@ -3912,8 +3912,8 @@ async function repGenerar() {
   html += '<th style="text-align:center;padding:6px 8px;color:var(--texto-3);font-weight:500">Meta</th>';
   html += '</tr></thead><tbody>';
   diasData.forEach(function(d) {
-    const kg = d.prod || 0;
-    const h = d.horas || 0;
+    const kg = d.kg_producidos || 0;
+    const h = d.horas_rh || 0;
     const ef = h > 0 ? (kg/h) : 0;
     const ok = kg >= 600;
     html += '<tr style="border-bottom:0.5px solid var(--borde)">';
