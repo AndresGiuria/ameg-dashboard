@@ -3067,34 +3067,65 @@ async function swLeerCSV(file) {
   text = text.replace(/^\uFEFF/, '');
   const rawLines = text.split(/\r?\n/);
   const lines = rawLines.filter(l => l.trim());
-  const header = parseCSVRow(lines[0]);
-  const idx = {};
-  header.forEach((h, i) => {
-    const k = h.toLowerCase().replace(/\s+/g,' ').trim().replace(/['"]/g,'');
-    if (k === 'name') idx.name = i;
-    if (k === 'reg hours') idx.reg = i;
-    if (k === 'o/t hours' || k === 'overtime hours' || k === 'd/t hours') {
-      if (!idx.ot) idx.ot = [];
-      idx.ot.push(i);
-    }
-  });
-  const otCols = Array.isArray(idx.ot) ? idx.ot : [];
-  let total = 0;
+  const header = parseCSVRow(lines[0]).map(h => h.toLowerCase().replace(/['"]/g,'').trim());
+
+  // Detect column indices for 7shifts format
+  const iDate    = header.findIndex(h => h === 'local_date' || h === 'date');
+  const iFname   = header.findIndex(h => h === 'fname' || h === 'first name');
+  const iLname   = header.findIndex(h => h === 'lname' || h === 'last name');
+  const iName    = header.findIndex(h => h === 'name');
+  const iHours   = header.findIndex(h => h === 'hours' || h === 'reg hours' || h === 'regular hours');
+  const iJobcode = header.findIndex(h => h.includes('jobcode') || h === 'job');
+
+  const porDia = {};
+
   for (const line of lines.slice(1)) {
     const cols = parseCSVRow(line);
-    const name = String(cols[idx.name] || '').trim().toUpperCase();
+    if (!cols.length) continue;
+
+    // Get name
+    let name = '';
+    if (iName >= 0) {
+      name = String(cols[iName] || '').trim().toUpperCase();
+    } else if (iFname >= 0 && iLname >= 0) {
+      name = (String(cols[iFname]||'').trim() + ' ' + String(cols[iLname]||'').trim()).trim().toUpperCase();
+    }
     if (!name || name.includes('TOTAL') || name.includes('SUBTOTAL')) continue;
+
+    // Excluir Mario Alberto
     if (name.includes('MARIO') && name.includes('HERNANDEZ')) continue;
-    const reg = parseFloat(cols[idx.reg]) || 0;
-    const ot = otCols.reduce((s, c) => s + (parseFloat(cols[c]) || 0), 0);
-    total += reg + ot;
+
+    // Excluir Break
+    if (iJobcode >= 0) {
+      const job = String(cols[iJobcode] || '').trim().toLowerCase();
+      if (job === 'break') continue;
+    }
+
+    const horas = parseFloat(String(cols[iHours] || '0').replace(',','.')) || 0;
+    if (horas <= 0) continue;
+
+    // Agrupar por fecha
+    let fecha = '';
+    if (iDate >= 0) {
+      fecha = String(cols[iDate] || '').trim().replace(/['"]/g,'').slice(0,10);
+    }
+
+    if (fecha && fecha.match(/^\d{4}-\d{2}-\d{2}$/)) {
+      porDia[fecha] = (porDia[fecha] || 0) + horas;
+    } else {
+      // Sin fecha — acumular total
+      window._swHorasManualTotal = (window._swHorasManualTotal || 0) + horas;
+    }
   }
-  if (total > 0) {
+
+  // Si tenemos por día, usarlo directamente
+  if (Object.keys(porDia).length > 0) {
+    Object.assign(swHorasPorDia, porDia);
+    const total = Object.values(porDia).reduce((a,b) => a+b, 0);
     window._swHorasManualTotal = total;
-    const statusEl = document.getElementById('sw-horas-status');
-    if (statusEl) statusEl.textContent = 'CSV: ' + total.toFixed(2) + 'h detectadas';
   }
-  return {};
+
+  return porDia;
 }
 
 
