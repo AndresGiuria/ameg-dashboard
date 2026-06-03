@@ -2387,7 +2387,7 @@ async function refreshAll() {
   if (activeTab==='tab-historial')    await renderHistorial();
   if (activeTab==='tab-graficas')     await renderGraficas();
   if (activeTab==='tab-calendario')   await renderCalendario();
-  if (activeTab==='tab-reporte')      await repGenerar();
+  if (activeTab==='tab-reporte')      { repIniciarMeses(); await repGenerar(); }
 }
 
 // =====================================================================
@@ -2485,7 +2485,7 @@ async function renderKgMesYTop3() {
     });
     top3 = Object.entries(totProd)
       .sort((a,b) => b[1]-a[1])
-
+      .slice(0,5)
       .map(([prod,kg]) => ({prod, kg}));
   }
 
@@ -3784,9 +3784,10 @@ async function repGenerar() {
   repIniciarMeses();
   const container = document.getElementById('rep-content');
   if (!container) return;
+  const sel = document.getElementById('rep-periodo-sel');
+  const periodo = sel?.value || '';
+  if (!periodo) return;
   container.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
-
-  const periodo = document.getElementById('rep-periodo-sel')?.value || 'mes_actual';
   const now = new Date();
 
   let fechaIni, fechaFin, periodoLabel;
