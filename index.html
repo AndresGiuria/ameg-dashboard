@@ -596,79 +596,85 @@
 
 <!-- CAPTURA SEMANAL -->
 <div class="tab-pane" id="tab-semana-import">
-  <div class="card" style="margin-bottom:16px">
-    <h2>⚡ Captura Semanal — Sube todo de una vez</h2>
-    <p style="font-size:13px;color:var(--gris-500);margin-bottom:18px">
-      Sube los PDFs de bitácora y el archivo de horas. Las semanas se crean automáticamente. También puedes ingresar las horas manualmente.
-    </p>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">
-      <div>
-        <div style="font-size:12px;font-weight:600;color:var(--gris-700);margin-bottom:8px">📄 PDFs de Bitácora (1–7 días)</div>
-        <div class="upload-zone" id="sw-pdf-zone">
-          <input type="file" id="sw-pdf-input" accept=".pdf" multiple>
-          <div class="uz-icon" id="sw-pdf-icon">📋</div>
-          <p id="sw-pdf-label">Arrastra los PDFs de la semana aquí</p>
-          <small>Puedes subir hasta 7 PDFs a la vez</small>
-        </div>
-      </div>
-      <div>
-        <div style="font-size:12px;font-weight:600;color:var(--gris-700);margin-bottom:8px">📊 CSV / Excel de Horas 7shifts</div>
-        <div class="upload-zone" id="sw-csv-zone">
-          <input type="file" id="sw-csv-input" accept=".csv,.txt,.xlsx,.xls">
-          <div class="uz-icon" id="sw-csv-icon">📊</div>
-          <p id="sw-csv-label">Arrastra el CSV/Excel de horas aquí</p>
-          <small>Mario Alberto se excluye automáticamente</small>
-        </div>
-      </div>
+  <!-- PASO 1: Semana -->
+  <div class="card" style="margin-bottom:12px">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+      <div style="width:26px;height:26px;border-radius:50%;background:var(--verde-2);color:#fff;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center">1</div>
+      <h2 style="margin:0">Selecciona la semana</h2>
     </div>
-    <!-- Horas manuales -->
-    <div style="background:var(--gris-50);border:1px solid var(--borde);border-radius:10px;padding:14px;display:flex;align-items:center;gap:14px;flex-wrap:wrap">
-      <span style="font-size:13px;font-weight:600;color:var(--gris-700)">⌨️ Horas manuales:</span>
-      <input type="number" id="sw-horas-manual" min="0" step="0.01" placeholder="Ej. 326.32"
-        style="border:1px solid var(--borde);border-radius:7px;padding:7px 12px;font-size:14px;font-family:'DM Mono',monospace;width:140px">
-      <button class="btn btn-secondary btn-sm" onclick="swAplicarHorasManual()">✓ Aplicar horas</button>
-      <span id="sw-horas-status" style="font-size:12px;color:var(--gris-500)"></span>
+    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+      <select id="sw-semana-sel" style="border:1px solid var(--borde);border-radius:8px;padding:8px 12px;font-size:13px;flex:1;min-width:200px">
+        <option value="">— Seleccionar semana existente —</option>
+      </select>
+      <span style="color:var(--texto-3);font-size:13px">o</span>
+      <button onclick="swToggleNuevaSemana()" style="border:1px dashed var(--borde);border-radius:8px;padding:8px 14px;font-size:13px;background:transparent;cursor:pointer;color:var(--texto-3)">+ Nueva semana</button>
     </div>
-    <!-- Guardar horas directamente en semana existente -->
-    <div style="background:var(--dorado-bg);border:1px solid #fde68a;border-radius:10px;padding:14px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-top:12px">
-      <div style="flex:1">
-        <div style="font-size:13px;font-weight:600;color:var(--dorado)">💡 ¿Ya tienes los kg en Supabase?</div>
-        <div style="font-size:12px;color:var(--gris-500);margin-top:2px">Guarda solo las horas del CSV en la semana más reciente</div>
-      </div>
-      <button class="btn btn-primary btn-sm" onclick="swSoloGuardarHoras()" style="background:var(--dorado);white-space:nowrap">
-        🕐 Guardar horas ahora
-      </button>
+    <div id="sw-nueva-sem-form" style="display:none;margin-top:12px;display:none;gap:10px;flex-wrap:wrap;align-items:center">
+      <input type="date" id="sw-ns-inicio" style="border:1px solid var(--borde);border-radius:8px;padding:7px 12px;font-size:13px">
+      <input type="date" id="sw-ns-fin" style="border:1px solid var(--borde);border-radius:8px;padding:7px 12px;font-size:13px">
+      <button onclick="swCrearNuevaSemana()" style="background:var(--verde-2);color:#fff;border:none;border-radius:8px;padding:8px 16px;font-size:13px;cursor:pointer">Crear semana</button>
+      <span id="sw-ns-status" style="font-size:12px;color:var(--texto-3)"></span>
     </div>
+    <div id="sw-semana-badge" style="margin-top:10px"></div>
   </div>
-  <div id="sw-preview" style="display:none">
-    <div class="card" style="margin-bottom:16px">
-      <h2>📋 Vista previa — Semana detectada</h2>
-      <div id="sw-semana-info" style="margin-bottom:16px"></div>
-      <div class="table-wrap">
-        <table>
-          <thead><tr>
-            <th>Fecha</th><th>Día</th>
-            <th class="td-num">Kg Inicio</th>
-            <th class="td-num">Kg Fin</th>
-            <th class="td-num">Kg Prod.</th>
-            <th class="td-num">Horas RH</th>
-            <th class="td-num">kg/h</th>
-            <th class="td-center">Estado</th>
-          </tr></thead>
-          <tbody id="sw-tabla-body"></tbody>
-          <tfoot id="sw-tabla-foot"></tfoot>
-        </table>
-      </div>
-      <div style="display:flex;gap:12px;margin-top:18px;flex-wrap:wrap;align-items:center">
-        <button class="btn btn-primary" id="sw-btn-guardar" onclick="swGuardarTodo()">
-          💾 Guardar semana completa
-        </button>
-        <button class="btn btn-secondary" id="sw-btn-reporte" style="display:none" onclick="swGenerarReporte()">
-          📄 Descargar reporte PDF
-        </button>
-        <span id="sw-save-status" style="font-size:12px;color:var(--gris-500)"></span>
-      </div>
 
+  <!-- PASO 2: PDFs -->
+  <div class="card" style="margin-bottom:12px">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+      <div style="width:26px;height:26px;border-radius:50%;background:var(--verde-2);color:#fff;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center">2</div>
+      <h2 style="margin:0">Sube los PDFs de bitácora</h2>
+      <span style="font-size:12px;color:var(--texto-3);margin-left:4px">Claude lee cada página automáticamente</span>
+    </div>
+    <div class="upload-zone" id="sw-pdf-zone">
+      <input type="file" id="sw-pdf-input" accept=".pdf" multiple>
+      <div class="uz-icon" id="sw-pdf-icon">📄</div>
+      <p id="sw-pdf-label">Arrastra los PDFs aquí (1 PDF por día o un PDF con varias páginas)</p>
+      <small>Claude extrae fecha, kg inicio, kg fin y kg producido por producto</small>
+    </div>
+    <div id="sw-pdf-progress" style="display:none;margin-top:12px"></div>
+    <div id="sw-dias-preview" style="margin-top:12px"></div>
+  </div>
+
+  <!-- PASO 3: CSV Horas -->
+  <div class="card" style="margin-bottom:12px">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+      <div style="width:26px;height:26px;border-radius:50%;background:var(--verde-2);color:#fff;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center">3</div>
+      <h2 style="margin:0">Sube el CSV de horas (7shifts)</h2>
+      <span style="font-size:12px;color:var(--texto-3);margin-left:4px">Mario Alberto se excluye automáticamente</span>
+    </div>
+    <div class="upload-zone" id="sw-csv-zone">
+      <input type="file" id="sw-csv-input" accept=".csv,.txt,.xlsx,.xls">
+      <div class="uz-icon" id="sw-csv-icon">📊</div>
+      <p id="sw-csv-label">Arrastra el CSV/Excel de horas aquí</p>
+      <small>Se asignan automáticamente por fecha</small>
+    </div>
+    <div id="sw-horas-resumen" style="margin-top:10px"></div>
+  </div>
+
+  <!-- PASO 4: Guardar -->
+  <div class="card" id="sw-paso4" style="display:none">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+      <div style="width:26px;height:26px;border-radius:50%;background:var(--verde-2);color:#fff;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center">4</div>
+      <h2 style="margin:0">Revisa y guarda</h2>
+    </div>
+    <div class="table-wrap" style="margin-bottom:16px">
+      <table>
+        <thead><tr>
+          <th>Fecha</th><th>Día</th>
+          <th class="td-num">Kg Inicio</th>
+          <th class="td-num">Kg Fin</th>
+          <th class="td-num">Kg Prod.</th>
+          <th class="td-num">Horas RH</th>
+          <th class="td-num">kg/h</th>
+          <th class="td-center">Estado</th>
+        </tr></thead>
+        <tbody id="sw-tabla-body"></tbody>
+        <tfoot id="sw-tabla-foot"></tfoot>
+      </table>
+    </div>
+    <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+      <button class="btn btn-primary" id="sw-btn-guardar" onclick="swGuardarTodo()">💾 Guardar semana completa</button>
+      <span id="sw-save-status" style="font-size:12px;color:var(--texto-3)"></span>
     </div>
   </div>
 </div>
@@ -2383,6 +2389,7 @@ function renderCSVResult(employees,totalIncluido,totalExcluido) {
 async function refreshAll() {
   populateSelects();
   populateMonthSelects();
+  swLlenarSemanas();
   await renderKPIs();
   await renderRecientes();
   const activeTab=document.querySelector('.tab-pane.active')?.id;
@@ -2788,137 +2795,264 @@ function fmtDateShort(iso){
 }
 
 // =====================================================================
-// CAPTURA SEMANAL — Upload masivo
 // =====================================================================
-let swDiasPDF=[];
-let swHorasPorDia={};
-let swSemanaId=null;
+// CAPTURA SEMANAL — Nuevo flujo con Claude Vision
+// =====================================================================
+let swDiasPDF = [];
+let swHorasPorDia = {};
+let swSemanaId = null;
 
-(function initSemanImport(){
-  const pdfZone=document.getElementById('sw-pdf-zone');
-  const pdfInput=document.getElementById('sw-pdf-input');
-  pdfZone.addEventListener('click',()=>pdfInput.click());
-  pdfZone.addEventListener('dragover',e=>{e.preventDefault();pdfZone.classList.add('drag');});
-  pdfZone.addEventListener('dragleave',()=>pdfZone.classList.remove('drag'));
-  pdfZone.addEventListener('drop',e=>{e.preventDefault();pdfZone.classList.remove('drag');
-    const files=[...e.dataTransfer.files].filter(f=>f.type==='application/pdf');
-    if (files.length) swProcesarPDFs(files);});
-  pdfInput.addEventListener('change',e=>{if(e.target.files.length) swProcesarPDFs([...e.target.files]);});
+(function initSemanImport() {
+  const pdfZone  = document.getElementById('sw-pdf-zone');
+  const pdfInput = document.getElementById('sw-pdf-input');
+  const csvZone  = document.getElementById('sw-csv-zone');
+  const csvInput = document.getElementById('sw-csv-input');
 
-  const csvZone=document.getElementById('sw-csv-zone');
-  const csvInput=document.getElementById('sw-csv-input');
-  csvZone.addEventListener('click',()=>csvInput.click());
-  csvZone.addEventListener('dragover',e=>{e.preventDefault();csvZone.classList.add('drag');});
-  csvZone.addEventListener('dragleave',()=>csvZone.classList.remove('drag'));
-  csvZone.addEventListener('drop',e=>{e.preventDefault();csvZone.classList.remove('drag');
-    const f=e.dataTransfer.files[0]; if(f) swProcesarHoras(f);});
-  csvInput.addEventListener('change',e=>{if(e.target.files[0]) swProcesarHoras(e.target.files[0]);});
+  pdfZone.addEventListener('click', () => pdfInput.click());
+  pdfZone.addEventListener('dragover', e => { e.preventDefault(); pdfZone.classList.add('drag'); });
+  pdfZone.addEventListener('dragleave', () => pdfZone.classList.remove('drag'));
+  pdfZone.addEventListener('drop', e => { e.preventDefault(); pdfZone.classList.remove('drag');
+    const files = [...e.dataTransfer.files].filter(f => f.type === 'application/pdf');
+    if (files.length) swProcesarPDFs(files);
+  });
+  pdfInput.addEventListener('change', e => { if (e.target.files.length) swProcesarPDFs([...e.target.files]); });
+
+  csvZone.addEventListener('click', () => csvInput.click());
+  csvZone.addEventListener('dragover', e => { e.preventDefault(); csvZone.classList.add('drag'); });
+  csvZone.addEventListener('dragleave', () => csvZone.classList.remove('drag'));
+  csvZone.addEventListener('drop', e => { e.preventDefault(); csvZone.classList.remove('drag');
+    const f = e.dataTransfer.files[0]; if (f) swProcesarHoras(f);
+  });
+  csvInput.addEventListener('change', e => { if (e.target.files[0]) swProcesarHoras(e.target.files[0]); });
 })();
 
-async function swProcesarPDFs(files){
-  const iconEl=document.getElementById('sw-pdf-icon');
-  const labelEl=document.getElementById('sw-pdf-label');
-  iconEl.textContent='⏳'; labelEl.textContent=`Procesando ${files.length} PDF(s)…`;
-  const extraidos=[];
-  for (let fi=0; fi<files.length; fi++){
-    const file=files[fi];
-    labelEl.textContent=`Procesando archivo ${fi+1} de ${files.length}… (puede tardar si es escaneado)`;
-    try { const paginas=await extractPDFAllPages(file); for (const p of paginas) extraidos.push(p); }
-    catch(e){ console.warn('PDF error:',e.message); }
+function swLlenarSemanas() {
+  const sel = document.getElementById('sw-semana-sel');
+  if (!sel) return;
+  sel.innerHTML = '<option value="">— Seleccionar semana existente —</option>';
+  [...semanas].reverse().forEach(s => {
+    const opt = document.createElement('option');
+    opt.value = s.id;
+    opt.textContent = s.label || (s.fecha_inicio + ' a ' + s.fecha_fin);
+    sel.appendChild(opt);
+  });
+  sel.onchange = function() {
+    swSemanaId = sel.value || null;
+    const sem = semanas.find(s => s.id === swSemanaId);
+    const badge = document.getElementById('sw-semana-badge');
+    if (sem) {
+      badge.innerHTML = '<div style="display:inline-flex;align-items:center;gap:8px;background:var(--verde-bg);border:1px solid #bbf7d0;border-radius:8px;padding:8px 14px"><span>&#x2705;</span><strong style="color:var(--verde)">' + (sem.label||'') + '</strong><span style="font-size:11px;color:var(--texto-3)">' + sem.fecha_inicio + ' a ' + sem.fecha_fin + '</span></div>';
+    } else { badge.innerHTML = ''; }
+  };
+}
+
+function swToggleNuevaSemana() {
+  const f = document.getElementById('sw-nueva-sem-form');
+  f.style.display = f.style.display === 'none' ? 'flex' : 'none';
+}
+
+async function swCrearNuevaSemana() {
+  const ini = document.getElementById('sw-ns-inicio').value;
+  const fin = document.getElementById('sw-ns-fin').value;
+  const st  = document.getElementById('sw-ns-status');
+  if (!ini || !fin) { st.textContent = 'Ingresa inicio y fin'; return; }
+  st.textContent = 'Creando...';
+  const meses = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+  const d1 = new Date(ini+'T12:00:00'), d2 = new Date(fin+'T12:00:00');
+  const numSem = semanas.length + 1;
+  const label = 'Sem ' + numSem + ' (' + d1.getDate() + '-' + d2.getDate() + ' ' + meses[d1.getMonth()] + ')';
+  const {data, error} = await db.from('semanas').insert({label, start_date: ini, end_date: fin}).select().single();
+  if (error) { st.textContent = 'Error: ' + error.message; return; }
+  semanas.push({...data, fecha_inicio: data.start_date, fecha_fin: data.end_date});
+  semanas.sort((a,b) => a.fecha_inicio.localeCompare(b.fecha_inicio));
+  swLlenarSemanas();
+  const sel = document.getElementById('sw-semana-sel');
+  sel.value = data.id;
+  sel.onchange();
+  swSemanaId = data.id;
+  st.textContent = 'Creada';
+  document.getElementById('sw-nueva-sem-form').style.display = 'none';
+}
+
+async function swPaginaABase64(pdf, pageNum) {
+  const page = await pdf.getPage(pageNum);
+  const viewport = page.getViewport({scale: 2.0});
+  const canvas = document.createElement('canvas');
+  canvas.width = viewport.width;
+  canvas.height = viewport.height;
+  await page.render({canvasContext: canvas.getContext('2d'), viewport}).promise;
+  return canvas.toDataURL('image/jpeg', 0.92).split(',')[1];
+}
+
+async function swLeerPaginaConVision(base64Img, numPagina) {
+  const prompt = 'Esta es la pagina ' + numPagina + ' de una bitacora de produccion de carnes AMEG. ' +
+    'Extrae la informacion y devuelve SOLO un JSON con este formato exacto: ' +
+    '{"fecha":"YYYY-MM-DD o null","kg_inicio_total":numero,"kg_fin_total":numero,' +
+    '"productos":[{"nombre":"ASADA","kg_inicio":102,"kg_fin":324}]} ' +
+    'Si un valor no es legible usa null. No incluyas SONORA WHITE si esta vacio. Responde SOLO el JSON.';
+
+  const response = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({
+      model: 'claude-sonnet-4-20250514',
+      max_tokens: 1000,
+      messages: [{
+        role: 'user',
+        content: [
+          {type: 'image', source: {type: 'base64', media_type: 'image/jpeg', data: base64Img}},
+          {type: 'text', text: prompt}
+        ]
+      }]
+    })
+  });
+  const data = await response.json();
+  const text = (data.content && data.content[0] && data.content[0].text) || '';
+  try {
+    return JSON.parse(text.replace(/```json|```/g, '').trim());
+  } catch(e) { console.warn('Vision parse error:', text); return null; }
+}
+
+async function swProcesarPDFs(files) {
+  const iconEl  = document.getElementById('sw-pdf-icon');
+  const labelEl = document.getElementById('sw-pdf-label');
+  const progEl  = document.getElementById('sw-pdf-progress');
+  progEl.style.display = 'block';
+  iconEl.textContent = '...';
+  swDiasPDF = [];
+
+  let totalPaginas = 0;
+  const pdfs = [];
+  for (const file of files) {
+    const ab = await file.arrayBuffer();
+    const pdf = await pdfjsLib.getDocument({data: ab}).promise;
+    pdfs.push({pdf});
+    totalPaginas += pdf.numPages;
   }
-  swDiasPDF=extraidos.filter(d=>d.kgProd!==undefined).sort((a,b)=>(a.fecha||'').localeCompare(b.fecha||''));
-  iconEl.textContent=swDiasPDF.length?'✅':'⚠️';
-  labelEl.textContent=`${swDiasPDF.length} día(s) extraído(s) de ${files.length} PDF(s)`;
+
+  labelEl.textContent = 'Leyendo ' + totalPaginas + ' pagina(s) con Claude Vision...';
+  let procesadas = 0;
+
+  for (const {pdf} of pdfs) {
+    for (let p = 1; p <= pdf.numPages; p++) {
+      const pct = Math.round((procesadas / totalPaginas) * 100);
+      progEl.innerHTML = '<div style="font-size:12px;color:var(--texto-3);margin-bottom:6px">Procesando pagina ' + (procesadas+1) + ' de ' + totalPaginas + '...</div>' +
+        '<div style="background:rgba(0,0,0,0.07);border-radius:4px;height:6px;overflow:hidden">' +
+        '<div style="width:' + pct + '%;height:100%;background:var(--verde-2);border-radius:4px;transition:width 0.3s"></div></div>';
+      try {
+        const base64 = await swPaginaABase64(pdf, p);
+        const resultado = await swLeerPaginaConVision(base64, p);
+        if (resultado) {
+          swDiasPDF.push({
+            fecha: resultado.fecha || null,
+            kgInicio: resultado.kg_inicio_total || 0,
+            kgFin: resultado.kg_fin_total || 0,
+            kgProd: Math.max((resultado.kg_fin_total||0) - (resultado.kg_inicio_total||0), 0),
+            productos: resultado.productos || []
+          });
+        }
+      } catch(e) { console.warn('Error pagina', p, e); }
+      procesadas++;
+    }
+  }
+
+  swDiasPDF.sort((a,b) => (a.fecha||'').localeCompare(b.fecha||''));
+  iconEl.textContent = swDiasPDF.length ? 'OK' : 'error';
+  labelEl.textContent = swDiasPDF.length + ' dia(s) leido(s) con Claude Vision';
+  progEl.style.display = 'none';
   swActualizarPreview();
 }
 
-async function swProcesarHoras(file){
-  const iconEl=document.getElementById('sw-csv-icon');
-  const labelEl=document.getElementById('sw-csv-label');
-  iconEl.textContent='⏳'; labelEl.textContent='Procesando horas…';
-  const ext=file.name.split('.').pop().toLowerCase();
+async function swProcesarHoras(file) {
+  const iconEl  = document.getElementById('sw-csv-icon');
+  const labelEl = document.getElementById('sw-csv-label');
+  const resumen = document.getElementById('sw-horas-resumen');
+  iconEl.textContent = '...'; labelEl.textContent = 'Procesando horas...';
+  window._swHorasManualTotal = 0;
   try {
-    // Reset manual total before processing
-    window._swHorasManualTotal = 0;
-    if (ext==='xlsx'||ext==='xls') {
+    const ext = file.name.split('.').pop().toLowerCase();
+    if (ext === 'xlsx' || ext === 'xls') {
       swHorasPorDia = await swLeerXLSX(file);
     } else {
       swHorasPorDia = {};
-      await swLeerCSV(file); // sets window._swHorasManualTotal
+      await swLeerCSV(file);
     }
+    const diasTotal = Object.values(swHorasPorDia).reduce((a,b) => a+b, 0);
     const manualTotal = window._swHorasManualTotal || 0;
-    const diasTotal = Object.values(swHorasPorDia).reduce((a,b)=>a+b,0);
     const total = manualTotal || diasTotal;
-    iconEl.textContent='✅';
-    if (manualTotal > 0) {
-      labelEl.textContent=`${total.toFixed(2)}h detectadas (resumen semanal)`;
-    } else {
-      labelEl.textContent=`${Object.keys(swHorasPorDia).length} días · ${total.toFixed(2)}h total`;
+    iconEl.textContent = 'OK';
+    labelEl.textContent = Object.keys(swHorasPorDia).length + ' dias - ' + total.toFixed(2) + 'h total';
+    if (Object.keys(swHorasPorDia).length > 0) {
+      let html = '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px">';
+      Object.entries(swHorasPorDia).sort().forEach(function(entry) {
+        html += '<div style="background:var(--glass);border-radius:6px;padding:4px 10px;font-size:12px"><span style="color:var(--texto-3)">' + entry[0].slice(5) + '</span> <strong>' + entry[1].toFixed(1) + 'h</strong></div>';
+      });
+      html += '</div>';
+      resumen.innerHTML = html;
     }
     swActualizarPreview();
-  } catch(e){
-    iconEl.textContent='❌'; labelEl.textContent='Error: '+e.message;
+  } catch(e) {
+    iconEl.textContent = 'error'; labelEl.textContent = 'Error: ' + e.message;
   }
 }
 
-async function swLeerXLSX(file){
-  if (!window.XLSX){
-    await new Promise((res,rej)=>{
-      const s=document.createElement('script');
-      s.src='https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
-      s.onload=res; s.onerror=()=>rej(new Error('No se pudo cargar SheetJS'));
-      document.head.appendChild(s);
-    });
+function swActualizarPreview() {
+  if (!swDiasPDF.length) return;
+  document.getElementById('sw-paso4').style.display = 'block';
+
+  if (!swSemanaId) {
+    const fecha = swDiasPDF.find(d => d.fecha) && swDiasPDF.find(d => d.fecha).fecha;
+    if (fecha) {
+      const sem = semanas.find(s => fecha >= s.fecha_inicio && fecha <= s.fecha_fin);
+      if (sem) {
+        swSemanaId = sem.id;
+        const sel = document.getElementById('sw-semana-sel');
+        if (sel) { sel.value = sem.id; if(sel.onchange) sel.onchange(); }
+      }
+    }
   }
-  const ab=await file.arrayBuffer();
-  const wb=XLSX.read(ab,{type:'array'});
-  const ws=wb.Sheets[wb.SheetNames[0]];
-  const rows=XLSX.utils.sheet_to_json(ws,{defval:''});
-  const allKeys=Object.keys(rows[0]||{});
-  const fnameKey=allKeys.find(k=>k.toLowerCase()==='fname');
-  const lnameKey=allKeys.find(k=>k.toLowerCase()==='lname');
-  const dateKey=allKeys.find(k=>k.toLowerCase().includes('local_date')||k.toLowerCase()==='date');
-  const hoursKey=allKeys.find(k=>k.toLowerCase()==='hours');
-  const jobKey=allKeys.find(k=>k.toLowerCase().includes('jobcode')||k.toLowerCase().includes('job'));
-  const hPorDia={};
-  for (const row of rows){
-    const fname=String(row[fnameKey]||'').trim();
-    const lname=String(row[lnameKey]||'').trim();
-    if (!fname||!lname) continue;
-    const nameUp=(fname+' '+lname).toUpperCase();
-    if (nameUp.includes('MARIO')&&nameUp.includes('HERNANDEZ')) continue;
-    const jobcode=jobKey?String(row[jobKey]||'').trim().toLowerCase():'';
-    if (jobcode==='break') continue;
-    const hrs=parseFloat(String(row[hoursKey]||'0').replace(',','.'))||0;
-    const dateVal=row[dateKey];
-    let fecha;
-    if (dateVal instanceof Date) fecha=dateVal.toISOString().split('T')[0];
-    else if (typeof dateVal==='string') fecha=dateVal.slice(0,10);
-    else if (typeof dateVal==='number'){const d=new Date((dateVal-25569)*86400*1000);fecha=d.toISOString().split('T')[0];}
-    else continue;
-    hPorDia[fecha]=(hPorDia[fecha]||0)+hrs;
+
+  const manualTotal = window._swHorasManualTotal || 0;
+  if (manualTotal > 0 && Object.keys(swHorasPorDia).length === 0) {
+    const porDia = +(manualTotal / swDiasPDF.length).toFixed(2);
+    swDiasPDF.forEach(function(d) { if (d.fecha) swHorasPorDia[d.fecha] = porDia; });
   }
-  return hPorDia;
+
+  const dias_nombres = ['Dom','Lun','Mar','Mie','Jue','Vie','Sab'];
+  let totalKg = 0, totalH = 0;
+
+  const rows = swDiasPDF.map(function(d, i) {
+    const horas = d.fecha ? (swHorasPorDia[d.fecha] || 0) : 0;
+    const kgh = horas > 0 ? (d.kgProd / horas).toFixed(1) : '-';
+    const diaNom = d.fecha ? dias_nombres[new Date(d.fecha + 'T12:00:00').getDay()] : '-';
+    const metaOk = d.kgProd >= META_KG_DIA;
+    totalKg += d.kgProd; totalH += horas;
+    return '<tr>' +
+      '<td><input type="date" value="' + (d.fecha||'') + '" onchange="swFechaChanged(' + i + ',this.value)" style="border:1px solid var(--borde);border-radius:6px;padding:4px 8px;font-size:12px;font-family:inherit"></td>' +
+      '<td style="color:var(--texto-3);font-size:12px">' + diaNom + '</td>' +
+      '<td class="td-num" style="font-family:var(--mono);font-size:12px">' + d.kgInicio.toFixed(1) + '</td>' +
+      '<td class="td-num" style="font-family:var(--mono);font-size:12px">' + d.kgFin.toFixed(1) + '</td>' +
+      '<td class="td-num" style="font-family:var(--mono);font-weight:700;color:' + (metaOk?'var(--verde-2)':'var(--rojo-2)') + '">' + d.kgProd.toFixed(1) + '</td>' +
+      '<td class="td-num" style="font-family:var(--mono);font-size:12px">' + (horas>0?horas.toFixed(2):'-') + '</td>' +
+      '<td class="td-num" style="font-size:12px">' + kgh + '</td>' +
+      '<td class="td-center"><span id="sw-status-' + i + '">...</span></td></tr>';
+  });
+
+  const eficTotal = totalH > 0 ? (totalKg/totalH).toFixed(2) : '-';
+  document.getElementById('sw-tabla-body').innerHTML = rows.join('');
+  document.getElementById('sw-tabla-foot').innerHTML =
+    '<tr style="background:var(--gris-50);font-weight:600">' +
+    '<td colspan="4" style="padding:10px 14px;font-size:12px">TOTAL SEMANA</td>' +
+    '<td class="td-num" style="font-family:var(--mono);color:var(--verde-2)">' + fmt(totalKg) + ' kg</td>' +
+    '<td class="td-num" style="font-family:var(--mono)">' + (totalH>0?fmt(totalH)+' h':'-') + '</td>' +
+    '<td class="td-num" style="font-size:12px">' + eficTotal + ' kg/h</td><td></td></tr>';
 }
 
-function swAplicarHorasManual() {
-  const val = parseFloat(document.getElementById('sw-horas-manual')?.value);
-  const statusEl = document.getElementById('sw-horas-status');
-  if (!val || val <= 0) { if(statusEl) statusEl.textContent='⚠️ Ingresa un número válido'; return; }
-  // Distribute evenly across all PDF days detected
-  const numDias = swDiasPDF.length || 7;
-  const porDia = +(val / numDias).toFixed(2);
-  // Build swHorasPorDia from detected dates or leave empty for later
-  swHorasPorDia = {};
-  if (swDiasPDF.length) {
-    swDiasPDF.forEach(d => { if (d.fecha) swHorasPorDia[d.fecha] = porDia; });
-  }
-  // Store total for semana update
-  window._swHorasManualTotal = val;
-  if (statusEl) statusEl.textContent = `✓ ${val.toFixed(2)}h aplicadas (${porDia.toFixed(2)}h/día)`;
-  if (swDiasPDF.length) swActualizarPreview();
-  toast(`${val.toFixed(2)}h RH aplicadas ✓`, 'ok');
+function swFechaChanged(i, nuevaFecha) {
+  if (swDiasPDF[i]) swDiasPDF[i].fecha = nuevaFecha;
+  swActualizarPreview();
 }
+
 
 async function swLeerCSV(file) {
   let text = await file.text();
