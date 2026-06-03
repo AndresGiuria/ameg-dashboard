@@ -939,7 +939,12 @@
 <div class="tab-pane" id="tab-reporte">
   <div class="filter-bar" style="margin-bottom:16px">
     <label>Período:</label>
-    <select id="rep-periodo-sel" onchange="repGenerar()"></select>
+    <select id="rep-periodo-sel" onchange="repGenerar()">
+      <option value="2026-06">Junio de 2026</option>
+      <option value="2026-05">Mayo de 2026</option>
+      <option value="2026-04">Abril de 2026</option>
+      <option value="2026-03">Marzo de 2026</option>
+    </select>
     <button onclick="repDescargarPDF()" style="margin-left:auto;padding:6px 16px;border-radius:8px;border:none;background:var(--verde-2);color:#fff;font-size:13px;cursor:pointer">⬇ Descargar PDF</button>
   </div>
   <div id="rep-content"><div class="loading"><div class="spinner"></div></div></div>
@@ -2387,7 +2392,7 @@ async function refreshAll() {
   if (activeTab==='tab-historial')    await renderHistorial();
   if (activeTab==='tab-graficas')     await renderGraficas();
   if (activeTab==='tab-calendario')   await renderCalendario();
-  if (activeTab==='tab-reporte')      { repIniciarMeses(); await repGenerar(); }
+  if (activeTab==='tab-reporte')      await repGenerar();
 }
 
 // =====================================================================
@@ -3769,24 +3774,23 @@ function repIniciarMeses() {
     const yr = cur.getFullYear();
     const mo = String(cur.getMonth()+1).padStart(2,'0');
     const label = cur.toLocaleString('es',{month:'long',year:'numeric'});
-    meses.push({value: yr+'-'+mo, label: label.charAt(0).toUpperCase()+label.slice(1)});
+    const cap = label.charAt(0).toUpperCase()+label.slice(1);
+    meses.push({value: yr+'-'+mo, label: cap});
     cur.setMonth(cur.getMonth()+1);
   }
-  // Más reciente primero
   meses.reverse().forEach(m => {
     const opt = document.createElement('option');
     opt.value = m.value;
     opt.textContent = m.label;
     sel.appendChild(opt);
   });
+  // Seleccionar el mes más reciente por defecto
+  if (sel.options.length > 0) sel.selectedIndex = 0;
 }
 async function repGenerar() {
-  repIniciarMeses();
   const container = document.getElementById('rep-content');
   if (!container) return;
-  const sel = document.getElementById('rep-periodo-sel');
-  const periodo = sel?.value || '';
-  if (!periodo) return;
+  const periodo = document.getElementById('rep-periodo-sel')?.value || '2026-06';
   container.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
   const now = new Date();
 
