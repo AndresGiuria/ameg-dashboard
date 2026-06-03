@@ -526,8 +526,8 @@
   <button data-tab="graficas">📈 Gráficas</button>
   <span class="nav-sep"></span>
   <span class="nav-group-label">Capturar</span>
-  <button data-tab="semana-import">⚡ Semanal</button>
-  <button data-tab="captura">📋 Día Suelto</button>
+  <button data-tab="semana-import">⚡ Semana nueva</button>
+  <button data-tab="captura">➕ Agregar día</button>
   <span class="nav-sep"></span>
   <span class="nav-group-label">Gestionar</span>
   <button data-tab="semanal">📅 Semanas</button>
@@ -570,6 +570,8 @@
   </div>
   <!-- Comparativo semana actual vs anterior -->
   <div id="sem-comparativo-row" style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:20px"></div>
+  <!-- Alerta inventario -->
+  <div id="alerta-inv-row" style="margin-bottom:16px"></div>
 
   <div class="charts-main">
     <div class="chart-card">
@@ -596,6 +598,9 @@
 
 <!-- CAPTURA SEMANAL -->
 <div class="tab-pane" id="tab-semana-import">
+  <div style="background:var(--glass);border-radius:var(--radio-lg);padding:12px 16px;margin-bottom:16px;font-size:13px;color:var(--texto-3);border-left:3px solid var(--verde-2)">
+    <strong style="color:var(--texto)">⚡ Flujo semanal</strong> — Usa esto cada semana. Sube los PDFs de bitácora y el CSV de horas de 7shifts. Claude lee todo automáticamente.
+  </div>
   <!-- PASO 1: Semana -->
   <div class="card" style="margin-bottom:12px">
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
@@ -681,6 +686,9 @@
 
 <!-- CAPTURA DÍA SUELTO -->
 <div class="tab-pane" id="tab-captura">
+  <div style="background:var(--glass);border-radius:var(--radio-lg);padding:12px 16px;margin-bottom:16px;font-size:13px;color:var(--texto-3);border-left:3px solid #d97706">
+    <strong style="color:var(--texto)">➕ Agregar día</strong> — ¿Faltó un día o necesitas corregir uno? Agrégalo aquí manualmente sin afectar el resto de la semana.
+  </div>
   <div class="filter-bar">
     <label>Mes:</label>
     <select id="captura-mes-sel" onchange="renderRecientes()"></select>
@@ -3089,253 +3097,6 @@ async function swLeerCSV(file) {
   return {};
 }
 
-function swActualizarPreview(){
-  if (!swDiasPDF.length) return;
-  const preview=document.getElementById('sw-preview');
-  preview.style.display='block';
-  const fechas=swDiasPDF.map(d=>d.fecha).filter(Boolean).sort();
-  const semanaDetectada=fechas.length ? semanas.find(s=>fechas[0]>=s.fecha_inicio&&fechas[0]<=s.fecha_fin) : null;
-  swSemanaId=semanaDetectada?.id||null;
-  const semInfo=document.getElementById('sw-semana-info');
-  if (semanaDetectada){
-    semInfo.innerHTML=`<div style="display:inline-flex;align-items:center;gap:8px;background:var(--verde-bg);border:1px solid #bbf7d0;border-radius:8px;padding:10px 16px">
-      <span style="font-size:18px">✅</span>
-      <div><strong style="color:var(--verde)">${weekLabel(semanaDetectada)}</strong>
-      <div style="font-size:11px;color:var(--gris-500)">${semanaDetectada.fecha_inicio} → ${semanaDetectada.fecha_fin}</div></div>
-    </div>`;
-  } else {
-    semInfo.innerHTML=`<div style="background:var(--dorado-bg);border:1px solid #fde68a;border-radius:8px;padding:10px 16px;font-size:13px;color:var(--dorado)">
-      ⚠️ Semana no encontrada — se creará automáticamente al guardar
-    </div>`;
-  }
-  const dias_nombres=['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
-  // If no per-day hours, distribute manual total evenly
-  const _manualTotal = window._swHorasManualTotal || 0;
-  const _numDias = swDiasPDF.length || 1;
-  const _horasPorDia = _manualTotal > 0 && Object.keys(swHorasPorDia).length === 0
-    ? _manualTotal / _numDias : 0;
-  // Pre-fill swHorasPorDia from manual total if needed
-  if (_horasPorDia > 0) {
-    swDiasPDF.forEach(d => { if (d.fecha && !swHorasPorDia[d.fecha]) swHorasPorDia[d.fecha] = +_horasPorDia.toFixed(2); });
-  }
-  let totalKg=0, totalH=0;
-  const rows=swDiasPDF.map((d,i)=>{
-    const horas=d.fecha?(swHorasPorDia[d.fecha]||0):0;
-    const kgh=horas>0?(d.kgProd/horas).toFixed(1):'—';
-    const diaNombre=d.fecha?dias_nombres[new Date(d.fecha+'T12:00:00').getDay()]:'—';
-    const metaOk=d.kgProd>=META_KG_DIA;
-    totalKg+=d.kgProd; totalH+=horas;
-    return `<tr>
-      <td><input type="date" value="${d.fecha||''}" id="sw-fecha-${i}"
-        style="border:1px solid var(--borde);border-radius:6px;padding:4px 8px;font-size:12px;font-family:inherit">
-      </td>
-      <td style="color:var(--gris-500);font-size:12px">${diaNombre}</td>
-      <td class="td-num" style="font-family:'DM Mono',monospace;font-size:12px">${d.kgInicio.toFixed(1)}</td>
-      <td class="td-num" style="font-family:'DM Mono',monospace;font-size:12px">${d.kgFin.toFixed(1)}</td>
-      <td class="td-num" style="font-family:'DM Mono',monospace;font-weight:700;color:${metaOk?'var(--verde)':'var(--rojo)'}">${d.kgProd.toFixed(1)}</td>
-      <td class="td-num" style="font-family:'DM Mono',monospace;font-size:12px">${horas>0?horas.toFixed(2):'—'}</td>
-      <td class="td-num" style="font-size:12px">${kgh}</td>
-      <td class="td-center"><span id="sw-status-${i}">⏳</span></td>
-    </tr>`;
-  });
-  const eficTotal=totalH>0?(totalKg/totalH).toFixed(2):'—';
-  document.getElementById('sw-tabla-body').innerHTML=rows.join('');
-  document.getElementById('sw-tabla-foot').innerHTML=`
-    <tr style="background:var(--gris-50);font-weight:600">
-      <td colspan="4" style="padding:10px 14px;font-size:12px">TOTAL SEMANA</td>
-      <td class="td-num" style="font-family:'DM Mono',monospace;color:var(--verde)">${fmt(totalKg)} kg</td>
-      <td class="td-num" style="font-family:'DM Mono',monospace">${fmt(totalH)} h</td>
-      <td class="td-num" style="font-size:12px">${eficTotal} kg/h</td>
-      <td></td>
-    </tr>`;
-}
-
-
-async function swSoloGuardarHoras() {
-  const totalH = window._swHorasManualTotal || Object.values(swHorasPorDia).reduce((a,b)=>a+b,0);
-  if (!totalH || totalH <= 0) {
-    toast('Primero sube el CSV de horas', 'err'); return;
-  }
-  // Find semana from detected PDF dates or ask user
-  let semanaId = swSemanaId;
-  if (!semanaId && swDiasPDF.length) {
-    const fecha = swDiasPDF.find(d=>d.fecha)?.fecha;
-    if (fecha) {
-      const sem = semanas.find(s => fecha >= s.fecha_inicio && fecha <= s.fecha_fin);
-      semanaId = sem?.id;
-    }
-  }
-  // If still no semana, use the most recent one
-  if (!semanaId && semanas.length) {
-    semanaId = semanas[semanas.length-1].id;
-  }
-  if (!semanaId) { toast('No se encontró la semana — sube primero el PDF', 'err'); return; }
-
-  const sem = semanas.find(s=>s.id===semanaId);
-  const {error} = await db.from('semanas').update({horas: +totalH.toFixed(2)}).eq('id', semanaId);
-  if (error) { toast('Error: ' + error.message, 'err'); return; }
-
-  // Also update horas por día en la tabla dias
-  const diasSem = await fetchDiasByRange(sem.fecha_inicio, sem.fecha_fin);
-  if (diasSem.length > 0) {
-    const horasPorDia = +(totalH / diasSem.length).toFixed(2);
-    for (const dia of diasSem) {
-      if (!dia._seed) {
-        await db.from('dias').update({horas: horasPorDia}).eq('fecha', dia.fecha);
-      }
-    }
-  }
-
-  toast(`${totalH.toFixed(2)}h guardadas en ${weekLabel(sem)} ✓`, 'ok');
-  await refreshAll();
-}
-
-async function swGuardarTodo(){
-  const btn=document.getElementById('sw-btn-guardar');
-  const status=document.getElementById('sw-save-status');
-  btn.disabled=true; btn.textContent='Guardando…';
-  let guardados=0, errores=0;
-  for (let i=0;i<swDiasPDF.length;i++){
-    const statusEl=document.getElementById(`sw-status-${i}`);
-    const fechaEl=document.getElementById(`sw-fecha-${i}`);
-    const fecha=fechaEl?.value;
-    if (!fecha){statusEl.textContent='⚠️';errores++;continue;}
-    const d=swDiasPDF[i];
-    const horas=swHorasPorDia[fecha]||null;
-    let semana_id=swSemanaId;
-    if (!semana_id){
-      const sem=semanas.find(s=>fecha>=s.fecha_inicio&&fecha<=s.fecha_fin);
-      if (sem){semana_id=sem.id;swSemanaId=sem.id;}
-      else {
-        const dObj=new Date(fecha+'T12:00:00');
-        const dow=dObj.getDay();
-        const diffLun=dow===0?-6:1-dow;
-        const lun=new Date(dObj); lun.setDate(dObj.getDate()+diffLun);
-        const dom=new Date(lun); dom.setDate(lun.getDate()+6);
-        const toISO=x=>x.toISOString().split('T')[0];
-        const meses=['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
-        const numSem=semanas.length+1;
-        const label=`Sem ${numSem} (${lun.getDate()}–${dom.getDate()} ${meses[lun.getMonth()]})`;
-        const {data:ns,error:es}=await db.from('semanas').insert({label,start_date:toISO(lun),end_date:toISO(dom)}).select().single();
-        if (es){statusEl.textContent='❌';errores++;continue;}
-        semana_id=ns.id; swSemanaId=ns.id;
-        semanas.push({...ns,fecha_inicio:ns.start_date,fecha_fin:ns.end_date,numero_semana:semanas.length+1,_local:false});
-        semanas.sort((a,b)=>a.fecha_inicio.localeCompare(b.fecha_inicio));
-      }
-    }
-    const horasVal=horas>0?+horas.toFixed(2):null;
-    const notas=`Inv: ${d.kgInicio} → ${d.kgFin}${horasVal?' | Horas: '+horasVal+'h':''}`;
-    const {error}=await db.from('dias').upsert({fecha,semana_id,prod:d.kgProd,notas,horas:horasVal},{onConflict:'fecha'});
-    if (error){statusEl.textContent='❌';errores++;}
-    else{statusEl.textContent='✅';guardados++;}
-  }
-  // Update semana horas — use manual total if provided, otherwise sum por-dia hours
-  if (swSemanaId) {
-    const manualTotal = window._swHorasManualTotal || 0;
-    const diasTotal = Object.values(swHorasPorDia).reduce((a,b)=>a+b,0);
-    const totalH = manualTotal || diasTotal;
-    if (totalH > 0) {
-      await db.from('semanas').update({horas:+totalH.toFixed(2)}).eq('id',swSemanaId);
-    }
-    window._swHorasManualTotal = 0;
-  }
-  btn.disabled=false; btn.textContent='💾 Guardar semana completa';
-  status.textContent=`${guardados} día(s) guardado(s)${errores?` · ${errores} error(es)`:''}`;
-  toast(`Semana guardada: ${guardados} días ✓`,errores?'err':'ok');
-  if (guardados>0){
-    await refreshAll();
-    document.getElementById('sw-btn-reporte').style.display='inline-flex';
-  }
-}
-
-async function swGenerarReporte(){
-  const btn=document.getElementById('sw-btn-reporte');
-  btn.disabled=true; btn.textContent='⏳ Generando…';
-  try {
-    const semana=semanas.find(s=>s.id===swSemanaId);
-    if (!semana){toast('Semana no encontrada','err');return;}
-    const dias=await fetchDiasByRange(semana.fecha_inicio,semana.fecha_fin);
-    const diasOrd=dias.sort((a,b)=>a.fecha.localeCompare(b.fecha));
-    const totalKg=diasOrd.reduce((a,d)=>a+(d.kg_producidos||0),0);
-    const totalH=Object.values(swHorasPorDia).reduce((a,b)=>a+b,0)||semana.horas||0;
-    const efic=totalH>0?(totalKg/totalH).toFixed(2):'—';
-    const metaOk=diasOrd.filter(d=>d.kg_producidos>=META_KG_DIA).length;
-    const pctMeta=(totalKg/(META_KG_DIA*6)*100).toFixed(1);
-    const semIdx=semanas.findIndex(s=>s.id===swSemanaId);
-    let semAnt=null, totalKgAnt=0;
-    if (semIdx>0){semAnt=semanas[semIdx-1];const diasAnt=await fetchDiasByRange(semAnt.fecha_inicio,semAnt.fecha_fin);totalKgAnt=diasAnt.reduce((a,d)=>a+(d.kg_producidos||0),0);}
-    const tendencia=totalKgAnt>0?((totalKg-totalKgAnt)/totalKgAnt*100).toFixed(1):null;
-    const dias_nombres=['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
-    const meses_nombres=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
-    const hoy=new Date();
-    const fechaReporte=`${hoy.getDate()} de ${meses_nombres[hoy.getMonth()]} de ${hoy.getFullYear()}`;
-    const filasDias=diasOrd.map(d=>{
-      const h=swHorasPorDia[d.fecha]||0;
-      const kgh=h>0?(d.kg_producidos/h).toFixed(2):'—';
-      const metaD=d.kg_producidos>=META_KG_DIA;
-      const diaNom=dias_nombres[new Date(d.fecha+'T12:00:00').getDay()];
-      return `<tr><td>${diaNom}</td><td>${fmtDate(d.fecha)}</td>
-        <td class="num">${fmt(d.kg_producidos)}</td>
-        <td class="num" style="color:${metaD?'#16a34a':'#dc2626'}">${metaD?'✓ Sí':'✗ No'}</td>
-        <td class="num">${h>0?h.toFixed(2):'—'}</td>
-        <td class="num">${kgh}</td>
-        <td style="font-size:11px;color:#666;max-width:160px">${d.notas||'—'}</td>
-      </tr>`;
-    }).join('');
-    const html=`<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8">
-<title>Reporte Semanal AMEG</title>
-<style>*{box-sizing:border-box;margin:0;padding:0;}body{font-family:'Helvetica Neue',Arial,sans-serif;color:#1e293b;background:#fff;padding:40px;}
-.header{border-bottom:3px solid #1a7a3c;padding-bottom:20px;margin-bottom:28px;display:flex;justify-content:space-between;align-items:flex-end;}
-.logo{font-size:28px;font-weight:800;color:#1a7a3c;letter-spacing:-1px;}.logo span{color:#1e293b;}
-.kpi-row{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:28px;}
-.kpi{background:#f8fafc;border-radius:10px;padding:16px 18px;border:1px solid #e2e8f0;border-top:3px solid #1a7a3c;}
-.kpi.bad{border-top-color:#dc2626;}.kpi-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:#64748b;margin-bottom:6px;}
-.kpi-value{font-size:26px;font-weight:800;color:#0f172a;letter-spacing:-1px;}.kpi-value span{font-size:12px;font-weight:400;color:#64748b;}
-.kpi-meta{font-size:11px;color:#64748b;margin-top:4px;}
-.section-title{font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:#1a7a3c;margin-bottom:12px;border-bottom:1px solid #e2e8f0;padding-bottom:6px;}
-table{width:100%;border-collapse:collapse;font-size:12px;margin-bottom:28px;}
-thead th{background:#1e293b;color:#fff;padding:9px 12px;text-align:left;font-size:11px;font-weight:600;text-transform:uppercase;}
-tbody td{padding:9px 12px;border-bottom:1px solid #f1f5f9;}tbody tr:nth-child(even){background:#f8fafc;}
-.num{text-align:right;font-family:monospace;}
-.footer{margin-top:32px;padding-top:16px;border-top:1px solid #e2e8f0;display:flex;justify-content:space-between;font-size:10px;color:#94a3b8;}
-@media print{body{padding:20px;}}</style></head><body>
-<div class="header">
-  <div><div class="logo">AMEG <span>Production</span></div><div style="font-size:12px;color:#64748b">La Chilaca / Gus Tacos</div></div>
-  <div style="text-align:right"><h1 style="font-size:18px;font-weight:700">Reporte Semanal</h1>
-    <p style="font-size:12px;color:#64748b">${weekLabel(semana)} · ${fechaReporte}</p></div>
-</div>
-<div class="kpi-row">
-  <div class="kpi ${totalKg>=META_KG_DIA*6?'':'bad'}"><div class="kpi-label">Total semana</div><div class="kpi-value">${fmt(totalKg)}<span> kg</span></div><div class="kpi-meta">Meta: ${fmt(META_KG_DIA*6)} kg · ${pctMeta}%</div></div>
-  <div class="kpi ${parseFloat(efic)>=META_KG_H?'':'bad'}"><div class="kpi-label">Eficiencia</div><div class="kpi-value">${efic}<span> kg/h</span></div><div class="kpi-meta">Meta: ${META_KG_H} kg/h</div></div>
-  <div class="kpi"><div class="kpi-label">Horas RH</div><div class="kpi-value">${totalH>0?totalH.toFixed(1):'—'}<span> h</span></div><div class="kpi-meta">Sin Mario A.H.</div></div>
-  <div class="kpi ${metaOk>=5?'':'bad'}"><div class="kpi-label">Días sobre meta</div><div class="kpi-value">${metaOk}<span> / ${diasOrd.length}</span></div><div class="kpi-meta">Meta: ≥600 kg/día</div></div>
-</div>
-<div class="section-title">Detalle por día</div>
-<table><thead><tr><th>Día</th><th>Fecha</th><th class="num">Kg Prod.</th><th class="num">≥600 kg</th><th class="num">Horas RH</th><th class="num">kg/h</th><th>Notas</th></tr></thead>
-<tbody>${filasDias}</tbody></table>
-${semAnt&&totalKgAnt>0?`<div class="section-title">Comparativo vs semana anterior</div>
-<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
-  <div style="background:#f8fafc;border-radius:10px;padding:16px;border:1px solid #e2e8f0">
-    <div style="font-size:12px;font-weight:700;color:#64748b;margin-bottom:8px">${weekLabel(semana)}</div>
-    <div style="font-size:24px;font-weight:800">${fmt(totalKg)} kg</div>
-    ${tendencia!==null?`<div style="margin-top:8px;display:inline-flex;align-items:center;gap:4px;font-size:13px;font-weight:700;padding:3px 10px;border-radius:20px;background:${parseFloat(tendencia)>=0?'#dcfce7':'#fee2e2'};color:${parseFloat(tendencia)>=0?'#16a34a':'#dc2626'}">${parseFloat(tendencia)>=0?'↑':'↓'} ${Math.abs(tendencia)}%</div>`:''}
-  </div>
-  <div style="background:#f8fafc;border-radius:10px;padding:16px;border:1px solid #e2e8f0">
-    <div style="font-size:12px;font-weight:700;color:#64748b;margin-bottom:8px">${weekLabel(semAnt)}</div>
-    <div style="font-size:24px;font-weight:800">${fmt(totalKgAnt)} kg</div>
-  </div>
-</div>`:''}
-<div class="footer"><span>AMEG Production Dashboard — Confidencial</span><span>${fechaReporte}</span></div>
-</body></html>` + '<scr'+'ipt>window.onload=()=>window.print();</scr'+'ipt>';
-    const blob=new Blob([html],{type:'text/html'});
-    const url=URL.createObjectURL(blob);
-    const a=document.createElement('a');
-    a.href=url; a.download=`AMEG_Reporte_${weekLabel(semana).replace(/\s/g,'_')}.html`; a.click();
-    URL.revokeObjectURL(url);
-    toast('Reporte generado — abre el archivo y usa Cmd+P para PDF','ok');
-  } catch(e){toast('Error generando reporte: '+e.message,'err');}
-  finally{btn.disabled=false;btn.textContent='📄 Descargar reporte PDF';}
-}
 
 // =====================================================================
 // TAB: CALENDARIO
@@ -3453,49 +3214,6 @@ const BOLSA_KG={
 
 
 // Show all products with zeros when no Excel uploaded yet
-function invRenderDefault(){
-  const bEl = document.getElementById('inv-carnes-grid');
-  const uEl = document.getElementById('inv-upstairs-grid');
-  const emptyEl = document.getElementById('inv-empty');
-  // Only show defaults if grids are empty
-  if (bEl && bEl.innerHTML.trim()==='') {
-    const BASEMENT_DEFAULT = {
-      'ASADA':        {inventory:0,ordered:0,total:0},
-      'BARBACOA':     {inventory:0,ordered:0,total:0},
-      'BIRRIA':       {inventory:0,ordered:0,total:0},
-      'CARNITAS':     {inventory:0,ordered:0,total:0},
-      'CHICKEN':      {inventory:0,ordered:0,total:0},
-      'BBJ':          {inventory:0,ordered:0,total:0},
-      'BIRRIA CONSO': {inventory:0,ordered:0,total:0},
-      'BBQ CONSO':    {inventory:0,ordered:0,total:0},
-      'BEANS':        {inventory:0,ordered:0,total:0},
-      'PASTOR':       {inventory:0,ordered:0,total:0},
-      'PAS MARINATE': {inventory:0,ordered:0,total:0},
-      'FISH VENERICA':{inventory:0,ordered:0,total:0},
-      'SONORA WHITE': {inventory:0,ordered:0,total:0},
-    };
-    const UPSTAIRS_DEFAULT = {
-      'MILD':           {inventory:0,ordered:0,total:0},
-      'MEDIUM':         {inventory:0,ordered:0,total:0},
-      'HOT':            {inventory:0,ordered:0,total:0},
-      'HOT JALAPEÑO':   {inventory:0,ordered:0,total:0},
-      'HOT JARS':       {inventory:0,ordered:0,total:0},
-      'MACHA':          {inventory:0,ordered:0,total:0},
-      'MAYO':           {inventory:0,ordered:0,total:0},
-      'FISH FLOUR':     {inventory:0,ordered:0,total:0},
-      'ONION':          {inventory:0,ordered:0,total:0},
-      'MUSHROOMS':      {inventory:0,ordered:0,total:0},
-      'LETTUCE':        {inventory:0,ordered:0,total:0},
-      'CILANTRO':       {inventory:0,ordered:0,total:0},
-      'PORTUGUESE BUNS':{inventory:0,ordered:0,total:0},
-      'MOZZARELLA':     {inventory:0,ordered:0,total:0},
-    };
-    if (emptyEl) emptyEl.style.display='none';
-    document.getElementById('inv-fecha-badge').textContent='📋 Sube el Excel para actualizar con datos reales';
-    renderInvCards(BASEMENT_DEFAULT, UPSTAIRS_DEFAULT, null);
-  }
-}
-
 
 // ═══════════════════════════════════════════════════════════════
 // MÓDULO INVENTARIO
