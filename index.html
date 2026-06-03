@@ -8,6 +8,7 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
   <script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
   <style>
   :root {
     --bg:          #f2f3f4;
@@ -532,6 +533,7 @@
   <span class="nav-group-label">Gestionar</span>
   <button data-tab="semanal">📅 Semanas</button>
   <button data-tab="historial">📁 Historial</button>
+  <button data-tab="reporte">📄 Reporte</button>
 </nav>
 
 <main>
@@ -933,6 +935,19 @@
     <select id="cal-mes-sel" onchange="renderCalendario()"></select>
   </div>
   <div id="cal-content"><div class="loading"><div class="spinner"></div></div></div>
+</div>
+
+<div class="tab-pane" id="tab-reporte">
+  <div class="filter-bar" style="margin-bottom:16px">
+    <label>Período:</label>
+    <select id="rep-periodo-sel" onchange="repGenerar()">
+      <option value="mes">Mes actual</option>
+      <option value="semana">Semana actual</option>
+      <option value="ant">Semana anterior</option>
+    </select>
+    <button onclick="repDescargarPDF()" style="margin-left:auto;padding:6px 16px;border-radius:8px;border:none;background:var(--verde-2);color:#fff;font-size:13px;cursor:pointer">⬇ Descargar PDF</button>
+  </div>
+  <div id="rep-content"><div class="loading"><div class="spinner"></div></div></div>
 </div>
 
 </main>
@@ -2377,6 +2392,7 @@ async function refreshAll() {
   if (activeTab==='tab-historial')    await renderHistorial();
   if (activeTab==='tab-graficas')     await renderGraficas();
   if (activeTab==='tab-calendario')   await renderCalendario();
+  if (activeTab==='tab-reporte')      await repGenerar();
 }
 
 // =====================================================================
@@ -2474,7 +2490,7 @@ async function renderKgMesYTop3() {
     });
     top3 = Object.entries(totProd)
       .sort((a,b) => b[1]-a[1])
-      .slice(0,3)
+
       .map(([prod,kg]) => ({prod, kg}));
   }
 
@@ -2495,7 +2511,7 @@ async function renderKgMesYTop3() {
 
     <!-- Top 3 productos -->
     <div class="glass" style="border-radius:var(--radio-lg);padding:22px 24px">
-      <div class="kh-label">Top productos — ${now.getFullYear()}</div>
+      <div class="kh-label">Top 5 productos — ${now.getFullYear()}</div>
       ${top3.length > 0 ? `
         <div style="margin-top:14px;display:flex;flex-direction:column;gap:12px">
           ${top3.map((p,i) => {
@@ -3743,6 +3759,157 @@ document.addEventListener('DOMContentLoaded', async ()=>{
   await initSemanas();
   await refreshAll();
 });
-</script>
+
+// =====================================================================
+// REPORTE EJECUTIVO
+// =====================================================================
+async function repGenerar() {
+  const container = document.getElementById('rep-content');
+  if (!container) return;
+  container.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
+
+  const periodo = document.getElementById('rep-periodo-sel')?.value || 'mes';
+  const now = new Date();
+
+  let fechaIni, fechaFin, periodoLabel;
+  if (periodo === 'mes') {
+    fechaIni = now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0') + '-01';
+    const ultimo = new Date(now.getFullYear(), now.getMonth()+1, 0).getDate();
+    fechaFin = now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0') + '-' + ultimo;
+    periodoLabel = now.toLocaleString('es',{month:'long',year:'numeric'});
+  } else if (periodo === 'semana') {
+    const lun = new Date(now);
+    lun.setDate(now.getDate() - ((now.getDay()+6)%7));
+    const dom = new Date(lun); dom.setDate(lun.getDate()+6);
+    fechaIni = lun.toISOString().slice(0,10);
+    fechaFin = dom.toISOString().slice(0,10);
+    periodoLabel = 'Semana actual';
+  } else {
+    const lun = new Date(now);
+    lun.setDate(now.getDate() - ((now.getDay()+6)%7) - 7);
+    const dom = new Date(lun); dom.setDate(lun.getDate()+6);
+    fechaIni = lun.toISOString().slice(0,10);
+    fechaFin = dom.toISOString().slice(0,10);
+    periodoLabel = 'Semana anterior';
+  }
+
+  // Consultar dias
+  const {data: dias} = await db.from('dias').select('*').gte('fecha',fechaIni).lte('fecha',fechaFin).order('fecha');
+  // Consultar dias_productos
+  const {data: prods} = await db.from('dias_productos').select('*').gte('fecha',fechaIni).lte('fecha',fechaFin);
+
+  const diasData = dias || [];
+  const prodsData = prods || [];
+
+  // KPIs
+  const totalKg = diasData.reduce((s,d)=>s+(d.prod||0),0);
+  const totalHoras = diasData.filter(d=>d.horas>0).reduce((s,d)=>s+(d.horas||0),0);
+  const diasTrab = diasData.filter(d=>(d.prod||0)>0).length;
+  const efic = totalHoras>0 ? (totalKg/totalHoras) : 0;
+  const promDia = diasTrab>0 ? (totalKg/diasTrab) : 0;
+  const meta = periodo==='mes' ? 600*diasTrab : (periodo==='semana'||periodo==='ant') ? 3900 : 3900;
+  const pct = meta>0 ? Math.min((totalKg/meta)*100,100) : 0;
+
+  // Top productos
+  const totProd = {};
+  prodsData.forEach(p => {
+    totProd[p.producto] = (totProd[p.producto]||0) + (p.kg_prod||0);
+  });
+  const topProds = Object.entries(totProd).sort((a,b)=>b[1]-a[1]).slice(0,5);
+
+  // HTML — sin template literals anidados
+  let html = '<div id="rep-body" style="max-width:800px;margin:0 auto;font-family:var(--sans)">';
+
+  // Header
+  html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">';
+  html += '<div><div style="font-size:11px;color:var(--texto-3);text-transform:uppercase;letter-spacing:.05em">Reporte Ejecutivo</div>';
+  html += '<div style="font-size:20px;font-weight:700;color:var(--texto)">' + periodoLabel + '</div></div>';
+  html += '<div style="font-size:11px;color:var(--texto-3)">' + fechaIni + ' — ' + fechaFin + '</div></div>';
+
+  // KPI cards
+  html += '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:20px">';
+  const kpis = [
+    ['Kg Totales', fmt(totalKg) + ' kg', totalKg >= meta ? 'var(--verde-2)' : 'var(--rojo-2)'],
+    ['Eficiencia', fmt(efic,1) + ' kg/h', efic >= 12 ? 'var(--verde-2)' : '#d97706'],
+    ['Horas RH', fmt(totalHoras,1) + ' h', 'var(--texto)'],
+    ['Días trabajados', diasTrab + ' días', 'var(--texto)'],
+  ];
+  kpis.forEach(function(k) {
+    html += '<div style="background:var(--glass);border-radius:var(--radio-lg);padding:14px 16px">';
+    html += '<div style="font-size:10px;color:var(--texto-3);text-transform:uppercase;margin-bottom:6px">' + k[0] + '</div>';
+    html += '<div style="font-size:20px;font-weight:700;color:' + k[2] + '">' + k[1] + '</div>';
+    html += '</div>';
+  });
+  html += '</div>';
+
+  // Barra de avance
+  html += '<div style="background:var(--glass);border-radius:var(--radio-lg);padding:16px 20px;margin-bottom:20px">';
+  html += '<div style="display:flex;justify-content:space-between;font-size:12px;color:var(--texto-3);margin-bottom:8px">';
+  html += '<span>Avance vs meta</span><span>' + pct.toFixed(1) + '%</span></div>';
+  html += '<div style="background:rgba(0,0,0,0.07);border-radius:4px;height:8px;overflow:hidden">';
+  const barColor = pct>=100 ? 'var(--verde-2)' : pct>=80 ? '#d97706' : 'var(--rojo-2)';
+  html += '<div style="width:' + pct + '%;height:100%;background:' + barColor + ';border-radius:4px;transition:width 1s"></div>';
+  html += '</div></div>';
+
+  // Top productos
+  if (topProds.length > 0) {
+    html += '<div style="background:var(--glass);border-radius:var(--radio-lg);padding:16px 20px;margin-bottom:20px">';
+    html += '<div style="font-size:11px;color:var(--texto-3);text-transform:uppercase;margin-bottom:12px">Top productos</div>';
+    const maxKg = topProds[0][1];
+    topProds.forEach(function(p) {
+      const pctP = maxKg > 0 ? (p[1]/maxKg*100) : 0;
+      html += '<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">';
+      html += '<div style="font-size:12px;color:var(--texto);width:120px">' + p[0] + '</div>';
+      html += '<div style="flex:1;background:rgba(0,0,0,0.07);border-radius:3px;height:6px;overflow:hidden">';
+      html += '<div style="width:' + pctP + '%;height:100%;background:var(--verde-2);border-radius:3px"></div></div>';
+      html += '<div style="font-size:12px;font-weight:600;color:var(--texto);width:70px;text-align:right">' + fmt(p[1],1) + ' kg</div>';
+      html += '</div>';
+    });
+    html += '</div>';
+  }
+
+  // Tabla diaria
+  html += '<div style="background:var(--glass);border-radius:var(--radio-lg);padding:16px 20px">';
+  html += '<div style="font-size:11px;color:var(--texto-3);text-transform:uppercase;margin-bottom:12px">Producción diaria</div>';
+  html += '<table style="width:100%;border-collapse:collapse;font-size:12px">';
+  html += '<thead><tr style="border-bottom:1px solid var(--borde)">';
+  html += '<th style="text-align:left;padding:6px 8px;color:var(--texto-3);font-weight:500">Fecha</th>';
+  html += '<th style="text-align:right;padding:6px 8px;color:var(--texto-3);font-weight:500">Kg</th>';
+  html += '<th style="text-align:right;padding:6px 8px;color:var(--texto-3);font-weight:500">Horas</th>';
+  html += '<th style="text-align:right;padding:6px 8px;color:var(--texto-3);font-weight:500">Efic.</th>';
+  html += '<th style="text-align:center;padding:6px 8px;color:var(--texto-3);font-weight:500">Meta</th>';
+  html += '</tr></thead><tbody>';
+  diasData.forEach(function(d) {
+    const kg = d.prod || 0;
+    const h = d.horas || 0;
+    const ef = h > 0 ? (kg/h) : 0;
+    const ok = kg >= 600;
+    html += '<tr style="border-bottom:0.5px solid var(--borde)">';
+    html += '<td style="padding:7px 8px;color:var(--texto)">' + d.fecha + '</td>';
+    html += '<td style="padding:7px 8px;text-align:right;font-weight:600;color:var(--texto)">' + fmt(kg) + '</td>';
+    html += '<td style="padding:7px 8px;text-align:right;color:var(--texto-3)">' + (h>0?fmt(h,1):'-') + '</td>';
+    html += '<td style="padding:7px 8px;text-align:right;color:' + (ef>=12?'var(--verde-2)':'#d97706') + '">' + (ef>0?fmt(ef,1):'-') + '</td>';
+    html += '<td style="padding:7px 8px;text-align:center">' + (ok ? '✅' : '❌') + '</td>';
+    html += '</tr>';
+  });
+  html += '</tbody></table></div>';
+  html += '</div>';
+
+  container.innerHTML = html;
+}
+
+async function repDescargarPDF() {
+  const body = document.getElementById('rep-body');
+  if (!body) { showToast('Genera el reporte primero'); return; }
+  if (typeof html2pdf === 'undefined') { showToast('html2pdf no disponible'); return; }
+  const periodo = document.getElementById('rep-periodo-sel')?.value || 'mes';
+  html2pdf().set({
+    margin: 10,
+    filename: 'reporte-ameg-' + periodo + '.pdf',
+    image: { type:'jpeg', quality:0.95 },
+    html2canvas: { scale:2 },
+    jsPDF: { unit:'mm', format:'letter', orientation:'portrait' }
+  }).from(body).save();
+}
 </body>
 </html>
