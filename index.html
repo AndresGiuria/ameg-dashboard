@@ -939,11 +939,7 @@
 <div class="tab-pane" id="tab-reporte">
   <div class="filter-bar" style="margin-bottom:16px">
     <label>Período:</label>
-    <select id="rep-periodo-sel" onchange="repGenerar()">
-      <option value="mes">Mes actual</option>
-      <option value="semana">Semana actual</option>
-      <option value="ant">Semana anterior</option>
-    </select>
+    <select id="rep-periodo-sel" onchange="repGenerar()"></select>
     <button onclick="repDescargarPDF()" style="margin-left:auto;padding:6px 16px;border-radius:8px;border:none;background:var(--verde-2);color:#fff;font-size:13px;cursor:pointer">⬇ Descargar PDF</button>
   </div>
   <div id="rep-content"><div class="loading"><div class="spinner"></div></div></div>
@@ -2516,7 +2512,7 @@ async function renderKgMesYTop3() {
           ${top3.map((p,i) => {
             const maxKg = top3[0].kg;
             const pct   = Math.round(p.kg/maxKg*100);
-            const icons = ['🥇','🥈','🥉'];
+            const icons = ['🥇','🥈','🥉','4️⃣','5️⃣'];
             return `<div>
               <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px">
                 <span style="font-size:13px;font-weight:600">${icons[i]} ${p.prod}</span>
@@ -3762,34 +3758,66 @@ document.addEventListener('DOMContentLoaded', async ()=>{
 // =====================================================================
 // REPORTE EJECUTIVO
 // =====================================================================
+function repIniciarMeses() {
+  const sel = document.getElementById('rep-periodo-sel');
+  if (!sel || sel.options.length > 0) return;
+  const now = new Date();
+  const inicio = new Date(2026, 2, 1); // marzo 2026
+  const meses = [];
+  let cur = new Date(inicio);
+  while (cur <= now) {
+    const yr = cur.getFullYear();
+    const mo = String(cur.getMonth()+1).padStart(2,'0');
+    const label = cur.toLocaleString('es',{month:'long',year:'numeric'});
+    meses.push({value: yr+'-'+mo, label: label.charAt(0).toUpperCase()+label.slice(1)});
+    cur.setMonth(cur.getMonth()+1);
+  }
+  // Más reciente primero
+  meses.reverse().forEach(m => {
+    const opt = document.createElement('option');
+    opt.value = m.value;
+    opt.textContent = m.label;
+    sel.appendChild(opt);
+  });
+}
 async function repGenerar() {
+  repIniciarMeses();
   const container = document.getElementById('rep-content');
   if (!container) return;
   container.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
 
-  const periodo = document.getElementById('rep-periodo-sel')?.value || 'mes';
+  const periodo = document.getElementById('rep-periodo-sel')?.value || 'mes_actual';
   const now = new Date();
 
   let fechaIni, fechaFin, periodoLabel;
-  if (periodo === 'mes') {
-    fechaIni = now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0') + '-01';
-    const ultimo = new Date(now.getFullYear(), now.getMonth()+1, 0).getDate();
-    fechaFin = now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0') + '-' + ultimo;
-    periodoLabel = now.toLocaleString('es',{month:'long',year:'numeric'});
-  } else if (periodo === 'semana') {
+
+  if (periodo === 'semana') {
     const lun = new Date(now);
     lun.setDate(now.getDate() - ((now.getDay()+6)%7));
     const dom = new Date(lun); dom.setDate(lun.getDate()+6);
     fechaIni = lun.toISOString().slice(0,10);
     fechaFin = dom.toISOString().slice(0,10);
     periodoLabel = 'Semana actual';
-  } else {
+  } else if (periodo === 'ant') {
     const lun = new Date(now);
     lun.setDate(now.getDate() - ((now.getDay()+6)%7) - 7);
     const dom = new Date(lun); dom.setDate(lun.getDate()+6);
     fechaIni = lun.toISOString().slice(0,10);
     fechaFin = dom.toISOString().slice(0,10);
     periodoLabel = 'Semana anterior';
+  } else if (periodo.match(/^\d{4}-\d{2}$/)) {
+    // Mes específico e.g. "2026-03"
+    const [yr, mo] = periodo.split('-').map(Number);
+    const ultimo = new Date(yr, mo, 0).getDate();
+    fechaIni = yr + '-' + String(mo).padStart(2,'0') + '-01';
+    fechaFin = yr + '-' + String(mo).padStart(2,'0') + '-' + ultimo;
+    periodoLabel = new Date(yr, mo-1, 1).toLocaleString('es',{month:'long',year:'numeric'});
+  } else {
+    // mes_actual
+    fechaIni = now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0') + '-01';
+    const ultimo = new Date(now.getFullYear(), now.getMonth()+1, 0).getDate();
+    fechaFin = now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0') + '-' + ultimo;
+    periodoLabel = now.toLocaleString('es',{month:'long',year:'numeric'});
   }
 
   // Consultar dias
@@ -3899,11 +3927,10 @@ async function repGenerar() {
 
 async function repDescargarPDF() {
   const body = document.getElementById('rep-body');
-  if (!body) { showToast('Genera el reporte primero'); return; }
+  if (!body) { alert('Genera el reporte primero'); return; }
   
   // Cargar html2pdf solo cuando se necesita
   if (typeof html2pdf === 'undefined') {
-    showToast('Cargando PDF...');
     await new Promise((resolve, reject) => {
       const s = document.createElement('script');
       s.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js';
