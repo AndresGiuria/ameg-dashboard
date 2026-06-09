@@ -2866,9 +2866,12 @@ async function swCrearNuevaSemana() {
   if (!ini || !fin) { st.textContent = 'Ingresa inicio y fin'; return; }
   st.textContent = 'Creando...';
 
-  // Generar ID consultando el máximo existente en Supabase
-  const {data: existing} = await db.from('semanas').select('id');
-  const nums = (existing || []).map(s => parseInt(s.id.replace('s',''))).filter(n => !isNaN(n));
+  // Si semanas no está cargado, forzar carga desde Supabase
+  if (semanas.length === 0) {
+    await initSemanas();
+  }
+  // Calcular siguiente ID desde el array local
+  const nums = semanas.map(s => parseInt((s.id||'s0').replace('s',''))).filter(n => !isNaN(n) && n > 0);
   const maxNum = nums.length > 0 ? Math.max(...nums) : 0;
   const newId = 's' + (maxNum + 1);
   const numSem = maxNum + 1;
@@ -2877,6 +2880,7 @@ async function swCrearNuevaSemana() {
   const d1 = new Date(ini+'T12:00:00'), d2 = new Date(fin+'T12:00:00');
   const label = 'Sem ' + numSem + ' (' + d1.getDate() + '-' + d2.getDate() + ' ' + meses[d1.getMonth()] + ')';
 
+  console.log('Creando semana:', newId, label);
   const {data, error} = await db.from('semanas').insert({id: newId, label, start_date: ini, end_date: fin}).select().single();
   if (error) { st.textContent = 'Error: ' + error.message; return; }
   semanas.push({...data, fecha_inicio: data.start_date, fecha_fin: data.end_date});
