@@ -2865,11 +2865,18 @@ async function swCrearNuevaSemana() {
   const st  = document.getElementById('sw-ns-status');
   if (!ini || !fin) { st.textContent = 'Ingresa inicio y fin'; return; }
   st.textContent = 'Creando...';
+
+  // Generar ID consultando el máximo existente en Supabase
+  const {data: existing} = await db.from('semanas').select('id');
+  const nums = (existing || []).map(s => parseInt(s.id.replace('s',''))).filter(n => !isNaN(n));
+  const maxNum = nums.length > 0 ? Math.max(...nums) : 0;
+  const newId = 's' + (maxNum + 1);
+  const numSem = maxNum + 1;
+
   const meses = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
   const d1 = new Date(ini+'T12:00:00'), d2 = new Date(fin+'T12:00:00');
-  const numSem = semanas.length + 1;
-  const newId = 's' + numSem;
   const label = 'Sem ' + numSem + ' (' + d1.getDate() + '-' + d2.getDate() + ' ' + meses[d1.getMonth()] + ')';
+
   const {data, error} = await db.from('semanas').insert({id: newId, label, start_date: ini, end_date: fin}).select().single();
   if (error) { st.textContent = 'Error: ' + error.message; return; }
   semanas.push({...data, fecha_inicio: data.start_date, fecha_fin: data.end_date});
@@ -2879,7 +2886,7 @@ async function swCrearNuevaSemana() {
   sel.value = data.id;
   sel.onchange();
   swSemanaId = data.id;
-  st.textContent = 'Creada';
+  st.textContent = '✅ Creada: ' + label;
   document.getElementById('sw-nueva-sem-form').style.display = 'none';
 }
 
