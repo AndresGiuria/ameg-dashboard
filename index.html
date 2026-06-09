@@ -599,7 +599,7 @@
 <!-- CAPTURA SEMANAL -->
 <div class="tab-pane" id="tab-semana-import">
   <div style="background:var(--glass);border-radius:var(--radio-lg);padding:12px 16px;margin-bottom:16px;font-size:13px;color:var(--texto-3);border-left:3px solid var(--verde-2)">
-    <strong style="color:var(--texto)">⚡ Flujo semanal</strong> — Usa esto cada semana. Sube los PDFs de bitácora y el CSV de horas de 7shifts. Claude lee todo automáticamente.
+    <strong style="color:var(--texto)">⚡ Flujo semanal</strong> — Usa esto cada semana. Sube los PDFs de bitácora e ingresa los kg de cada día. Luego sube el CSV de horas de 7shifts.
   </div>
   <!-- PASO 1: Semana -->
   <div class="card" style="margin-bottom:12px">
@@ -628,13 +628,13 @@
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
       <div style="width:26px;height:26px;border-radius:50%;background:var(--verde-2);color:#fff;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center">2</div>
       <h2 style="margin:0">Sube los PDFs de bitácora</h2>
-      <span style="font-size:12px;color:var(--texto-3);margin-left:4px">Claude lee cada página automáticamente</span>
+      <span style="font-size:12px;color:var(--texto-3);margin-left:4px">Ingresa kg inicio y kg fin de cada día</span>
     </div>
     <div class="upload-zone" id="sw-pdf-zone">
       <input type="file" id="sw-pdf-input" accept=".pdf" multiple>
       <div class="uz-icon" id="sw-pdf-icon">📄</div>
       <p id="sw-pdf-label">Arrastra los PDFs aquí (1 PDF por día o un PDF con varias páginas)</p>
-      <small>Claude extrae fecha, kg inicio, kg fin y kg producido por producto</small>
+      <small>Verás cada página como imagen para ingresar los kg manualmente</small>
     </div>
     <div id="sw-pdf-progress" style="display:none;margin-top:12px"></div>
     <div id="sw-dias-preview" style="margin-top:12px"></div>
@@ -3136,6 +3136,54 @@ async function swLeerCSV(file) {
   return porDia;
 }
 
+
+// =====================================================================
+// GUARDAR SEMANA COMPLETA
+// =====================================================================
+async function swGuardarTodo() {
+  const btn = document.getElementById('sw-btn-guardar');
+  const status = document.getElementById('sw-save-status');
+  if (!swDiasPDF.length) { if(status) status.textContent = '⚠️ No hay días para guardar'; return; }
+  btn.disabled = true; btn.textContent = 'Guardando...';
+  let guardados = 0, errores = 0;
+
+  for (let i = 0; i < swDiasPDF.length; i++) {
+    const statusEl = document.getElementById('sw-status-' + i);
+    const d = swDiasPDF[i];
+    const fecha = d.fecha;
+    if (!fecha) { if(statusEl) statusEl.textContent = '⚠️'; errores++; continue; }
+
+    const horas = swHorasPorDia[fecha] || null;
+    let semana_id = swSemanaId;
+    if (!semana_id) {
+      const sem = semanas.find(s => fecha >= s.fecha_inicio && fecha <= s.fecha_fin);
+      if (sem) { semana_id = sem.id; swSemanaId = sem.id; }
+    }
+
+    const horasVal = horas > 0 ? +horas.toFixed(2) : null;
+    const notas = 'Inv: ' + d.kgInicio + ' -> ' + d.kgFin + (horasVal ? ' | Horas: ' + horasVal + 'h' : '');
+    const {error} = await db.from('dias').upsert(
+      {fecha, semana_id, prod: d.kgProd, notas, horas: horasVal},
+      {onConflict: 'fecha'}
+    );
+    if (error) { if(statusEl) statusEl.textContent = '❌'; errores++; }
+    else { if(statusEl) statusEl.textContent = '✅'; guardados++; }
+  }
+
+  // Guardar horas totales en semana
+  if (swSemanaId) {
+    const manualTotal = window._swHorasManualTotal || 0;
+    const diasTotal = Object.values(swHorasPorDia).reduce((a,b) => a+b, 0);
+    const totalH = manualTotal || diasTotal;
+    if (totalH > 0) await db.from('semanas').update({horas: +totalH.toFixed(2)}).eq('id', swSemanaId);
+    window._swHorasManualTotal = 0;
+  }
+
+  btn.disabled = false; btn.textContent = '💾 Guardar semana completa';
+  if (status) status.textContent = guardados + ' día(s) guardado(s)' + (errores ? ' · ' + errores + ' error(es)' : '');
+  toast('Semana guardada: ' + guardados + ' días ✓', errores ? 'err' : 'ok');
+  if (guardados > 0) await refreshAll();
+}
 
 // =====================================================================
 // TAB: CALENDARIO
