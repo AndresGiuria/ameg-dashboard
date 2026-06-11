@@ -3278,7 +3278,7 @@ function getStockInfo(prod){
   return key ? INV_STOCK[key] : null;
 }
 function getSeccion(prod){
-  return INV_UPSTAIRS.some(k=>prod.toUpperCase().includes(k.split(' ')[0]))?'upstairs':'basement';
+  return INV_UPSTAIRS.includes(prod.toUpperCase()) ? 'upstairs' : 'basement';
 }
 
 async function invRenderDefault(){
