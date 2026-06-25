@@ -4207,7 +4207,8 @@ function repIniciarMeses() {
   const inicio = new Date(2026, 2, 1); // marzo 2026
   const meses = [];
   let cur = new Date(inicio);
-  while (cur <= now) {
+  const limite = new Date(now.getFullYear(), now.getMonth()+2, 0); // incluye mes siguiente
+  while (cur <= limite) {
     const yr = cur.getFullYear();
     const mo = String(cur.getMonth()+1).padStart(2,'0');
     const label = cur.toLocaleString('es',{month:'long',year:'numeric'});
