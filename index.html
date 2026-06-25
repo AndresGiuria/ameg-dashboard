@@ -1795,16 +1795,19 @@ async function renderChartMixProductos(filteredSems) {
   if (!canvas || !filteredSems.length) return;
   const desde = filteredSems[0].fecha_inicio;
   const hasta  = filteredSems[filteredSems.length-1].fecha_fin;
-  const res = await db.from('dias_productos').select('semana_id,producto,kg_prod').gte('fecha',desde).lte('fecha',hasta);
+  const res = await db.from('dias_productos').select('fecha,producto,kg_prod').gte('fecha',desde).lte('fecha',hasta);
   const data = res.data || [];
   if (!data.length) return;
+  // group by semana matching fecha to date range (semana_id may be null/inconsistent in older records)
   const semMap = {};
   const productosObj = {};
   for (let k=0;k<data.length;k++) {
     const r = data[k];
-    if (!semMap[r.semana_id]) semMap[r.semana_id] = {};
-    if (!semMap[r.semana_id][r.producto]) semMap[r.semana_id][r.producto] = 0;
-    semMap[r.semana_id][r.producto] += (r.kg_prod||0);
+    const sem = filteredSems.find(function(s){return r.fecha>=s.fecha_inicio && r.fecha<=s.fecha_fin;});
+    if (!sem) continue;
+    if (!semMap[sem.id]) semMap[sem.id] = {};
+    if (!semMap[sem.id][r.producto]) semMap[sem.id][r.producto] = 0;
+    semMap[sem.id][r.producto] += (r.kg_prod||0);
     productosObj[r.producto] = true;
   }
   const productos = Object.keys(productosObj).sort();
