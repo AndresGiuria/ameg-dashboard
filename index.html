@@ -578,6 +578,8 @@
   <div id="sem-comparativo-row" style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:20px"></div>
   <!-- Alerta inventario -->
   <div id="alerta-inv-row" style="margin-bottom:16px"></div>
+  <!-- Días de stock por producto -->
+  <div id="stock-dias-row"></div>
 
   <div class="charts-main">
     <div class="chart-card">
@@ -1458,27 +1460,60 @@ async function renderKPIs() {
 
   // Promedio y eficiencia del MES actual
   const mesInicio = hoy.slice(0,7)+'-01';
-  const mesFin    = hoy;
-  const diasMes   = await fetchDiasByRange(mesInicio, mesFin);
+  const diasMes   = await fetchDiasByRange(mesInicio, hoy);
   const diasMesTrab = diasMes.filter(d => (d.kg_producidos||0) > 0);
   const totalKgMesKPI = diasMesTrab.reduce((a,d) => a+(d.kg_producidos||0), 0);
   const promMes    = diasMesTrab.length ? totalKgMesKPI/diasMesTrab.length : null;
   const horasMes   = diasMesTrab.reduce((a,d) => a+(d.horas||0), 0);
   const eficMes    = horasMes > 0 ? totalKgMesKPI/horasMes : null;
 
+  // Rolling average — 4 semanas completas más recientes
+  const semsCompletas = [...semanas]
+    .filter(s => s.fecha_fin < hoy)
+    .sort((a,b) => b.fecha_inicio.localeCompare(a.fecha_inicio))
+    .slice(0,4);
+  let avg4wKgDia=null, avg4wKgSem=null, avg4wEfic=null;
+  if (semsCompletas.length > 0) {
+    const diasPorSem = await Promise.all(semsCompletas.map(s => fetchDiasByRange(s.fecha_inicio, s.fecha_fin)));
+    let kgTotal=0, hTotal=0, diasTot=0;
+    diasPorSem.forEach((ds, i) => {
+      const kgSem = ds.reduce((a,d) => a+(d.kg_producidos||0), 0);
+      kgTotal += kgSem;
+      hTotal  += semsCompletas[i].horas || 0;
+      diasTot += ds.filter(d => (d.kg_producidos||0)>0).length;
+    });
+    avg4wKgSem = semsCompletas.length > 0 ? kgTotal/semsCompletas.length : null;
+    avg4wKgDia = diasTot > 0 ? kgTotal/diasTot : null;
+    avg4wEfic  = hTotal  > 0 ? kgTotal/hTotal  : null;
+  }
+
   const kgFechaLabel = hoyData?.fecha ? ' · ' + fmtDate(hoyData.fecha) : '';
-  setKPI('kpi-hoy-kg',    hoyData?.kg_producidos??null, META_KG_DIA, hoyExact?'Kg Hoy':'Últ. Día', 'Meta: 600 kg/día' + kgFechaLabel,'kg');
-  setKPI('kpi-hoy-efic',  eficMes,   META_KG_H,  'Efic. Promedio Mes', 'Meta: 12 kg/h','kg/h');
-  setKPI('kpi-semana-kg', totalKgSem||null, semActual?.fecha_inicio>='2026-05-01'?3900:3600, 'Kg Semana Actual', 'Meta: 3,900 kg','kg');
-  setKPI('kpi-promedio',  promMes, META_KG_DIA, 'Prom. Diario Mes', diasMesTrab.length+' días trabajados','kg');
+  setKPI('kpi-hoy-kg',    hoyData?.kg_producidos??null, META_KG_DIA, hoyExact?'Kg Hoy':'Últ. Día', 'Meta: 600 kg/día' + kgFechaLabel, 'kg',  avg4wKgDia);
+  setKPI('kpi-hoy-efic',  eficMes,       META_KG_H,  'Efic. Promedio Mes',  'Meta: 12 kg/h',     'kg/h', avg4wEfic);
+  setKPI('kpi-semana-kg', totalKgSem||null, semActual?.fecha_inicio>='2026-05-01'?3900:3600, 'Kg Semana Actual', 'Meta: 3,900 kg', 'kg', avg4wKgSem);
+  setKPI('kpi-promedio',  promMes,        META_KG_DIA,'Prom. Diario Mes',    diasMesTrab.length+' días trabajados', 'kg', avg4wKgDia);
 }
 
-function setKPI(cardId, value, meta, label, sublabel, unit) {
+function setKPI(cardId, value, meta, label, sublabel, unit, avg4w) {
   const card = document.getElementById(cardId);
   const pct  = meta>0 ? (value/meta*100) : 0;
   card.className = 'kpi-hero'+(value==null?'':pct>=100?'':pct>=85?' warn':' bad');
+  var deltaHtml = '';
+  if (avg4w != null && value != null && avg4w > 0) {
+    var diff4w  = value - avg4w;
+    var pct4w   = diff4w / avg4w * 100;
+    var up4w    = diff4w >= 0;
+    var clr4w   = up4w ? 'var(--verde)' : 'var(--rojo)';
+    var bg4w    = up4w ? 'rgba(10,110,53,0.1)' : 'rgba(192,25,15,0.09)';
+    deltaHtml = '<div style="margin-top:5px">'
+      + '<span style="font-size:10px;font-weight:700;padding:2px 7px;border-radius:12px;background:' + bg4w + ';color:' + clr4w + '">'
+      + (up4w ? '↑' : '↓') + ' ' + Math.abs(pct4w).toFixed(1) + '%'
+      + '</span>'
+      + ' <span style="font-size:10px;color:var(--texto-3)">vs prom. 4 sem</span>'
+      + '</div>';
+  }
   card.innerHTML = `
-    <div class="kh-icon">${cardId.includes('kg')?'🥩':cardId.includes('efic')?'⚡':cardId.includes('semana')?'📦':'📈'}</div>
+    <div class="kh-icon">${cardId.includes('efic')?'⚡':cardId.includes('semana')?'📦':cardId.includes('promedio')?'📈':'🥩'}</div>
     <div class="kh-label">${label}</div>
     <div class="kh-value" style="color:var(--texto)">${value!=null?fmt(value):'—'}<span>${unit}</span></div>
     <div class="kh-meta">${sublabel}
@@ -1487,7 +1522,7 @@ function setKPI(cardId, value, meta, label, sublabel, unit) {
         : pct>=85
           ? '<span class="kh-trend trend-flat">↗ Cerca</span>'
           : '<span class="kh-trend trend-down">↓ Bajo</span>'):''}
-    </div>`;
+    </div>` + deltaHtml;
 }
 
 // =====================================================================
@@ -2622,6 +2657,7 @@ async function renderTablero() {
   await renderChartDiarioMain();
   await renderChartEficMain();
   await renderAlertaInventario();
+  await renderStockDias();
   await renderSemanasStrip();
   await renderChartMesMain();
   await renderDiaDestacado();
@@ -2906,6 +2942,74 @@ async function renderAlertaInventario() {
   };
 
   container.innerHTML = `<div class="inv-alerta ${cls}" style="margin-bottom:0">${msgs[cls]}</div>`;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// DÍAS DE STOCK POR PRODUCTO
+// ═══════════════════════════════════════════════════════════════
+async function renderStockDias() {
+  const container = document.getElementById('stock-dias-row');
+  if (!container) return;
+
+  // Última fecha de inventario
+  const fecRsp = await db.from('inventario_diario').select('fecha').order('fecha',{ascending:false}).limit(1);
+  const lastFecha = (fecRsp.data && fecRsp.data[0]) ? fecRsp.data[0].fecha : null;
+  if (!lastFecha) { container.innerHTML = ''; return; }
+
+  const invRsp = await db.from('inventario_diario').select('producto,inv_final').eq('fecha', lastFecha);
+  const invRows = invRsp.data || [];
+  if (!invRows.length) { container.innerHTML = ''; return; }
+
+  // Producción por producto últimos 28 días
+  const hoy    = new Date().toISOString().split('T')[0];
+  const hace28 = new Date(Date.now() - 28*86400000).toISOString().split('T')[0];
+  const prodRsp = await db.from('dias_productos').select('producto,kg_prod').gte('fecha',hace28).lte('fecha',hoy);
+  const kgByKey = {};
+  if (prodRsp.data) {
+    prodRsp.data.forEach(function(r) {
+      const up = (r.producto||'').toUpperCase();
+      const key = Object.keys(INV_STOCK).find(function(k){ return up===k || up.includes(k) || up.startsWith(k.split(' ')[0]); });
+      if (key) kgByKey[key] = (kgByKey[key]||0) + Math.max(0, r.kg_prod||0);
+    });
+  }
+
+  // Construir tarjetas
+  const cards = [];
+  invRows.forEach(function(r) {
+    const up  = (r.producto||'').toUpperCase();
+    const key = Object.keys(INV_STOCK).find(function(k){ return up===k || up.includes(k) || up.startsWith(k.split(' ')[0]); });
+    if (!key) return;
+    const s       = INV_STOCK[key];
+    const kgStock = (r.inv_final||0) * s.kg_bolsa;
+    const kg28    = kgByKey[key] || 0;
+    const avgDay  = kg28 / 28;
+    const dias    = avgDay >= 0.5 ? kgStock / avgDay : null;
+    cards.push({ key: key, bolsas: r.inv_final||0, kgStock: kgStock, dias: dias, avgDay: avgDay });
+  });
+  cards.sort(function(a,b){
+    if (a.dias===null && b.dias===null) return 0;
+    if (a.dias===null) return 1;
+    if (b.dias===null) return -1;
+    return a.dias - b.dias;
+  });
+  if (!cards.length) { container.innerHTML = ''; return; }
+
+  var html = '<div style="background:var(--glass);border:1px solid var(--glass-borde);border-radius:var(--radio-lg);padding:16px 20px;margin-bottom:20px">'
+    + '<div style="font-size:10px;text-transform:uppercase;letter-spacing:0.08em;color:var(--texto-3);margin-bottom:12px">DÍAS DE STOCK · ' + fmtDate(lastFecha) + ' · promedio últimos 28 días</div>'
+    + '<div style="display:flex;gap:8px;overflow-x:auto;padding-bottom:4px">';
+  cards.forEach(function(c) {
+    var d   = c.dias;
+    var clr = d===null ? 'var(--texto-3)' : d<2 ? 'var(--rojo)' : d<5 ? '#d97706' : 'var(--verde)';
+    var bg  = d===null ? 'rgba(0,0,0,0.04)' : d<2 ? 'rgba(192,25,15,0.08)' : d<5 ? 'rgba(217,119,6,0.08)' : 'rgba(10,110,53,0.08)';
+    html += '<div style="min-width:100px;flex-shrink:0;background:' + bg + ';border-radius:10px;padding:10px 10px;text-align:center">'
+      + '<div style="font-size:9px;font-weight:700;color:var(--texto-3);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + c.key + '</div>'
+      + '<div style="font-size:26px;font-weight:800;color:' + clr + ';line-height:1;margin-bottom:2px">' + (d!==null ? Math.round(d) : '—') + '</div>'
+      + '<div style="font-size:9px;color:var(--texto-3);margin-bottom:3px">' + (d!==null ? 'días' : 'sin prod.') + '</div>'
+      + '<div style="font-size:9px;color:var(--texto-3)">' + c.bolsas + ' bolsas</div>'
+      + '</div>';
+  });
+  html += '</div></div>';
+  container.innerHTML = html;
 }
 
 // ═══════════════════════════════════════════════════════════════
