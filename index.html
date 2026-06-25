@@ -540,7 +540,6 @@
 <!-- TABLERO -->
 <div class="tab-pane active" id="tab-tablero">
   <div id="db-diag-panel" style="display:none;background:var(--glass);border-radius:var(--radio-lg);padding:16px 20px;margin-bottom:16px;font-size:12px;font-family:var(--mono)"></div>
-  <div style="margin-bottom:12px;text-align:right"><button onclick="diagTablas()" style="font-size:11px;padding:4px 12px;border-radius:6px;border:1px solid var(--borde);background:transparent;cursor:pointer;color:var(--texto-3)">🔍 Buscar tablas con productos</button></div>
   <div id="mes-top3-row" style="display:grid;grid-template-columns:1fr 2fr;gap:14px;margin-bottom:20px"></div>
   <div class="hero-grid" id="kpi-row">
     <div class="kpi-hero" id="kpi-hoy-kg">
@@ -963,12 +962,7 @@
 <div class="tab-pane" id="tab-reporte">
   <div class="filter-bar" style="margin-bottom:16px">
     <label>Período:</label>
-    <select id="rep-periodo-sel" onchange="repGenerar()">
-      <option value="2026-06">Junio de 2026</option>
-      <option value="2026-05">Mayo de 2026</option>
-      <option value="2026-04">Abril de 2026</option>
-      <option value="2026-03">Marzo de 2026</option>
-    </select>
+    <select id="rep-periodo-sel" onchange="repGenerar()"></select>
     <button onclick="repDescargarPDF()" style="margin-left:auto;padding:6px 16px;border-radius:8px;border:none;background:var(--verde-2);color:#fff;font-size:13px;cursor:pointer">⬇ Descargar PDF</button>
   </div>
   <div id="rep-content"><div class="loading"><div class="spinner"></div></div></div>
@@ -1312,6 +1306,12 @@ async function handleFormDiaSubmit(e) {
   const turno     = document.getElementById('f-turno').value || null;
   const notas     = document.getElementById('f-notas').value.trim();
 
+  const hoy = new Date().toISOString().split('T')[0];
+  if (!fecha) { toast('Selecciona una fecha', 'err'); btn.disabled=false; btn.textContent='💾 Guardar Registro'; return; }
+  if (fecha > hoy) { toast('La fecha no puede ser futura', 'err'); btn.disabled=false; btn.textContent='💾 Guardar Registro'; return; }
+  if (isNaN(kg) || kg <= 0) { toast('Ingresa un valor válido de kg (mayor a 0)', 'err'); btn.disabled=false; btn.textContent='💾 Guardar Registro'; return; }
+  if (kg > 1500) { toast('El valor de ' + kg + ' kg parece muy alto — verifica antes de guardar', 'err'); btn.disabled=false; btn.textContent='💾 Guardar Registro'; return; }
+
   if (!semana_id || semana_id === '') {
     const semExistente = semanas.find(s => fecha >= s.fecha_inicio && fecha <= s.fecha_fin);
     if (semExistente) {
@@ -1388,33 +1388,65 @@ function buildDiasTable(rows) {
     ${rows.map(r => {
       const pct = r.kg_producidos?(r.kg_producidos/META_KG_DIA*100):0;
       const sem = semanas.find(s => s.id===r.semana_id);
-      return `<tr>
-        <td>${fmtDate(r.fecha)}</td>
-        <td>${r.dia_nombre||'—'}</td>
-        <td>${sem?'S'+sem.numero_semana:'—'}</td>
-        <td class="td-num"><strong>${fmt(r.kg_producidos)}</strong></td>
-        <td>
-          <div class="progress-bar"><div class="progress-fill ${progClass(pct)}" style="width:${Math.min(pct,100)}%"></div></div>
-          <small style="color:#888;font-size:11px">${Math.round(pct)}%</small>
-        </td>
-        <td class="td-num">${fmt(r.horas_rh)}</td>
-        <td class="td-num">${fmt(r.kg_hora)} ${badgeEfic(r.kg_hora)}</td>
-        <td>${badgeKg(r.kg_producidos)}</td>
-        <td class="td-num">${r.operadores??'—'}</td>
-        <td>${r.turno||'—'}</td>
-        <td style="max-width:160px;font-size:12px;color:#555">${r.notas||'—'}</td>
-        <td><button class="btn btn-danger" style="padding:4px 10px;font-size:12px"
-          onclick="eliminarDia('${r.id}','${r.fecha}')">🗑</button></td>
-      </tr>`;
+      const encNotas = encodeURIComponent(r.notas||'');
+      return '<tr data-dia-id="' + r.id + '" data-kg="' + (r.kg_producidos||0) + '" data-notas="' + encNotas + '">'
+        + '<td>' + fmtDate(r.fecha) + '</td>'
+        + '<td>' + (r.dia_nombre||'—') + '</td>'
+        + '<td>' + (sem?'S'+sem.numero_semana:'—') + '</td>'
+        + '<td class="td-num"><strong>' + fmt(r.kg_producidos) + '</strong></td>'
+        + '<td><div class="progress-bar"><div class="progress-fill ' + progClass(pct) + '" style="width:' + Math.min(pct,100) + '%"></div></div><small style="color:#888;font-size:11px">' + Math.round(pct) + '%</small></td>'
+        + '<td class="td-num">' + fmt(r.horas_rh) + '</td>'
+        + '<td class="td-num">' + fmt(r.kg_hora) + ' ' + badgeEfic(r.kg_hora) + '</td>'
+        + '<td>' + badgeKg(r.kg_producidos) + '</td>'
+        + '<td class="td-num">' + (r.operadores??'—') + '</td>'
+        + '<td>' + (r.turno||'—') + '</td>'
+        + '<td style="max-width:160px;font-size:12px;color:#555">' + (r.notas||'—') + '</td>'
+        + '<td><button class="btn btn-secondary" style="padding:3px 8px;font-size:11px;margin-right:4px" onclick="editarDia(\'' + r.id + '\')">✏️</button>'
+        + '<button class="btn btn-danger" style="padding:3px 8px;font-size:12px" onclick="eliminarDia(\'' + r.id + '\',\'' + r.fecha + '\')">🗑</button></td>'
+        + '</tr>';
     }).join('')}
     </tbody></table>`;
 }
 
 async function eliminarDia(id, fecha) {
-  if (!confirm(`¿Eliminar registro del ${fmtDate(fecha)}?`)) return;
+  if (!confirm('¿Eliminar registro del ' + fmtDate(fecha) + '?')) return;
   const {error} = await db.from('dias').delete().eq('id',id);
   if (error) { toast('Error: '+error.message,'err'); return; }
   toast('Registro eliminado','ok');
+  await refreshAll();
+}
+
+function editarDia(id) {
+  const tr = document.querySelector('tr[data-dia-id="' + id + '"]');
+  if (!tr || tr.getAttribute('data-editing')) return;
+  tr.setAttribute('data-editing','1');
+  const kg    = tr.getAttribute('data-kg') || '0';
+  const notas = decodeURIComponent(tr.getAttribute('data-notas') || '');
+  tr.cells[3].innerHTML = '<input type="number" id="ei-kg-' + id + '" value="' + kg + '" min="1" max="1500" style="width:72px;font-size:12px;border:1px solid var(--borde-2);border-radius:4px;padding:2px 6px;font-family:var(--mono)">';
+  tr.cells[10].innerHTML = '<input type="text" id="ei-notas-' + id + '" value="' + notas.replace(/"/g,'&quot;') + '" style="width:130px;font-size:12px;border:1px solid var(--borde-2);border-radius:4px;padding:2px 6px">';
+  tr.cells[11].innerHTML = '<button class="btn btn-primary" style="padding:3px 9px;font-size:11px;margin-right:3px" onclick="guardarEditDia(\'' + id + '\')">✓</button>'
+    + '<button class="btn btn-secondary" style="padding:3px 9px;font-size:11px" onclick="cancelarEditDia(\'' + id + '\')">✗</button>';
+  tr.cells[3].querySelector('input').focus();
+}
+
+async function guardarEditDia(id) {
+  const tr = document.querySelector('tr[data-dia-id="' + id + '"]');
+  if (!tr) return;
+  const kg    = parseFloat(document.getElementById('ei-kg-' + id)?.value);
+  const notas = (document.getElementById('ei-notas-' + id)?.value || '').trim() || null;
+  if (isNaN(kg) || kg <= 0) { toast('Kg inválido', 'err'); return; }
+  if (kg > 1500) { toast('Kg muy alto — verifica', 'err'); return; }
+  tr.cells[11].innerHTML = '<span style="font-size:11px;color:var(--texto-3)">Guardando…</span>';
+  const {error} = await db.from('dias').update({prod: kg, notas: notas}).eq('id', id);
+  if (error) { toast('Error: ' + error.message, 'err'); tr.removeAttribute('data-editing'); await refreshAll(); return; }
+  toast('Registro actualizado ✓', 'ok');
+  tr.removeAttribute('data-editing');
+  await refreshAll();
+}
+
+async function cancelarEditDia(id) {
+  const tr = document.querySelector('tr[data-dia-id="' + id + '"]');
+  if (tr) tr.removeAttribute('data-editing');
   await refreshAll();
 }
 
@@ -1445,7 +1477,8 @@ async function renderKPIs() {
   const horasMes   = diasMesTrab.reduce((a,d) => a+(d.horas||0), 0);
   const eficMes    = horasMes > 0 ? totalKgMesKPI/horasMes : null;
 
-  setKPI('kpi-hoy-kg',    hoyData?.kg_producidos??null, META_KG_DIA, hoyExact?'Kg Hoy':'Últ. Día', 'Meta: 600 kg/día','kg');
+  const kgFechaLabel = hoyData?.fecha ? ' · ' + fmtDate(hoyData.fecha) : '';
+  setKPI('kpi-hoy-kg',    hoyData?.kg_producidos??null, META_KG_DIA, hoyExact?'Kg Hoy':'Últ. Día', 'Meta: 600 kg/día' + kgFechaLabel,'kg');
   setKPI('kpi-hoy-efic',  eficMes,   META_KG_H,  'Efic. Promedio Mes', 'Meta: 12 kg/h','kg/h');
   setKPI('kpi-semana-kg', totalKgSem||null, semActual?.fecha_inicio>='2026-05-01'?3900:3600, 'Kg Semana Actual', 'Meta: 3,900 kg','kg');
   setKPI('kpi-promedio',  promMes, META_KG_DIA, 'Prom. Diario Mes', diasMesTrab.length+' días trabajados','kg');
