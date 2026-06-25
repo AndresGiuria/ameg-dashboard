@@ -3636,9 +3636,17 @@ async function swCrearNuevaSemana() {
   st.textContent = 'Creando...';
   const meses = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
   const d1 = new Date(ini+'T12:00:00'), d2 = new Date(fin+'T12:00:00');
-  const numSem = semanas.length + 1;
+  // Calculate next ID from existing semanas
+  const {data: existing} = await db.from('semanas').select('id');
+  var maxNum = 0;
+  (existing || []).forEach(function(r) {
+    var n = parseInt((r.id || '').replace(/\D/g,''), 10);
+    if (!isNaN(n) && n > maxNum) maxNum = n;
+  });
+  var newId = 's' + (maxNum + 1);
+  const numSem = maxNum + 1;
   const label = 'Sem ' + numSem + ' (' + d1.getDate() + '-' + d2.getDate() + ' ' + meses[d1.getMonth()] + ')';
-  const {data, error} = await db.from('semanas').insert({label, start_date: ini, end_date: fin}).select().single();
+  const {data, error} = await db.from('semanas').insert({id: newId, label, start_date: ini, end_date: fin}).select().single();
   if (error) { st.textContent = 'Error: ' + error.message; return; }
   semanas.push({...data, fecha_inicio: data.start_date, fecha_fin: data.end_date});
   semanas.sort((a,b) => a.fecha_inicio.localeCompare(b.fecha_inicio));
