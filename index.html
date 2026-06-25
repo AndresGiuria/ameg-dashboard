@@ -999,13 +999,13 @@ const COGS_SETS = {
       { nombre: 'Otros',            cogs:  574291 },
     ],
     topItems: [
-      { nombre: 'Cielos Beef',       cogs: 640342 },
-      { nombre: 'Beef Shank CF',     cogs: 576126 },
-      { nombre: 'Chicken Leg Cut',   cogs: 537804 },
-      { nombre: 'Avocados',          cogs: 495111 },
-      { nombre: 'Bassa Fish V.',     cogs: 383950 },
-      { nombre: 'Shoulder Carnitas', cogs: 190323 },
-      { nombre: 'Pork Leg Fajitas',  cogs: 181709 },
+      { nombre: 'Cielos Beef',       cogs: 640342, kg:  39361 },
+      { nombre: 'Beef Shank CF',     cogs: 576126, kg:  49524 },
+      { nombre: 'Chicken Leg Cut',   cogs: 537804, kg:  53404 },
+      { nombre: 'Avocados',          cogs: 495111, kg:   null },
+      { nombre: 'Bassa Fish V.',     cogs: 383950, kg:  50167 },
+      { nombre: 'Shoulder Carnitas', cogs: 190323, kg:  27812 },
+      { nombre: 'Pork Leg Fajitas',  cogs: 181709, kg:  29456 },
     ],
   },
   '2025': {
@@ -1021,13 +1021,13 @@ const COGS_SETS = {
       { nombre: 'Otros',            cogs: 1474630 },
     ],
     topItems: [
-      { nombre: 'Avocados',          cogs: 482369 },
-      { nombre: 'Beef Shank CF',     cogs: 444238 },
-      { nombre: 'Cielos Beef',       cogs: 399258 },
-      { nombre: 'Chicken Leg Cut',   cogs: 358800 },
-      { nombre: 'Bassa Fish V.',     cogs: 268592 },
-      { nombre: 'Kaiwei Lamb',       cogs: 261675 },
-      { nombre: 'Shoulder Carnitas', cogs: 141476 },
+      { nombre: 'Avocados',          cogs: 482369, kg:   null },
+      { nombre: 'Beef Shank CF',     cogs: 444238, kg:  35832 },
+      { nombre: 'Cielos Beef',       cogs: 399258, kg:  23729 },
+      { nombre: 'Chicken Leg Cut',   cogs: 358800, kg:  36976 },
+      { nombre: 'Bassa Fish V.',     cogs: 268592, kg:  34889 },
+      { nombre: 'Kaiwei Lamb',       cogs: 261675, kg:  16969 },
+      { nombre: 'Mozzarella 12kg',   cogs: 199757, kg:  16596 },
     ],
   },
   '2026': {
@@ -1043,13 +1043,13 @@ const COGS_SETS = {
       { nombre: 'Otros',            cogs:   79141 },
     ],
     topItems: [
-      { nombre: 'Cielos Beef',       cogs: 241084 },
-      { nombre: 'Chicken Leg Cut',   cogs: 179004 },
-      { nombre: 'Mozzarella 12kg',   cogs: 159222 },
-      { nombre: 'Beef Shank CF',     cogs: 128184 },
-      { nombre: 'Bassa Fish V.',     cogs: 114363 },
-      { nombre: 'Lamb Vene-Rica',    cogs:  81656 },
-      { nombre: 'Avocado H Pro',     cogs:  66533 },
+      { nombre: 'Cielos Beef',       cogs: 241084, kg:  15632 },
+      { nombre: 'Chicken Leg Cut',   cogs: 179004, kg:  16428 },
+      { nombre: 'Mozzarella 12kg',   cogs: 159222, kg:  13380 },
+      { nombre: 'Beef Shank CF',     cogs: 128184, kg:  13392 },
+      { nombre: 'Bassa Fish V.',     cogs: 114363, kg:  15116 },
+      { nombre: 'Lamb Vene-Rica',    cogs:  81656, kg:   4946 },
+      { nombre: 'Avocado H Pro',     cogs:  66533, kg:   null },
     ],
   },
 };
@@ -4369,8 +4369,12 @@ function renderCOGSSection(ano) {
   d.topItems.forEach(function(item) {
     var pctWidth = (item.cogs / maxItem * 100);
     var cogsK    = (item.cogs / 1000).toFixed(0);
-    h += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">';
-    h += '<div style="font-size:11px;color:var(--texto);width:130px;flex-shrink:0">' + item.nombre + '</div>';
+    var kgLabel  = item.kg ? (item.kg >= 1000 ? (item.kg/1000).toFixed(1) + 'k kg' : item.kg + ' kg') : '';
+    h += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:7px">';
+    h += '<div style="width:130px;flex-shrink:0">';
+    h += '<div style="font-size:11px;color:var(--texto)">' + item.nombre + '</div>';
+    if (kgLabel) h += '<div style="font-size:10px;color:var(--texto-3)">' + kgLabel + '</div>';
+    h += '</div>';
     h += '<div style="flex:1;background:rgba(0,0,0,0.07);border-radius:3px;height:6px;overflow:hidden">';
     h += '<div style="width:' + pctWidth.toFixed(1) + '%;height:100%;background:#d97706;border-radius:3px"></div></div>';
     h += '<div style="font-size:11px;font-weight:600;color:var(--texto);width:44px;text-align:right">$' + cogsK + 'k</div>';
