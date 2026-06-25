@@ -120,6 +120,20 @@
   }
   nav button:hover { color: rgba(255,255,255,0.75); }
   nav button.active { color: #fff; border-bottom-color: var(--verde-2); }
+  .nav-spacer { flex: 1; min-width: 16px; }
+  .nav-action {
+    background: rgba(46,204,113,0.1) !important;
+    border: 1px solid rgba(46,204,113,0.22) !important;
+    border-bottom-color: rgba(46,204,113,0.22) !important;
+    border-radius: 20px !important;
+    color: var(--verde-2) !important;
+    padding: 7px 14px !important;
+    margin: auto 3px;
+    font-weight: 600 !important;
+    font-size: 11.5px !important;
+  }
+  .nav-action:hover { background: rgba(46,204,113,0.2) !important; color: #fff !important; }
+  .nav-action.active { background: var(--verde-2) !important; color: #fff !important; border-color: var(--verde-2) !important; }
 
   /* ── LAYOUT ── */
   main { padding: 24px 28px; max-width: 1440px; margin: 0 auto; }
@@ -526,19 +540,15 @@
 </header>
 
 <nav id="main-nav">
-  <span class="nav-group-label">Ver</span>
   <button class="active" data-tab="tablero">📊 Tablero</button>
   <button data-tab="inventario">📦 Inventario</button>
   <button data-tab="calendario">🗕 Calendario</button>
   <button data-tab="graficas">📈 Gráficas</button>
-  <span class="nav-sep"></span>
-  <span class="nav-group-label">Capturar</span>
-  <button data-tab="semana-import">⚡ Semana nueva</button>
-  <button data-tab="captura">➕ Agregar día</button>
-  <span class="nav-sep"></span>
-  <span class="nav-group-label">Gestionar</span>
   <button data-tab="datos">📋 Datos</button>
   <button data-tab="reporte">📄 Reporte</button>
+  <span class="nav-spacer"></span>
+  <button class="nav-action" data-tab="semana-import">⚡ Semana nueva</button>
+  <button class="nav-action" data-tab="captura">➕ Agregar día</button>
 </nav>
 
 <main>
