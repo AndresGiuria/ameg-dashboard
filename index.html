@@ -983,31 +983,75 @@ const META_KG_H    = 12;
 const EXCLUIDO_RH  = 'Mario Alberto Hernández';
 const EXCLUIDO_CSV = 'HERNANDEZ ALCALA, MARIO ALBERTO';
 
-// COGS histórico — Ene 2025–May 2026 (fuente: COGS report Excel)
-const COGS_DATA = {
-  periodo: 'Ene 2025 – May 2026',
-  dias: 517,
-  ventas:  9332109,
-  cogs:    7526785,
-  gp:      1805323,
-  categorias: [
-    { nombre: 'Proteínas',       cogs: 3399377 },
-    { nombre: 'Vegetales',       cogs:  684313 },
-    { nombre: 'Lácteos',         cogs:  620049 },
-    { nombre: 'Tortillas/Pan',   cogs:  730567 },
-    { nombre: 'Salsas',          cogs:  188364 },
-    { nombre: 'Aceites/Especias',cogs:  213942 },
-    { nombre: 'Otros',           cogs:  690173 },
-  ],
-  topItems: [
-    { nombre: 'Cielos Beef',       cogs: 640342 },
-    { nombre: 'Beef Shank CF',     cogs: 576126 },
-    { nombre: 'Chicken Leg Cut',   cogs: 537804 },
-    { nombre: 'Avocados',          cogs: 495111 },
-    { nombre: 'Bassa Fish V.',     cogs: 383950 },
-    { nombre: 'Shoulder Carnitas', cogs: 190323 },
-    { nombre: 'Pork Leg Fajitas',  cogs: 181709 },
-  ],
+// COGS histórico por año (fuente: COGS report Excel)
+var cogsAnoSel = 'total';
+const COGS_SETS = {
+  total: {
+    label: 'Ene 2025 – May 2026', dias: 517,
+    ventas: 9332109, cogs: 7526785, gp: 1805323,
+    categorias: [
+      { nombre: 'Proteínas',        cogs: 3399377 },
+      { nombre: 'Vegetales',        cogs:  800195 },
+      { nombre: 'Lácteos',          cogs:  620049 },
+      { nombre: 'Tortillas/Pan',    cogs:  730567 },
+      { nombre: 'Salsas',           cogs:  188364 },
+      { nombre: 'Aceites/Especias', cogs:  213942 },
+      { nombre: 'Otros',            cogs:  574291 },
+    ],
+    topItems: [
+      { nombre: 'Cielos Beef',       cogs: 640342 },
+      { nombre: 'Beef Shank CF',     cogs: 576126 },
+      { nombre: 'Chicken Leg Cut',   cogs: 537804 },
+      { nombre: 'Avocados',          cogs: 495111 },
+      { nombre: 'Bassa Fish V.',     cogs: 383950 },
+      { nombre: 'Shoulder Carnitas', cogs: 190323 },
+      { nombre: 'Pork Leg Fajitas',  cogs: 181709 },
+    ],
+  },
+  '2025': {
+    label: 'Ene – Dic 2025', dias: 365,
+    ventas: 6540387, cogs: 5617305, gp: 923082,
+    categorias: [
+      { nombre: 'Proteínas',        cogs: 2429101 },
+      { nombre: 'Vegetales',        cogs:  457477 },
+      { nombre: 'Lácteos',          cogs:  387280 },
+      { nombre: 'Tortillas/Pan',    cogs:  527011 },
+      { nombre: 'Salsas',           cogs:  164870 },
+      { nombre: 'Aceites/Especias', cogs:  176936 },
+      { nombre: 'Otros',            cogs: 1474630 },
+    ],
+    topItems: [
+      { nombre: 'Avocados',          cogs: 482369 },
+      { nombre: 'Beef Shank CF',     cogs: 444238 },
+      { nombre: 'Cielos Beef',       cogs: 399258 },
+      { nombre: 'Chicken Leg Cut',   cogs: 358800 },
+      { nombre: 'Bassa Fish V.',     cogs: 268592 },
+      { nombre: 'Kaiwei Lamb',       cogs: 261675 },
+      { nombre: 'Shoulder Carnitas', cogs: 141476 },
+    ],
+  },
+  '2026': {
+    label: 'Ene – May 2026', dias: 151,
+    ventas: 2791722, cogs: 1901329, gp: 890393,
+    categorias: [
+      { nombre: 'Proteínas',        cogs:  980937 },
+      { nombre: 'Vegetales',        cogs:  344744 },
+      { nombre: 'Lácteos',          cogs:  232869 },
+      { nombre: 'Tortillas/Pan',    cogs:  202471 },
+      { nombre: 'Salsas',           cogs:   24132 },
+      { nombre: 'Aceites/Especias', cogs:   37035 },
+      { nombre: 'Otros',            cogs:   79141 },
+    ],
+    topItems: [
+      { nombre: 'Cielos Beef',       cogs: 241084 },
+      { nombre: 'Chicken Leg Cut',   cogs: 179004 },
+      { nombre: 'Mozzarella 12kg',   cogs: 159222 },
+      { nombre: 'Beef Shank CF',     cogs: 128184 },
+      { nombre: 'Bassa Fish V.',     cogs: 114363 },
+      { nombre: 'Lamb Vene-Rica',    cogs:  81656 },
+      { nombre: 'Avocado H Pro',     cogs:  66533 },
+    ],
+  },
 };
 
 // Capture native fetch before any library can override it
@@ -4216,66 +4260,8 @@ async function repGenerar() {
     html += '</div>';
   }
 
-  // ── Sección COGS ──
-  var cogsFC    = (COGS_DATA.cogs / COGS_DATA.ventas * 100).toFixed(1);
-  var cogsDia   = Math.round(COGS_DATA.cogs / COGS_DATA.dias);
-  var maxCatCogs = Math.max.apply(null, COGS_DATA.categorias.map(function(c){ return c.cogs; }));
-  var maxItemCogs = COGS_DATA.topItems[0].cogs;
-
-  // Separador visual antes del benchmark
-  html += '<div style="display:flex;align-items:center;gap:12px;margin:8px 0 16px">';
-  html += '<div style="flex:1;height:1px;background:var(--borde)"></div>';
-  html += '<div style="font-size:10px;color:var(--texto-3);text-transform:uppercase;letter-spacing:.08em;white-space:nowrap">Benchmark histórico · No corresponde al período</div>';
-  html += '<div style="flex:1;height:1px;background:var(--borde)"></div>';
-  html += '</div>';
-
-  html += '<div style="background:var(--glass);border-radius:var(--radio-lg);padding:16px 20px;margin-bottom:20px;border:1px dashed rgba(255,255,255,0.08)">';
-  html += '<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:14px">';
-  html += '<div style="font-size:11px;color:var(--texto-3);text-transform:uppercase;letter-spacing:.05em">💰 Estructura de Costos — Acumulado</div>';
-  html += '<div style="font-size:10px;color:var(--texto-3);background:rgba(0,0,0,0.15);padding:2px 8px;border-radius:6px">' + COGS_DATA.periodo + ' (' + COGS_DATA.dias + ' días)</div>';
-  html += '</div>';
-
-  // 3 mini-cards resumen
-  html += '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px">';
-  var cogsCards = [
-    ['COGS Total', '$' + (COGS_DATA.cogs/1e6).toFixed(2) + 'M', 'var(--texto)'],
-    ['Food Cost %', cogsFC + '%', parseFloat(cogsFC) > 82 ? 'var(--rojo-2)' : parseFloat(cogsFC) > 78 ? '#d97706' : 'var(--verde-2)'],
-    ['Costo/día prom.', '$' + cogsDia.toLocaleString(), 'var(--texto)'],
-  ];
-  cogsCards.forEach(function(c) {
-    html += '<div style="background:rgba(0,0,0,0.06);border-radius:10px;padding:12px 14px">';
-    html += '<div style="font-size:10px;color:var(--texto-3);text-transform:uppercase;margin-bottom:5px">' + c[0] + '</div>';
-    html += '<div style="font-size:18px;font-weight:700;color:' + c[2] + '">' + c[1] + '</div>';
-    html += '</div>';
-  });
-  html += '</div>';
-
-  // Barras por categoría
-  html += '<div style="font-size:10px;color:var(--texto-3);text-transform:uppercase;margin-bottom:8px">Por categoría</div>';
-  COGS_DATA.categorias.forEach(function(cat) {
-    var pctBar = (cat.cogs / COGS_DATA.cogs * 100);
-    var pctWidth = (cat.cogs / maxCatCogs * 100);
-    html += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">';
-    html += '<div style="font-size:11px;color:var(--texto);width:130px;flex-shrink:0">' + cat.nombre + '</div>';
-    html += '<div style="flex:1;background:rgba(0,0,0,0.07);border-radius:3px;height:6px;overflow:hidden">';
-    html += '<div style="width:' + pctWidth.toFixed(1) + '%;height:100%;background:var(--verde-2);border-radius:3px"></div></div>';
-    html += '<div style="font-size:11px;color:var(--texto-3);width:38px;text-align:right">' + pctBar.toFixed(1) + '%</div>';
-    html += '</div>';
-  });
-
-  // Top ingredientes
-  html += '<div style="font-size:10px;color:var(--texto-3);text-transform:uppercase;margin:12px 0 8px">Top ingredientes</div>';
-  COGS_DATA.topItems.forEach(function(item) {
-    var pctWidth = (item.cogs / maxItemCogs * 100);
-    var cogsK = (item.cogs / 1000).toFixed(0);
-    html += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">';
-    html += '<div style="font-size:11px;color:var(--texto);width:130px;flex-shrink:0">' + item.nombre + '</div>';
-    html += '<div style="flex:1;background:rgba(0,0,0,0.07);border-radius:3px;height:6px;overflow:hidden">';
-    html += '<div style="width:' + pctWidth.toFixed(1) + '%;height:100%;background:#d97706;border-radius:3px"></div></div>';
-    html += '<div style="font-size:11px;font-weight:600;color:var(--texto);width:44px;text-align:right">$' + cogsK + 'k</div>';
-    html += '</div>';
-  });
-  html += '</div>';
+  // ── Sección COGS — placeholder, se llena con renderCOGSSection() ──
+  html += '<div id="rep-cogs-section"></div>';
 
   // Tabla diaria
   html += '<div style="background:var(--glass);border-radius:var(--radio-lg);padding:16px 20px">';
@@ -4305,6 +4291,94 @@ async function repGenerar() {
   html += '</div>';
 
   container.innerHTML = html;
+  renderCOGSSection(cogsAnoSel);
+}
+
+function renderCOGSSection(ano) {
+  cogsAnoSel = ano;
+  var el = document.getElementById('rep-cogs-section');
+  if (!el) return;
+  var d = COGS_SETS[ano];
+  if (!d) return;
+
+  var fc       = (d.cogs / d.ventas * 100).toFixed(1);
+  var fcNum    = parseFloat(fc);
+  var fcColor  = fcNum > 82 ? 'var(--rojo-2)' : fcNum > 72 ? '#d97706' : 'var(--verde-2)';
+  var cogsDia  = Math.round(d.cogs / d.dias);
+  var maxCat   = Math.max.apply(null, d.categorias.map(function(c){ return c.cogs; }));
+  var maxItem  = d.topItems[0].cogs;
+
+  var h = '';
+
+  // Separador
+  h += '<div style="display:flex;align-items:center;gap:12px;margin:8px 0 16px">';
+  h += '<div style="flex:1;height:1px;background:var(--borde)"></div>';
+  h += '<div style="font-size:10px;color:var(--texto-3);text-transform:uppercase;letter-spacing:.08em;white-space:nowrap">Benchmark histórico · No corresponde al período</div>';
+  h += '<div style="flex:1;height:1px;background:var(--borde)"></div>';
+  h += '</div>';
+
+  // Card container
+  h += '<div style="background:var(--glass);border-radius:var(--radio-lg);padding:16px 20px;margin-bottom:20px;border:1px dashed rgba(255,255,255,0.08)">';
+
+  // Header con selector de año
+  h += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">';
+  h += '<div style="font-size:11px;color:var(--texto-3);text-transform:uppercase;letter-spacing:.05em">💰 Estructura de Costos</div>';
+  h += '<div style="display:flex;gap:3px;background:rgba(0,0,0,0.1);border-radius:8px;padding:2px">';
+  var anos = [['total','Todo'],['2025','2025'],['2026','2026']];
+  anos.forEach(function(a) {
+    var active = a[0] === ano;
+    var bg  = active ? 'var(--verde-2)' : 'transparent';
+    var clr = active ? '#fff' : 'var(--texto-3)';
+    h += '<button onclick="renderCOGSSection(\'' + a[0] + '\')" style="font-size:11px;font-weight:' + (active?'700':'500') + ';padding:3px 10px;border-radius:6px;border:none;cursor:pointer;background:' + bg + ';color:' + clr + ';font-family:var(--font)">' + a[1] + '</button>';
+  });
+  h += '</div></div>';
+
+  // Sub-label período
+  h += '<div style="font-size:10px;color:var(--texto-3);margin-bottom:14px">' + d.label + ' · ' + d.dias + ' días</div>';
+
+  // 3 mini-cards
+  h += '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px">';
+  var cards = [
+    ['COGS Total', '$' + (d.cogs/1e6).toFixed(2) + 'M', 'var(--texto)'],
+    ['Food Cost %', fc + '%', fcColor],
+    ['Costo/día prom.', '$' + cogsDia.toLocaleString(), 'var(--texto)'],
+  ];
+  cards.forEach(function(c) {
+    h += '<div style="background:rgba(0,0,0,0.06);border-radius:10px;padding:12px 14px">';
+    h += '<div style="font-size:10px;color:var(--texto-3);text-transform:uppercase;margin-bottom:5px">' + c[0] + '</div>';
+    h += '<div style="font-size:18px;font-weight:700;color:' + c[2] + '">' + c[1] + '</div>';
+    h += '</div>';
+  });
+  h += '</div>';
+
+  // Barras categorías
+  h += '<div style="font-size:10px;color:var(--texto-3);text-transform:uppercase;margin-bottom:8px">Por categoría</div>';
+  d.categorias.forEach(function(cat) {
+    var pctBar   = (cat.cogs / d.cogs * 100);
+    var pctWidth = (cat.cogs / maxCat * 100);
+    h += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">';
+    h += '<div style="font-size:11px;color:var(--texto);width:130px;flex-shrink:0">' + cat.nombre + '</div>';
+    h += '<div style="flex:1;background:rgba(0,0,0,0.07);border-radius:3px;height:6px;overflow:hidden">';
+    h += '<div style="width:' + pctWidth.toFixed(1) + '%;height:100%;background:var(--verde-2);border-radius:3px"></div></div>';
+    h += '<div style="font-size:11px;color:var(--texto-3);width:38px;text-align:right">' + pctBar.toFixed(1) + '%</div>';
+    h += '</div>';
+  });
+
+  // Top ingredientes
+  h += '<div style="font-size:10px;color:var(--texto-3);text-transform:uppercase;margin:12px 0 8px">Top ingredientes</div>';
+  d.topItems.forEach(function(item) {
+    var pctWidth = (item.cogs / maxItem * 100);
+    var cogsK    = (item.cogs / 1000).toFixed(0);
+    h += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">';
+    h += '<div style="font-size:11px;color:var(--texto);width:130px;flex-shrink:0">' + item.nombre + '</div>';
+    h += '<div style="flex:1;background:rgba(0,0,0,0.07);border-radius:3px;height:6px;overflow:hidden">';
+    h += '<div style="width:' + pctWidth.toFixed(1) + '%;height:100%;background:#d97706;border-radius:3px"></div></div>';
+    h += '<div style="font-size:11px;font-weight:600;color:var(--texto);width:44px;text-align:right">$' + cogsK + 'k</div>';
+    h += '</div>';
+  });
+  h += '</div>';
+
+  el.innerHTML = h;
 }
 
 async function repDescargarPDF() {
