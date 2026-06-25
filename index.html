@@ -4222,10 +4222,17 @@ async function repGenerar() {
   var maxCatCogs = Math.max.apply(null, COGS_DATA.categorias.map(function(c){ return c.cogs; }));
   var maxItemCogs = COGS_DATA.topItems[0].cogs;
 
-  html += '<div style="background:var(--glass);border-radius:var(--radio-lg);padding:16px 20px;margin-bottom:20px">';
+  // Separador visual antes del benchmark
+  html += '<div style="display:flex;align-items:center;gap:12px;margin:8px 0 16px">';
+  html += '<div style="flex:1;height:1px;background:var(--borde)"></div>';
+  html += '<div style="font-size:10px;color:var(--texto-3);text-transform:uppercase;letter-spacing:.08em;white-space:nowrap">Benchmark histórico · No corresponde al período</div>';
+  html += '<div style="flex:1;height:1px;background:var(--borde)"></div>';
+  html += '</div>';
+
+  html += '<div style="background:var(--glass);border-radius:var(--radio-lg);padding:16px 20px;margin-bottom:20px;border:1px dashed rgba(255,255,255,0.08)">';
   html += '<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:14px">';
-  html += '<div style="font-size:11px;color:var(--texto-3);text-transform:uppercase;letter-spacing:.05em">💰 Estructura de Costos</div>';
-  html += '<div style="font-size:10px;color:var(--texto-3)">Referencia: ' + COGS_DATA.periodo + '</div>';
+  html += '<div style="font-size:11px;color:var(--texto-3);text-transform:uppercase;letter-spacing:.05em">💰 Estructura de Costos — Acumulado</div>';
+  html += '<div style="font-size:10px;color:var(--texto-3);background:rgba(0,0,0,0.15);padding:2px 8px;border-radius:6px">' + COGS_DATA.periodo + ' (' + COGS_DATA.dias + ' días)</div>';
   html += '</div>';
 
   // 3 mini-cards resumen
