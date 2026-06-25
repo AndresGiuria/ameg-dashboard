@@ -983,6 +983,33 @@ const META_KG_H    = 12;
 const EXCLUIDO_RH  = 'Mario Alberto Hernández';
 const EXCLUIDO_CSV = 'HERNANDEZ ALCALA, MARIO ALBERTO';
 
+// COGS histórico — Ene 2025–May 2026 (fuente: COGS report Excel)
+const COGS_DATA = {
+  periodo: 'Ene 2025 – May 2026',
+  dias: 517,
+  ventas:  9332109,
+  cogs:    7526785,
+  gp:      1805323,
+  categorias: [
+    { nombre: 'Proteínas',       cogs: 3399377 },
+    { nombre: 'Vegetales',       cogs:  684313 },
+    { nombre: 'Lácteos',         cogs:  620049 },
+    { nombre: 'Tortillas/Pan',   cogs:  730567 },
+    { nombre: 'Salsas',          cogs:  188364 },
+    { nombre: 'Aceites/Especias',cogs:  213942 },
+    { nombre: 'Otros',           cogs:  690173 },
+  ],
+  topItems: [
+    { nombre: 'Cielos Beef',       cogs: 640342 },
+    { nombre: 'Beef Shank CF',     cogs: 576126 },
+    { nombre: 'Chicken Leg Cut',   cogs: 537804 },
+    { nombre: 'Avocados',          cogs: 495111 },
+    { nombre: 'Bassa Fish V.',     cogs: 383950 },
+    { nombre: 'Shoulder Carnitas', cogs: 190323 },
+    { nombre: 'Pork Leg Fajitas',  cogs: 181709 },
+  ],
+};
+
 // Capture native fetch before any library can override it
 const _nativeFetch = window.fetch.bind(window);
 
@@ -4187,6 +4214,60 @@ async function repGenerar() {
     });
     html += '</div>';
   }
+
+  // ── Sección COGS ──
+  var cogsFC    = (COGS_DATA.cogs / COGS_DATA.ventas * 100).toFixed(1);
+  var cogsDia   = Math.round(COGS_DATA.cogs / COGS_DATA.dias);
+  var maxCatCogs = Math.max.apply(null, COGS_DATA.categorias.map(function(c){ return c.cogs; }));
+  var maxItemCogs = COGS_DATA.topItems[0].cogs;
+
+  html += '<div style="background:var(--glass);border-radius:var(--radio-lg);padding:16px 20px;margin-bottom:20px">';
+  html += '<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:14px">';
+  html += '<div style="font-size:11px;color:var(--texto-3);text-transform:uppercase;letter-spacing:.05em">💰 Estructura de Costos</div>';
+  html += '<div style="font-size:10px;color:var(--texto-3)">Referencia: ' + COGS_DATA.periodo + '</div>';
+  html += '</div>';
+
+  // 3 mini-cards resumen
+  html += '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px">';
+  var cogsCards = [
+    ['COGS Total', '$' + (COGS_DATA.cogs/1e6).toFixed(2) + 'M', 'var(--texto)'],
+    ['Food Cost %', cogsFC + '%', parseFloat(cogsFC) > 82 ? 'var(--rojo-2)' : parseFloat(cogsFC) > 78 ? '#d97706' : 'var(--verde-2)'],
+    ['Costo/día prom.', '$' + cogsDia.toLocaleString(), 'var(--texto)'],
+  ];
+  cogsCards.forEach(function(c) {
+    html += '<div style="background:rgba(0,0,0,0.06);border-radius:10px;padding:12px 14px">';
+    html += '<div style="font-size:10px;color:var(--texto-3);text-transform:uppercase;margin-bottom:5px">' + c[0] + '</div>';
+    html += '<div style="font-size:18px;font-weight:700;color:' + c[2] + '">' + c[1] + '</div>';
+    html += '</div>';
+  });
+  html += '</div>';
+
+  // Barras por categoría
+  html += '<div style="font-size:10px;color:var(--texto-3);text-transform:uppercase;margin-bottom:8px">Por categoría</div>';
+  COGS_DATA.categorias.forEach(function(cat) {
+    var pctBar = (cat.cogs / COGS_DATA.cogs * 100);
+    var pctWidth = (cat.cogs / maxCatCogs * 100);
+    html += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">';
+    html += '<div style="font-size:11px;color:var(--texto);width:130px;flex-shrink:0">' + cat.nombre + '</div>';
+    html += '<div style="flex:1;background:rgba(0,0,0,0.07);border-radius:3px;height:6px;overflow:hidden">';
+    html += '<div style="width:' + pctWidth.toFixed(1) + '%;height:100%;background:var(--verde-2);border-radius:3px"></div></div>';
+    html += '<div style="font-size:11px;color:var(--texto-3);width:38px;text-align:right">' + pctBar.toFixed(1) + '%</div>';
+    html += '</div>';
+  });
+
+  // Top ingredientes
+  html += '<div style="font-size:10px;color:var(--texto-3);text-transform:uppercase;margin:12px 0 8px">Top ingredientes</div>';
+  COGS_DATA.topItems.forEach(function(item) {
+    var pctWidth = (item.cogs / maxItemCogs * 100);
+    var cogsK = (item.cogs / 1000).toFixed(0);
+    html += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">';
+    html += '<div style="font-size:11px;color:var(--texto);width:130px;flex-shrink:0">' + item.nombre + '</div>';
+    html += '<div style="flex:1;background:rgba(0,0,0,0.07);border-radius:3px;height:6px;overflow:hidden">';
+    html += '<div style="width:' + pctWidth.toFixed(1) + '%;height:100%;background:#d97706;border-radius:3px"></div></div>';
+    html += '<div style="font-size:11px;font-weight:600;color:var(--texto);width:44px;text-align:right">$' + cogsK + 'k</div>';
+    html += '</div>';
+  });
+  html += '</div>';
 
   // Tabla diaria
   html += '<div style="background:var(--glass);border-radius:var(--radio-lg);padding:16px 20px">';
