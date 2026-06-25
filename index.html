@@ -999,13 +999,13 @@ const COGS_SETS = {
       { nombre: 'Otros',            cogs:  574291 },
     ],
     topItems: [
-      { nombre: 'Cielos Beef',       cogs: 640342, kg:  39361 },
-      { nombre: 'Beef Shank CF',     cogs: 576126, kg:  49524 },
-      { nombre: 'Chicken Leg Cut',   cogs: 537804, kg:  53404 },
-      { nombre: 'Avocados',          cogs: 495111, kg:   null },
-      { nombre: 'Bassa Fish V.',     cogs: 383950, kg:  50167 },
-      { nombre: 'Shoulder Carnitas', cogs: 190323, kg:  27812 },
-      { nombre: 'Pork Leg Fajitas',  cogs: 181709, kg:  29456 },
+      { nombre: 'Cielos Beef',       cogs: 640342, lbs:  86776, kg:  39361 },
+      { nombre: 'Beef Shank CF',     cogs: 576126, lbs: 109182, kg:  49524 },
+      { nombre: 'Chicken Leg Cut',   cogs: 537804, lbs: 117736, kg:  53404 },
+      { nombre: 'Avocados',          cogs: 495111, lbs:   null, kg:   null },
+      { nombre: 'Bassa Fish V.',     cogs: 383950, lbs: 110598, kg:  50167 },
+      { nombre: 'Shoulder Carnitas', cogs: 190323, lbs:  61314, kg:  27812 },
+      { nombre: 'Pork Leg Fajitas',  cogs: 181709, lbs:  64939, kg:  29456 },
     ],
   },
   '2025': {
@@ -1021,13 +1021,13 @@ const COGS_SETS = {
       { nombre: 'Otros',            cogs: 1474630 },
     ],
     topItems: [
-      { nombre: 'Avocados',          cogs: 482369, kg:   null },
-      { nombre: 'Beef Shank CF',     cogs: 444238, kg:  35832 },
-      { nombre: 'Cielos Beef',       cogs: 399258, kg:  23729 },
-      { nombre: 'Chicken Leg Cut',   cogs: 358800, kg:  36976 },
-      { nombre: 'Bassa Fish V.',     cogs: 268592, kg:  34889 },
-      { nombre: 'Kaiwei Lamb',       cogs: 261675, kg:  16969 },
-      { nombre: 'Mozzarella 12kg',   cogs: 199757, kg:  16596 },
+      { nombre: 'Avocados',          cogs: 482369, lbs:   null, kg:   null },
+      { nombre: 'Beef Shank CF',     cogs: 444238, lbs:  78997, kg:  35832 },
+      { nombre: 'Cielos Beef',       cogs: 399258, lbs:  52313, kg:  23729 },
+      { nombre: 'Chicken Leg Cut',   cogs: 358800, lbs:  81519, kg:  36976 },
+      { nombre: 'Bassa Fish V.',     cogs: 268592, lbs:  76918, kg:  34889 },
+      { nombre: 'Kaiwei Lamb',       cogs: 261675, lbs:  37411, kg:  16969 },
+      { nombre: 'Mozzarella 12kg',   cogs: 199757, lbs:   null, kg:  16596 },
     ],
   },
   '2026': {
@@ -1043,13 +1043,13 @@ const COGS_SETS = {
       { nombre: 'Otros',            cogs:   79141 },
     ],
     topItems: [
-      { nombre: 'Cielos Beef',       cogs: 241084, kg:  15632 },
-      { nombre: 'Chicken Leg Cut',   cogs: 179004, kg:  16428 },
-      { nombre: 'Mozzarella 12kg',   cogs: 159222, kg:  13380 },
-      { nombre: 'Beef Shank CF',     cogs: 128184, kg:  13392 },
-      { nombre: 'Bassa Fish V.',     cogs: 114363, kg:  15116 },
-      { nombre: 'Lamb Vene-Rica',    cogs:  81656, kg:   4946 },
-      { nombre: 'Avocado H Pro',     cogs:  66533, kg:   null },
+      { nombre: 'Cielos Beef',       cogs: 241084, lbs:  34463, kg:  15632 },
+      { nombre: 'Chicken Leg Cut',   cogs: 179004, lbs:  36217, kg:  16428 },
+      { nombre: 'Mozzarella 12kg',   cogs: 159222, lbs:   null, kg:  13380 },
+      { nombre: 'Beef Shank CF',     cogs: 128184, lbs:  29524, kg:  13392 },
+      { nombre: 'Bassa Fish V.',     cogs: 114363, lbs:  33324, kg:  15116 },
+      { nombre: 'Lamb Vene-Rica',    cogs:  81656, lbs:  10904, kg:   4946 },
+      { nombre: 'Avocado H Pro',     cogs:  66533, lbs:   null, kg:   null },
     ],
   },
 };
@@ -4260,9 +4260,6 @@ async function repGenerar() {
     html += '</div>';
   }
 
-  // ── Sección COGS — placeholder, se llena con renderCOGSSection() ──
-  html += '<div id="rep-cogs-section"></div>';
-
   // Tabla diaria
   html += '<div style="background:var(--glass);border-radius:var(--radio-lg);padding:16px 20px">';
   html += '<div style="font-size:11px;color:var(--texto-3);text-transform:uppercase;margin-bottom:12px">Producción diaria</div>';
@@ -4289,6 +4286,9 @@ async function repGenerar() {
   });
   html += '</tbody></table></div>';
   html += '</div>';
+
+  // ── Sección COGS al final — placeholder, se llena con renderCOGSSection() ──
+  html += '<div id="rep-cogs-section"></div>';
 
   container.innerHTML = html;
   renderCOGSSection(cogsAnoSel);
@@ -4369,11 +4369,14 @@ function renderCOGSSection(ano) {
   d.topItems.forEach(function(item) {
     var pctWidth = (item.cogs / maxItem * 100);
     var cogsK    = (item.cogs / 1000).toFixed(0);
-    var kgLabel  = item.kg ? (item.kg >= 1000 ? (item.kg/1000).toFixed(1) + 'k kg' : item.kg + ' kg') : '';
+    var parts = [];
+    if (item.lbs) parts.push((item.lbs >= 1000 ? (item.lbs/1000).toFixed(1) + 'k' : item.lbs) + ' lbs');
+    if (item.kg)  parts.push((item.kg  >= 1000 ? (item.kg /1000).toFixed(1) + 'k' : item.kg)  + ' kg');
+    var qtyLabel = parts.join(' · ');
     h += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:7px">';
     h += '<div style="width:130px;flex-shrink:0">';
     h += '<div style="font-size:11px;color:var(--texto)">' + item.nombre + '</div>';
-    if (kgLabel) h += '<div style="font-size:10px;color:var(--texto-3)">' + kgLabel + '</div>';
+    if (qtyLabel) h += '<div style="font-size:10px;color:var(--texto-3)">' + qtyLabel + '</div>';
     h += '</div>';
     h += '<div style="flex:1;background:rgba(0,0,0,0.07);border-radius:3px;height:6px;overflow:hidden">';
     h += '<div style="width:' + pctWidth.toFixed(1) + '%;height:100%;background:#d97706;border-radius:3px"></div></div>';
