@@ -487,10 +487,18 @@
   .charts-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(480px,1fr)); gap:14px; }
   .supplier-badge { font-size:10px; font-weight:500; padding:2px 8px; border-radius:4px; background:rgba(0,0,0,0.06); color:var(--texto-3); }
 
+  .status-bar { display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin-bottom:20px; }
+  .sb-card { border-radius:var(--radio-lg); padding:20px 24px; border:1px solid var(--glass-borde); box-shadow:var(--glass-sombra); backdrop-filter:blur(20px) saturate(180%); -webkit-backdrop-filter:blur(20px) saturate(180%); border-top-width:3px; border-top-style:solid; }
+  .sb-label { font-size:10px; text-transform:uppercase; letter-spacing:0.08em; color:var(--texto-3); margin-bottom:8px; }
+  .sb-value { display:flex; align-items:baseline; gap:8px; margin-bottom:6px; }
+  .sb-number { font-size:38px; font-weight:800; letter-spacing:-2px; line-height:1; }
+  .sb-unit { font-size:15px; font-weight:600; color:var(--texto-3); }
+  .sb-sub { font-size:12px; color:var(--texto-3); }
   @media (max-width:900px) {
     main { padding:16px; } nav { padding:0 16px; } header { padding:0 16px; }
     .hero-grid { grid-template-columns:repeat(2,1fr); }
     .charts-main { grid-template-columns:1fr; }
+    .status-bar { grid-template-columns:1fr; }
   }
   @media (max-width:500px) {
     main { padding:12px; }
@@ -540,6 +548,7 @@
 <!-- TABLERO -->
 <div class="tab-pane active" id="tab-tablero">
   <div id="db-diag-panel" style="display:none;background:var(--glass);border-radius:var(--radio-lg);padding:16px 20px;margin-bottom:16px;font-size:12px;font-family:var(--mono)"></div>
+  <div id="status-bar-row" class="status-bar"></div>
   <div id="mes-top3-row" style="display:grid;grid-template-columns:1fr 2fr;gap:14px;margin-bottom:20px"></div>
   <div class="hero-grid" id="kpi-row">
     <div class="kpi-hero" id="kpi-hoy-kg">
@@ -2597,6 +2606,7 @@ async function diagTablas() {
 // TABLERO
 // =====================================================================
 async function renderTablero() {
+  await renderStatusBar();
   await renderKgMesYTop3();
   await renderSemComparativo();
   await renderKPIs();
@@ -2608,6 +2618,106 @@ async function renderTablero() {
   await renderDiaDestacado();
 }
 
+
+// ═══════════════════════════════════════════════════════════════
+// STATUS BAR — test de 3 segundos
+// ═══════════════════════════════════════════════════════════════
+async function renderStatusBar() {
+  const container = document.getElementById('status-bar-row');
+  if (!container) return;
+
+  const hoy   = new Date().toISOString().split('T')[0];
+  const hace7 = new Date(Date.now() - 7*86400000).toISOString().split('T')[0];
+
+  // --- Card 1: último día vs meta ---
+  const diasRec = await fetchDiasByRange(hace7, hoy);
+  const diasOrd = diasRec.filter(function(d){ return (d.kg_producidos||0)>0; })
+    .sort(function(a,b){ return b.fecha.localeCompare(a.fecha); });
+  const ultimoDia = diasOrd[0] || null;
+  const kgUlt  = ultimoDia ? (ultimoDia.kg_producidos||0) : 0;
+  const pctDia = META_KG_DIA>0 ? kgUlt/META_KG_DIA*100 : 0;
+  const colorDia = pctDia>=100 ? 'var(--verde)'  : pctDia>=85 ? '#d97706' : 'var(--rojo)';
+  const bgDia    = pctDia>=100 ? 'rgba(10,110,53,0.08)' : pctDia>=85 ? 'rgba(217,119,6,0.08)' : 'rgba(192,25,15,0.08)';
+  const diasNom  = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
+  const dtUlt    = ultimoDia ? new Date(ultimoDia.fecha+'T12:00:00') : null;
+  const labelFecha = dtUlt ? (diasNom[dtUlt.getDay()]+' '+ultimoDia.fecha.slice(8)+'/'+ultimoDia.fecha.slice(5,7)) : '—';
+  const faltanKg   = META_KG_DIA - kgUlt;
+
+  // --- Card 2: inventario → días de cobertura ---
+  var lastInvFecha = null;
+  var totalKgInv   = 0;
+  try {
+    const invFecRsp = await db.from('inventario_diario').select('fecha').order('fecha',{ascending:false}).limit(1);
+    lastInvFecha = (invFecRsp.data && invFecRsp.data[0]) ? invFecRsp.data[0].fecha : null;
+    if (lastInvFecha) {
+      const invRsp = await db.from('inventario_diario').select('producto,inv_final').eq('fecha',lastInvFecha);
+      if (invRsp.data) {
+        invRsp.data.forEach(function(r){
+          const s = getStockInfo(r.producto);
+          if (s) totalKgInv += (r.inv_final||0) * s.kg_bolsa;
+        });
+      }
+    }
+  } catch(e) {}
+  const diasCob  = totalKgInv > 0 ? Math.round(totalKgInv/META_KG_DIA) : null;
+  const colorInv = diasCob==null ? 'var(--texto-3)' : diasCob>4 ? '#d97706' : diasCob>0 ? 'var(--verde)' : 'var(--rojo)';
+  const bgInv    = diasCob==null ? 'var(--glass)' : diasCob>4 ? 'rgba(217,119,6,0.08)' : diasCob>0 ? 'rgba(10,110,53,0.08)' : 'rgba(192,25,15,0.08)';
+  const invLabel = lastInvFecha ? fmtDate(lastInvFecha) : 'sin datos';
+
+  // --- Card 3: eficiencia semana actual vs anterior ---
+  const semOrd = [...semanas].sort(function(a,b){ return b.fecha_inicio.localeCompare(a.fecha_inicio); });
+  const semAct = semOrd[0];
+  const semAnt = semOrd[1];
+  var efAct=0, efAnt=0;
+  if (semAct) {
+    const d  = await fetchDiasByRange(semAct.fecha_inicio, semAct.fecha_fin);
+    const kg = d.reduce(function(a,x){ return a+(x.kg_producidos||0); }, 0);
+    efAct = (semAct.horas||0)>0 ? kg/semAct.horas : 0;
+  }
+  if (semAnt) {
+    const d  = await fetchDiasByRange(semAnt.fecha_inicio, semAnt.fecha_fin);
+    const kg = d.reduce(function(a,x){ return a+(x.kg_producidos||0); }, 0);
+    efAnt = (semAnt.horas||0)>0 ? kg/semAnt.horas : 0;
+  }
+  const diffEf  = efAct - efAnt;
+  const upEf    = diffEf >= 0;
+  const colorEf = efAct>=META_KG_H ? 'var(--verde)' : efAct>=META_KG_H*0.9 ? '#d97706' : (efAct>0 ? 'var(--rojo)' : 'var(--texto-3)');
+  const bgEf    = efAct>=META_KG_H ? 'rgba(10,110,53,0.08)' : efAct>=META_KG_H*0.9 ? 'rgba(217,119,6,0.08)' : (efAct>0 ? 'rgba(192,25,15,0.08)' : 'var(--glass)');
+
+  container.innerHTML =
+    '<div class="sb-card" style="background:' + bgDia + ';border-top-color:' + colorDia + '">'
+    + '<div class="sb-label">ÚLTIMO DÍA · ' + labelFecha + '</div>'
+    + '<div class="sb-value">'
+    +   '<span class="sb-number" style="color:' + colorDia + '">' + (kgUlt||0) + '</span>'
+    +   '<span class="sb-unit">kg</span>'
+    + '</div>'
+    + '<div class="sb-sub">'
+    + (ultimoDia==null ? 'Sin datos recientes' : kgUlt>=META_KG_DIA ? '✓ Meta cumplida' : '↓ Faltan ' + faltanKg + ' kg para meta')
+    + '</div>'
+    + '</div>'
+
+    + '<div class="sb-card" style="background:' + bgInv + ';border-top-color:' + colorInv + '">'
+    + '<div class="sb-label">INVENTARIO EN FRÍO · ' + invLabel + '</div>'
+    + '<div class="sb-value">'
+    +   '<span class="sb-number" style="color:' + colorInv + '">' + (diasCob!=null ? diasCob : '—') + '</span>'
+    +   '<span class="sb-unit">' + (diasCob!=null ? 'días' : '') + '</span>'
+    + '</div>'
+    + '<div class="sb-sub">'
+    + (totalKgInv>0 ? fmt(totalKgInv,0) + ' kg · a ritmo de ' + META_KG_DIA + ' kg/día' : 'Sin registro de inventario')
+    + '</div>'
+    + '</div>'
+
+    + '<div class="sb-card" style="background:' + bgEf + ';border-top-color:' + colorEf + '">'
+    + '<div class="sb-label">EFICIENCIA SEMANA ACTUAL</div>'
+    + '<div class="sb-value">'
+    +   '<span class="sb-number" style="color:' + colorEf + '">' + (efAct>0 ? fmt(efAct,1) : '—') + '</span>'
+    +   '<span class="sb-unit">' + (efAct>0 ? 'kg/h' : '') + '</span>'
+    + '</div>'
+    + '<div class="sb-sub">'
+    + (semAnt && efAnt>0 ? (upEf?'↑':'↓') + ' ' + fmt(Math.abs(diffEf),2) + ' vs sem ant (' + fmt(efAnt,1) + ' kg/h)' : 'Meta: ' + META_KG_H + ' kg/h')
+    + '</div>'
+    + '</div>';
+}
 
 async function renderKgMesYTop3() {
   const container = document.getElementById('mes-top3-row');
