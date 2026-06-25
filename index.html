@@ -3692,34 +3692,117 @@ async function swProcesarPDFs(files) {
   labelEl.textContent = swDiasPDF.length + ' página(s) — ingresa los datos de cada día';
   progEl.style.display = 'none';
 
-  let html = '';
-  swDiasPDF.forEach((d, i) => {
+  window._swImgs = swDiasPDF.map(function(d){ return d.dataUrl; });
+
+  var html = '';
+  swDiasPDF.forEach(function(d, i) {
+    var tbl = '<table style="width:100%;font-size:11px;border-collapse:collapse">';
+    tbl += '<thead><tr>';
+    tbl += '<th style="text-align:left;padding:2px 4px;border-bottom:1px solid #e5e7eb;color:#6b7280;font-size:10px">Producto</th>';
+    tbl += '<th style="padding:2px 4px;border-bottom:1px solid #e5e7eb;color:#6b7280;font-size:10px;text-align:right">Inicio</th>';
+    tbl += '<th style="padding:2px 4px;border-bottom:1px solid #e5e7eb;color:#6b7280;font-size:10px;text-align:right">Fin</th>';
+    tbl += '<th style="padding:2px 4px;border-bottom:1px solid #e5e7eb;color:#6b7280;font-size:10px;text-align:right">Prod</th>';
+    tbl += '</tr></thead><tbody>';
+    for (var pi = 0; pi < BITACORA_PRODS.length; pi++) {
+      var p = BITACORA_PRODS[pi], sk = p.key.replace(/ /g,'_');
+      tbl += '<tr><td style="padding:2px 4px">' + p.key + '</td>';
+      tbl += '<td style="padding:2px 3px"><input type="number" id="sw-ini-' + i + '-' + sk + '" step="0.1" min="0" oninput="swCalcProdTot(' + i + ',\'' + sk + '\')" style="width:58px;border:1px solid #e5e7eb;border-radius:4px;padding:2px 4px;font-size:11px;text-align:right;font-family:var(--mono)"></td>';
+      tbl += '<td style="padding:2px 3px"><input type="number" id="sw-fin-' + i + '-' + sk + '" step="0.1" min="0" oninput="swCalcProdTot(' + i + ',\'' + sk + '\')" style="width:58px;border:1px solid #e5e7eb;border-radius:4px;padding:2px 4px;font-size:11px;text-align:right;font-family:var(--mono)"></td>';
+      tbl += '<td style="padding:2px 4px;font-family:var(--mono);text-align:right;color:var(--verde-2)" id="sw-dp-' + i + '-' + sk + '">—</td></tr>';
+    }
+    tbl += '</tbody><tfoot><tr style="border-top:2px solid #e5e7eb;font-weight:700">';
+    tbl += '<td style="padding:4px">TOTAL</td>';
+    tbl += '<td style="padding:4px;font-family:var(--mono);text-align:right" id="sw-totini-' + i + '">—</td>';
+    tbl += '<td style="padding:4px;font-family:var(--mono);text-align:right" id="sw-totfin-' + i + '">—</td>';
+    tbl += '<td style="padding:4px;font-family:var(--mono);text-align:right;color:var(--verde-2)" id="sw-totprod-' + i + '">—</td></tr></tfoot></table>';
+
     html += '<div style="background:var(--glass);border-radius:var(--radio-lg);padding:16px;margin-bottom:16px;display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start">' +
       '<img src="' + d.dataUrl + '" style="width:100%;border-radius:8px;border:0.5px solid var(--borde)">' +
       '<div>' +
-        '<div style="font-size:12px;font-weight:600;color:var(--texto-3);margin-bottom:10px">PÁGINA ' + (i+1) + '</div>' +
-        '<div style="margin-bottom:8px"><label style="font-size:11px;color:var(--texto-3);display:block;margin-bottom:4px">Fecha</label>' +
-          '<input type="date" id="sw-man-fecha-' + i + '" onchange="swManualChange(' + i + ')" style="width:100%;border:1px solid var(--borde);border-radius:8px;padding:7px 10px;font-size:13px;font-family:inherit"></div>' +
-        '<div style="margin-bottom:8px"><label style="font-size:11px;color:var(--texto-3);display:block;margin-bottom:4px">Kg Inicio (fila TOTAL)</label>' +
-          '<input type="number" id="sw-man-ini-' + i + '" step="0.01" onchange="swManualChange(' + i + ')" placeholder="Ej. 1097.1" style="width:100%;border:1px solid var(--borde);border-radius:8px;padding:7px 10px;font-size:13px;font-family:var(--mono)"></div>' +
-        '<div style="margin-bottom:8px"><label style="font-size:11px;color:var(--texto-3);display:block;margin-bottom:4px">Kg Fin (fila TOTAL)</label>' +
-          '<input type="number" id="sw-man-fin-' + i + '" step="0.01" onchange="swManualChange(' + i + ')" placeholder="Ej. 1539.35" style="width:100%;border:1px solid var(--borde);border-radius:8px;padding:7px 10px;font-size:13px;font-family:var(--mono)"></div>' +
-        '<div style="background:rgba(0,0,0,0.04);border-radius:8px;padding:10px;font-size:13px">Kg producidos: <strong id="sw-man-prod-' + i + '" style="color:var(--verde-2)">—</strong></div>' +
+        '<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">' +
+          '<span style="font-size:12px;font-weight:600;color:var(--texto-3)">PÁGINA ' + (i+1) + '</span>' +
+          '<input type="date" id="sw-man-fecha-' + i + '" onchange="swManualFechaChange(' + i + ')" style="flex:1;border:1px solid var(--borde);border-radius:8px;padding:5px 9px;font-size:13px;font-family:inherit">' +
+          '<button id="sw-ocrbtn-' + i + '" onclick="swOcrPage(' + i + ')" style="font-size:11px;padding:5px 11px;border:1px solid #3b82f6;border-radius:6px;background:#eff6ff;color:#1d4ed8;cursor:pointer;white-space:nowrap">🔍 OCR</button>' +
+        '</div>' +
+        tbl +
       '</div></div>';
   });
   if (preview) preview.innerHTML = html;
   swActualizarPreview();
 }
 
-function swManualChange(i) {
-  const fecha = document.getElementById('sw-man-fecha-' + i)?.value || null;
-  const ini   = parseFloat(document.getElementById('sw-man-ini-' + i)?.value) || 0;
-  const fin   = parseFloat(document.getElementById('sw-man-fin-' + i)?.value) || 0;
-  const prod  = Math.max(fin - ini, 0);
-  const el    = document.getElementById('sw-man-prod-' + i);
-  if (el) el.textContent = prod > 0 ? prod.toFixed(2) + ' kg' : '—';
-  if (swDiasPDF[i]) { swDiasPDF[i].fecha = fecha; swDiasPDF[i].kgInicio = ini; swDiasPDF[i].kgFin = fin; swDiasPDF[i].kgProd = prod; }
+function swManualFechaChange(i) {
+  var fecha = document.getElementById('sw-man-fecha-' + i)?.value || null;
+  if (swDiasPDF[i]) swDiasPDF[i].fecha = fecha;
   swActualizarPreview();
+}
+
+function swCalcProdTot(i, sk) {
+  var ini = parseFloat(document.getElementById('sw-ini-' + i + '-' + sk)?.value) || 0;
+  var fin = parseFloat(document.getElementById('sw-fin-' + i + '-' + sk)?.value) || 0;
+  var prod = Math.max(0, +(fin - ini).toFixed(2));
+  var dpEl = document.getElementById('sw-dp-' + i + '-' + sk);
+  if (dpEl) dpEl.textContent = (ini > 0 || fin > 0) ? prod.toFixed(1) : '—';
+  // recalculate totals
+  var totIni = 0, totFin = 0, totProd = 0, productos = [];
+  for (var pi = 0; pi < BITACORA_PRODS.length; pi++) {
+    var p = BITACORA_PRODS[pi], s = p.key.replace(/ /g,'_');
+    var pIni = parseFloat(document.getElementById('sw-ini-' + i + '-' + s)?.value) || 0;
+    var pFin = parseFloat(document.getElementById('sw-fin-' + i + '-' + s)?.value) || 0;
+    if (pIni > 0 || pFin > 0) {
+      var pProd = Math.max(0, +(pFin - pIni).toFixed(2));
+      totIni += pIni; totFin += pFin; totProd += pProd;
+      productos.push({producto: p.key, kg_inicio: pIni, kg_fin: pFin, kg_prod: pProd});
+    }
+  }
+  var elTotIni = document.getElementById('sw-totini-' + i);
+  var elTotFin = document.getElementById('sw-totfin-' + i);
+  var elTotProd = document.getElementById('sw-totprod-' + i);
+  if (elTotIni) elTotIni.textContent = totIni > 0 ? totIni.toFixed(1) : '—';
+  if (elTotFin) elTotFin.textContent = totFin > 0 ? totFin.toFixed(1) : '—';
+  if (elTotProd) elTotProd.textContent = totProd > 0 ? totProd.toFixed(1) : '—';
+  if (swDiasPDF[i]) {
+    swDiasPDF[i].kgInicio = totIni;
+    swDiasPDF[i].kgFin = totFin;
+    swDiasPDF[i].kgProd = totProd;
+    swDiasPDF[i].productos = productos;
+  }
+  swActualizarPreview();
+}
+
+async function swOcrPage(pageIdx) {
+  var btn = document.getElementById('sw-ocrbtn-' + pageIdx);
+  if (!btn) return;
+  btn.textContent = '⏳ Leyendo...'; btn.disabled = true;
+  try {
+    var loaded = await cargarTesseract();
+    if (!loaded) throw new Error('No se pudo cargar Tesseract.js');
+    var img = (window._swImgs || [])[pageIdx];
+    if (!img) throw new Error('Sin imagen');
+    var res = await Tesseract.recognize(img, 'eng', {logger: function(){}});
+    var parsed = parseBitacoraOCR(res.data.text);
+    for (var pi = 0; pi < BITACORA_PRODS.length; pi++) {
+      var p = BITACORA_PRODS[pi], sk = p.key.replace(/ /g,'_');
+      var val = parsed[p.key];
+      if (val !== undefined) {
+        var iniEl = document.getElementById('sw-ini-' + pageIdx + '-' + sk);
+        var finEl = document.getElementById('sw-fin-' + pageIdx + '-' + sk);
+        if (iniEl) iniEl.value = val.ini;
+        if (finEl) finEl.value = val.fin;
+        swCalcProdTot(pageIdx, sk);
+      }
+    }
+    btn.textContent = '✓ OK';
+    btn.style.cssText = 'font-size:11px;padding:5px 11px;border:1px solid #059669;border-radius:6px;background:#ecfdf5;color:#065f46;cursor:pointer;white-space:nowrap';
+  } catch(e) {
+    btn.textContent = '⚠ Error'; btn.title = e.message;
+    btn.style.cssText = 'font-size:11px;padding:5px 11px;border:1px solid #dc2626;border-radius:6px;background:#fef2f2;color:#991b1b;cursor:pointer;white-space:nowrap';
+  }
+  btn.disabled = false;
+}
+
+function swManualChange(i) {
+  swManualFechaChange(i);
 }
 
 async function swProcesarHoras(file) {
