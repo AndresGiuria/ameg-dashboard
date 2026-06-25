@@ -999,9 +999,14 @@ const COGS_SETS = {
       { nombre: 'Otros',            cogs:  574291 },
     ],
     topItems: [
+      { nombre: 'Beef', cogs: 1706885, lbs: 261602, kg: 123563, sub: [
+        { nombre: 'Cielos Beef',    cogs: 640342, lbs:  86776, kg: 39361 },
+        { nombre: 'Beef Shank CF',  cogs: 576126, lbs: 109182, kg: 49524 },
+        { nombre: 'Nosso Talho*',   cogs: 339613, lbs:  47900, kg: 21723 },
+        { nombre: 'Shank 11 LB',    cogs:  80512, lbs:  13942, kg:  6325 },
+        { nombre: 'Shank TMA',      cogs:  41177, lbs:   null, kg:  3883 },
+      ]},
       { nombre: 'Chicken',           cogs: 672412, lbs: 193414, kg:  91476 },
-      { nombre: 'Cielos Beef',       cogs: 640342, lbs:  86776, kg:  39361 },
-      { nombre: 'Beef Shank CF',     cogs: 576126, lbs: 109182, kg:  49524 },
       { nombre: 'Avocados',          cogs: 495111, lbs:   null, kg:   null },
       { nombre: 'Bassa Fish V.',     cogs: 383950, lbs: 110598, kg:  50167 },
       { nombre: 'Shoulder Carnitas', cogs: 190323, lbs:  61314, kg:  27812 },
@@ -1021,10 +1026,15 @@ const COGS_SETS = {
       { nombre: 'Otros',            cogs: 1474630 },
     ],
     topItems: [
+      { nombre: 'Beef', cogs: 1285289, lbs: 195977, kg: 89912, sub: [
+        { nombre: 'Beef Shank CF',  cogs: 444238, lbs:  78997, kg: 35832 },
+        { nombre: 'Cielos Beef',    cogs: 399258, lbs:  52313, kg: 23729 },
+        { nombre: 'Nosso Talho*',   cogs: 339613, lbs:  47900, kg: 21723 },
+        { nombre: 'Shank 11 LB',    cogs:  80512, lbs:  13942, kg:  6325 },
+        { nombre: 'Beef Tallow',    cogs:   1441, lbs:   null, kg:  1019 },
+      ]},
       { nombre: 'Avocados',          cogs: 482369, lbs:   null, kg:   null },
       { nombre: 'Chicken',           cogs: 479718, lbs: 140769, kg:  67432 },
-      { nombre: 'Beef Shank CF',     cogs: 444238, lbs:  78997, kg:  35832 },
-      { nombre: 'Cielos Beef',       cogs: 399258, lbs:  52313, kg:  23729 },
       { nombre: 'Bassa Fish V.',     cogs: 268592, lbs:  76918, kg:  34889 },
       { nombre: 'Kaiwei Lamb',       cogs: 261675, lbs:  37411, kg:  16969 },
       { nombre: 'Mozzarella 12kg',   cogs: 199757, lbs:   null, kg:  16596 },
@@ -1043,10 +1053,14 @@ const COGS_SETS = {
       { nombre: 'Otros',            cogs:   79141 },
     ],
     topItems: [
-      { nombre: 'Cielos Beef',       cogs: 241084, lbs:  34463, kg:  15632 },
+      { nombre: 'Beef', cogs: 417893, lbs: 64964, kg: 33350, sub: [
+        { nombre: 'Cielos Beef',   cogs: 241084, lbs: 34463, kg: 15632 },
+        { nombre: 'Beef Shank CF', cogs: 128184, lbs: 29524, kg: 13392 },
+        { nombre: 'Shank TMA',     cogs:  41177, lbs:  null, kg:  3883 },
+        { nombre: 'Beef Cheek',    cogs:   5184, lbs:    649, kg:   294 },
+      ]},
       { nombre: 'Chicken',           cogs: 192308, lbs:  52633, kg:  24039 },
       { nombre: 'Mozzarella 12kg',   cogs: 159222, lbs:   null, kg:  13380 },
-      { nombre: 'Beef Shank CF',     cogs: 128184, lbs:  29524, kg:  13392 },
       { nombre: 'Bassa Fish V.',     cogs: 114363, lbs:  33324, kg:  15116 },
       { nombre: 'Lamb Vene-Rica',    cogs:  81656, lbs:  10904, kg:   4946 },
       { nombre: 'Avocado H Pro',     cogs:  66533, lbs:   null, kg:   null },
@@ -4366,22 +4380,38 @@ function renderCOGSSection(ano) {
 
   // Top ingredientes
   h += '<div style="font-size:10px;color:var(--texto-3);text-transform:uppercase;margin:12px 0 8px">Top ingredientes</div>';
-  d.topItems.forEach(function(item) {
-    var pctWidth = (item.cogs / maxItem * 100);
-    var cogsK    = (item.cogs / 1000).toFixed(0);
+
+  function renderItemRow(item, maxCogs, indent) {
+    var pctWidth = (item.cogs / maxCogs * 100);
+    var cogsK    = item.cogs >= 1000000 ? (item.cogs/1e6).toFixed(2)+'M' : '$'+(item.cogs/1000).toFixed(0)+'k';
     var parts = [];
-    if (item.lbs) parts.push((item.lbs >= 1000 ? (item.lbs/1000).toFixed(1) + 'k' : item.lbs) + ' lbs');
-    if (item.kg)  parts.push((item.kg  >= 1000 ? (item.kg /1000).toFixed(1) + 'k' : item.kg)  + ' kg');
+    if (item.lbs) parts.push((item.lbs >= 1000 ? (item.lbs/1000).toFixed(1)+'k' : item.lbs)+' lbs');
+    if (item.kg)  parts.push((item.kg  >= 1000 ? (item.kg /1000).toFixed(1)+'k' : item.kg) +' kg');
     var qtyLabel = parts.join(' · ');
-    h += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:7px">';
-    h += '<div style="width:130px;flex-shrink:0">';
-    h += '<div style="font-size:11px;color:var(--texto)">' + item.nombre + '</div>';
-    if (qtyLabel) h += '<div style="font-size:10px;color:var(--texto-3)">' + qtyLabel + '</div>';
-    h += '</div>';
-    h += '<div style="flex:1;background:rgba(0,0,0,0.07);border-radius:3px;height:6px;overflow:hidden">';
-    h += '<div style="width:' + pctWidth.toFixed(1) + '%;height:100%;background:#d97706;border-radius:3px"></div></div>';
-    h += '<div style="font-size:11px;font-weight:600;color:var(--texto);width:44px;text-align:right">$' + cogsK + 'k</div>';
-    h += '</div>';
+    var barColor = indent ? 'rgba(217,119,6,0.45)' : '#d97706';
+    var barH     = indent ? '4px' : '6px';
+    var mb       = indent ? '4px' : '7px';
+    var ml       = indent ? '16px' : '0';
+    var row = '<div style="display:flex;align-items:center;gap:8px;margin-bottom:' + mb + ';margin-left:' + ml + '">';
+    row += '<div style="width:' + (indent ? '114px' : '130px') + ';flex-shrink:0">';
+    row += '<div style="font-size:' + (indent ? '10.5px' : '11px') + ';color:var(--texto)">' + item.nombre + '</div>';
+    if (qtyLabel) row += '<div style="font-size:10px;color:var(--texto-3)">' + qtyLabel + '</div>';
+    row += '</div>';
+    row += '<div style="flex:1;background:rgba(0,0,0,0.07);border-radius:3px;height:' + barH + ';overflow:hidden">';
+    row += '<div style="width:' + pctWidth.toFixed(1) + '%;height:100%;background:' + barColor + ';border-radius:3px"></div></div>';
+    row += '<div style="font-size:' + (indent ? '10px' : '11px') + ';font-weight:600;color:var(--texto);width:44px;text-align:right">' + cogsK + '</div>';
+    row += '</div>';
+    return row;
+  }
+
+  d.topItems.forEach(function(item) {
+    h += renderItemRow(item, maxItem, false);
+    if (item.sub) {
+      item.sub.forEach(function(s) {
+        h += renderItemRow(s, item.cogs, true);
+      });
+      h += '<div style="height:4px"></div>';
+    }
   });
   h += '</div>';
 
