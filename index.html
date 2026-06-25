@@ -3595,7 +3595,14 @@ async function swLeerCSV(file) {
       if (job === 'break') continue;
     }
 
-    const horas = parseFloat(String(cols[iHours] || '0').replace(',','.')) || 0;
+    var horasRaw = String(cols[iHours] || '0').trim().replace(',','.');
+    var horas = 0;
+    if (horasRaw.indexOf(':') >= 0) {
+      var hp = horasRaw.split(':');
+      horas = (parseInt(hp[0], 10) || 0) + (parseInt(hp[1], 10) || 0) / 60;
+    } else {
+      horas = parseFloat(horasRaw) || 0;
+    }
     if (horas <= 0) continue;
 
     // Agrupar por fecha
