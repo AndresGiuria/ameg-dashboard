@@ -4044,6 +4044,7 @@ async function navTo(tabId){
   if (tabId==='calendario')    await renderCalendario();
   if (tabId==='graficas')      await renderGraficas();
   if (tabId==='datos')         await renderDatos();
+  if (tabId==='reporte')       { repIniciarMeses(); await repGenerar(); }
 }
 
 document.querySelectorAll('#main-nav button[data-tab]').forEach(btn=>{
