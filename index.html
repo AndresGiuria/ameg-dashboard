@@ -4158,8 +4158,11 @@ const INV_UPSTAIRS = ['MILD','MEDIUM','HOT','HOT JALAPEÑO','HOT JARS','MACHA',
   'MAYO','FISH FLOUR','ONION','MUSHROOMS','LETTUCE','CILANTRO','PORTUGUESE BUNS','MOZZARELLA'];
 
 function getStockInfo(prod){
-  const up = prod.toUpperCase();
-  const key = Object.keys(INV_STOCK).find(k => up.includes(k) || up.startsWith(k.split(' ')[0]));
+  const up = prod.toUpperCase().trim();
+  if (INV_STOCK[up]) return INV_STOCK[up];
+  const key = Object.keys(INV_STOCK)
+    .sort((a,b) => b.length - a.length)
+    .find(k => up.includes(k));
   return key ? INV_STOCK[key] : null;
 }
 function getSeccion(prod){
