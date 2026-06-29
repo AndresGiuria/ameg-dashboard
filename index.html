@@ -4383,15 +4383,10 @@ function invRenderGrid(basement, upstairs){
     </div>`;
   };
 
-  // Basement: ordenar críticos primero
-  const basementSorted = [...INV_BASEMENT].sort((a,b)=>
-    calcStatus(a,basement[a]||{}).priority - calcStatus(b,basement[b]||{}).priority
-  );
-
   if (bSem) bSem.innerHTML = buildSemaforo(INV_BASEMENT, basement);
   if (uSem) uSem.innerHTML = buildSemaforo(INV_UPSTAIRS, upstairs);
 
-  bEl.innerHTML = basementSorted.map(p=>makeCard(p,basement[p]||{})).join('');
+  bEl.innerHTML = INV_BASEMENT.map(p=>makeCard(p,basement[p]||{})).join('');
   uEl.innerHTML = INV_UPSTAIRS.map(p=>makeCompactCard(p,upstairs[p]||{})).join('');
   invActualizarResumen();
   invActualizarAlertas();
