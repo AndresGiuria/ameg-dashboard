@@ -214,22 +214,12 @@
     box-shadow: var(--glass-sombra);
     border-radius: var(--radio-lg); padding: 20px 22px; margin-bottom: 20px;
   }
-  .semanas-strip h3 { font-size:11px; font-weight:600; color:var(--texto-2); margin-bottom:16px; text-transform:uppercase; letter-spacing:0.05em; }
-  .semanas-bars { display:flex; flex-direction:column; gap:0; }
-  .sem-bar-item { display:flex; align-items:center; gap:10px; padding:6px 8px; border-bottom:0.5px solid rgba(0,0,0,0.06); }
-  .sem-bar-item:last-child { border-bottom:none; }
-  .sem-bar-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
-  .sem-bar-dot.ok   { background:var(--verde-2); }
-  .sem-bar-dot.warn { background:#d97706; }
-  .sem-bar-dot.bad  { background:var(--rojo-2); }
-  .sem-bar-label { font-size:12px; color:var(--texto-3); width:110px; flex-shrink:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-  .sem-bar-track { flex:1; background:rgba(0,0,0,0.07); border-radius:2px; height:6px; overflow:hidden; min-width:0; }
-  .sem-bar-fill  { height:100%; width:100%; border-radius:2px; transform-origin:left; transition:transform 1s cubic-bezier(.4,0,.2,1); }
-  .sem-bar-fill.ok   { background:var(--verde-2); }
-  .sem-bar-fill.warn { background:#d97706; }
-  .sem-bar-fill.bad  { background:var(--rojo-2); }
-  .sem-bar-kg { font-size:12px; font-weight:600; color:var(--texto); font-family:var(--mono); width:60px; text-align:right; flex-shrink:0; }
-  .sem-bar-pct { font-size:11px; color:var(--texto-3); width:32px; text-align:right; flex-shrink:0; }
+  .semanas-strip h3 { font-size:11px; font-weight:600; color:var(--texto-2); margin-bottom:0; text-transform:uppercase; letter-spacing:0.05em; }
+  .semanas-strip-head { display:flex; align-items:center; justify-content:space-between; margin-bottom:16px; }
+  .semanas-toggle-btn { font-size:11px; color:var(--texto-3); background:transparent; border:1px solid var(--borde); border-radius:6px; padding:4px 10px; cursor:pointer; transition:color .15s,border-color .15s; }
+  .semanas-toggle-btn:hover { color:var(--texto); border-color:var(--texto-3); }
+  .chart-scroll-outer { overflow-x:auto; overflow-y:hidden; }
+  #semanas-chart-inner { min-width:100%; }
 
   /* ── CARD ── */
   .card {
@@ -654,8 +644,15 @@
     </div>
   </div>
   <div class="semanas-strip">
-    <h3>Progreso por semana vs meta</h3>
-    <div class="semanas-bars" id="semanas-bars-strip"></div>
+    <div class="semanas-strip-head">
+      <h3>Progreso por semana vs meta</h3>
+      <button class="semanas-toggle-btn" id="btn-semanas-toggle" onclick="toggleSemanasHistorico()">Ver histórico completo</button>
+    </div>
+    <div class="chart-scroll-outer" id="semanas-chart-outer">
+      <div class="chart-wrap tall" id="semanas-chart-inner">
+        <canvas id="chart-semanas-main"></canvas>
+      </div>
+    </div>
   </div>
   <div class="chart-card" style="margin-bottom:24px">
     <h3>Comparativo mensual</h3>
@@ -3620,26 +3617,59 @@ async function renderChartEficMain() {
   });
 }
 
+const SEMANAS_RECIENTES = 10;
+let semanasVistaCompleta = false;
+
 async function renderSemanasStrip() {
-  const container=document.getElementById('semanas-bars-strip');
-  if (!container) return;
-  if (!semanas.length){container.innerHTML='<div class="empty"><p>Sin semanas</p></div>';return;}
+  const canvas=document.getElementById('chart-semanas-main');
+  if (!canvas) return;
+  if (!semanas.length){canvas.parentElement.innerHTML='<div class="empty"><p>Sin semanas</p></div>';return;}
+
   const items=await Promise.all(semanas.map(async s=>{
     const dias=await fetchDiasByRange(s.fecha_inicio,s.fecha_fin);
     const total=dias.reduce((a,d)=>a+(d.kg_producidos||0),0);
     const metaSem = metaSemana(s.fecha_inicio);
-    return{label:weekLabel(s),total,pct:Math.min(total/metaSem*100,100),metaSem};
+    return{label:weekLabel(s).replace(/\(.*\)/,'').trim(),total,metaSem,pct:metaSem?Math.min(total/metaSem*100,999):0};
   }));
-  container.innerHTML=items.map(item=>{
-    const cls=item.pct>=100?'ok':item.pct>=80?'warn':'bad';
-    return `<div class="sem-bar-item">
-      <div class="sem-bar-dot ${cls}"></div>
-      <div class="sem-bar-label">${item.label}</div>
-      <div class="sem-bar-track"><div class="sem-bar-fill ${cls}" style="transform:scaleX(${item.pct/100})"></div></div>
-      <div class="sem-bar-kg">${fmt(item.total)} kg</div>
-      <div class="sem-bar-pct">${item.pct.toFixed(0)}%</div>
-    </div>`;
-  }).join('');
+
+  const btn=document.getElementById('btn-semanas-toggle');
+  if (btn){
+    btn.style.display = items.length>SEMANAS_RECIENTES ? '' : 'none';
+    btn.textContent = semanasVistaCompleta ? `Ver últimas ${SEMANAS_RECIENTES}` : `Ver histórico completo (${items.length})`;
+  }
+
+  const rows = semanasVistaCompleta ? items : items.slice(-SEMANAS_RECIENTES);
+  const colorFor = pct => pct>=100?'rgba(12,125,60,0.85)':pct>=80?'rgba(217,119,6,0.85)':'rgba(224,30,18,0.75)';
+
+  const inner=document.getElementById('semanas-chart-inner');
+  if (inner) inner.style.minWidth = (semanasVistaCompleta && rows.length>SEMANAS_RECIENTES) ? (rows.length*48)+'px' : '100%';
+
+  if (window._chartSemanasMain) window._chartSemanasMain.destroy();
+  window._chartSemanasMain=new Chart(canvas,{
+    type:'bar',
+    data:{
+      labels:rows.map(r=>r.label),
+      datasets:[
+        {label:'Kg producidos',data:rows.map(r=>r.total),
+          backgroundColor:rows.map(r=>colorFor(r.pct)),
+          borderRadius:5,borderSkipped:false},
+        {label:'Meta',data:rows.map(r=>r.metaSem),type:'line',
+          borderColor:'rgba(0,0,0,0.15)',borderWidth:1.5,borderDash:[4,4],pointRadius:0,fill:false}
+      ]
+    },
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},
+        tooltip:{callbacks:{label:ctx=>ctx.datasetIndex===1
+          ? ' Meta: '+fmt(ctx.raw)+' kg'
+          : ' '+fmt(ctx.raw)+' kg ('+rows[ctx.dataIndex].pct.toFixed(0)+'%)'}}},
+      scales:{x:{grid:{display:false},ticks:{font:{size:10},maxRotation:45}},
+              y:{grid:{color:'rgba(0,0,0,0.04)'},ticks:{font:{size:11},callback:v=>fmt(v)}}}}
+  });
+}
+
+function toggleSemanasHistorico(){
+  semanasVistaCompleta=!semanasVistaCompleta;
+  renderSemanasStrip();
 }
 
 async function renderChartMesMain() {
