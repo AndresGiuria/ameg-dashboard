@@ -1413,7 +1413,7 @@ function populateMonthSelects() {
     });
     if (prev && prev !== 'all' && [...el.options].some(o => o.value===prev)) {
       el.value = prev;
-    } else if (!prev && months.includes(currentMonth)) {
+    } else if (!prev && id !== 'graf-mes-sel' && months.includes(currentMonth)) {
       el.value = currentMonth;
     }
   });
