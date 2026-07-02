@@ -1051,6 +1051,14 @@ function escapeHtml(s) {
   return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
 
+const MESES_ABREV = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+function rangoSemanaLabel(numSem, lun, dom) {
+  const rango = lun.getMonth() === dom.getMonth()
+    ? `${lun.getDate()}–${dom.getDate()} ${MESES_ABREV[lun.getMonth()]}`
+    : `${lun.getDate()} ${MESES_ABREV[lun.getMonth()]}–${dom.getDate()} ${MESES_ABREV[dom.getMonth()]}`;
+  return `Sem ${numSem} (${rango})`;
+}
+
 // COGS histórico por año (fuente: COGS report Excel)
 var cogsAnoSel = 'total';
 const COGS_SETS = {
@@ -1563,9 +1571,8 @@ async function handleFormDiaSubmit(e) {
       const lun = new Date(d); lun.setDate(d.getDate() + diffLun);
       const dom = new Date(lun); dom.setDate(lun.getDate() + 6);
       const toISO = x => x.toISOString().split('T')[0];
-      const meses = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
       const numSem = semanas.length + 1;
-      const autoLabel = `Sem ${numSem} (${lun.getDate()}–${dom.getDate()} ${meses[lun.getMonth()]})`;
+      const autoLabel = rangoSemanaLabel(numSem, lun, dom);
       btn.textContent = 'Creando semana…';
       const {data:newSem, error:errSem} = await db.from('semanas')
         .insert({label:autoLabel, start_date:toISO(lun), end_date:toISO(dom)})
@@ -2595,8 +2602,7 @@ async function guardarBitacoraData(numPages) {
       var lun = new Date(dObj); lun.setDate(dObj.getDate()+(dow===0?-6:1-dow));
       var dom = new Date(lun); dom.setDate(lun.getDate()+6);
       var toISO = function(x){ return x.toISOString().split('T')[0]; };
-      var meses2 = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
-      var lbl = 'Sem '+(semanas.length+1)+' ('+lun.getDate()+'–'+dom.getDate()+' '+meses2[lun.getMonth()]+')';
+      var lbl = rangoSemanaLabel(semanas.length+1, lun, dom);
       var nsRes = await db.from('semanas').insert({label:lbl,start_date:toISO(lun),end_date:toISO(dom)}).select().single();
       if (nsRes.error) { errores++; continue; }
       semana_id = nsRes.data.id;
@@ -2726,8 +2732,7 @@ async function guardarScannedDias(numPages) {
       const lun = new Date(dObj); lun.setDate(dObj.getDate()+(dow===0?-6:1-dow));
       const dom = new Date(lun); dom.setDate(lun.getDate()+6);
       const toISO = x=>x.toISOString().split('T')[0];
-      const meses=['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
-      const label=`Sem ${semanas.length+1} (${lun.getDate()}–${dom.getDate()} ${meses[lun.getMonth()]})`;
+      const label = rangoSemanaLabel(semanas.length+1, lun, dom);
       const {data:ns,error:es}=await db.from('semanas').insert({label,start_date:toISO(lun),end_date:toISO(dom)}).select().single();
       if (es){errores++;continue;}
       semana_id=ns.id;
@@ -2868,9 +2873,8 @@ async function guardarTodosPDF(datos) {
       const lun = new Date(dObj); lun.setDate(dObj.getDate()+diffLun);
       const dom = new Date(lun); dom.setDate(lun.getDate()+6);
       const toISO = x => x.toISOString().split('T')[0];
-      const meses = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
       const numSem = semanas.length+1;
-      const autoLabel = `Sem ${numSem} (${lun.getDate()}–${dom.getDate()} ${meses[lun.getMonth()]})`;
+      const autoLabel = rangoSemanaLabel(numSem, lun, dom);
       const {data:newSem, error:errSem} = await db.from('semanas')
         .insert({label:autoLabel, start_date:toISO(lun), end_date:toISO(dom)})
         .select().single();
@@ -3732,7 +3736,6 @@ async function swCrearNuevaSemana() {
   const st  = document.getElementById('sw-ns-status');
   if (!ini || !fin) { st.textContent = 'Ingresa inicio y fin'; return; }
   st.textContent = 'Creando...';
-  const meses = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
   const d1 = new Date(ini+'T12:00:00'), d2 = new Date(fin+'T12:00:00');
   // Calculate next ID from existing semanas
   const {data: existing} = await db.from('semanas').select('id');
@@ -3743,7 +3746,7 @@ async function swCrearNuevaSemana() {
   });
   var newId = 's' + (maxNum + 1);
   const numSem = maxNum + 1;
-  const label = 'Sem ' + numSem + ' (' + d1.getDate() + '-' + d2.getDate() + ' ' + meses[d1.getMonth()] + ')';
+  const label = rangoSemanaLabel(numSem, d1, d2);
   const {data, error} = await db.from('semanas').insert({id: newId, label, start_date: ini, end_date: fin}).select().single();
   if (error) { st.textContent = 'Error: ' + error.message; return; }
   semanas.push({...data, fecha_inicio: data.start_date, fecha_fin: data.end_date});
