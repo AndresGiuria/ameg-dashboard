@@ -40,6 +40,15 @@
     --ease:        cubic-bezier(0.22, 1, 0.36, 1);
     --spring:      cubic-bezier(0.34, 1.3, 0.64, 1);
     --t:           0.2s;
+
+    /* Alias — evita romper marcado que referencia esta escala de grises */
+    --gris-50:     rgba(0,0,0,0.03);
+    --gris-400:    var(--texto-4);
+    --gris-500:    var(--texto-3);
+    --gris-600:    var(--texto-2);
+    --gris-700:    var(--texto-2);
+    --gris-950:    var(--negro);
+    --sombra-sm:   0 1px 3px rgba(0,0,0,0.06);
   }
 
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -160,7 +169,7 @@
     box-shadow: var(--glass-sombra);
     border-radius: var(--radio-lg); padding: 20px 22px;
     position: relative; overflow: hidden;
-    transition: transform var(--t) var(--spring), box-shadow var(--t) var(--ease);
+    transition: transform var(--t) var(--ease), box-shadow var(--t) var(--ease);
   }
   .kpi-hero::before {
     content:''; position:absolute; top:0; left:0; right:0; height:2px;
@@ -168,7 +177,7 @@
   }
   .kpi-hero.warn::before { background: linear-gradient(90deg, var(--dorado), #d97706); }
   .kpi-hero.bad::before  { background: linear-gradient(90deg, var(--rojo), var(--rojo-2)); }
-  .kpi-hero:hover { transform: translateY(-2px) scale(1.005); box-shadow: 0 16px 48px rgba(0,0,0,0.12), 0 1px 0 rgba(255,255,255,0.9) inset; }
+  .kpi-hero:hover { box-shadow: 0 16px 48px rgba(0,0,0,0.12), 0 1px 0 rgba(255,255,255,0.9) inset; }
   .kh-icon { position:absolute; right:18px; top:18px; font-size:22px; opacity:0.05; }
   .kh-label { font-size:10px; font-weight:500; letter-spacing:0.05em; color:var(--texto-3); margin-bottom:10px; text-transform:uppercase; }
   .kh-value { font-size:34px; font-weight:700; line-height:1; letter-spacing:-1.5px; color:var(--texto); margin-bottom:6px; }
@@ -215,7 +224,7 @@
   .sem-bar-dot.bad  { background:var(--rojo-2); }
   .sem-bar-label { font-size:12px; color:var(--texto-3); width:110px; flex-shrink:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .sem-bar-track { flex:1; background:rgba(0,0,0,0.07); border-radius:2px; height:6px; overflow:hidden; min-width:0; }
-  .sem-bar-fill  { height:100%; border-radius:2px; transition:width 1s cubic-bezier(.4,0,.2,1); }
+  .sem-bar-fill  { height:100%; width:100%; border-radius:2px; transform-origin:left; transition:transform 1s cubic-bezier(.4,0,.2,1); }
   .sem-bar-fill.ok   { background:var(--verde-2); }
   .sem-bar-fill.warn { background:#d97706; }
   .sem-bar-fill.bad  { background:var(--rojo-2); }
@@ -254,7 +263,7 @@
 
   /* ── PROGRESS BAR ── */
   .progress-bar  { background:rgba(0,0,0,0.07); border-radius:2px; height:4px; overflow:hidden; min-width:60px; }
-  .progress-fill { height:100%; border-radius:2px; transition:width 0.6s var(--ease); background:var(--verde-3); }
+  .progress-fill { height:100%; width:100%; border-radius:2px; transform-origin:left; transition:transform 0.6s var(--ease); background:var(--verde-3); }
   .progress-fill.warn   { background:#d97706; }
   .progress-fill.bad    { background:var(--rojo-2); }
   .progress-fill.danger { background:var(--rojo-2); }
@@ -287,7 +296,7 @@
   .btn {
     padding:9px 18px; border-radius:var(--radio); border:none;
     font-size:12px; font-weight:600; cursor:pointer;
-    transition:all var(--t) var(--spring);
+    transition:transform 160ms var(--spring), box-shadow var(--t) var(--ease), background var(--t) var(--ease);
     font-family:var(--font); display:inline-flex; align-items:center; gap:6px;
     letter-spacing:-0.1px; position:relative;
   }
@@ -296,15 +305,17 @@
     box-shadow:0 1px 3px rgba(0,0,0,0.2), 0 1px 0 rgba(255,255,255,0.1) inset;
   }
   .btn-primary:hover { background:var(--verde-2); transform:translateY(-1px); box-shadow:0 4px 14px rgba(10,110,53,0.35); }
-  .btn-primary:active { transform:translateY(0); }
+  .btn-primary:active { transform:translateY(0) scale(0.97); }
   .btn-secondary {
     background:rgba(255,255,255,0.7); color:var(--texto-2);
     border:1px solid var(--borde-2);
     backdrop-filter:blur(8px);
   }
   .btn-secondary:hover { background:rgba(255,255,255,0.9); transform:translateY(-1px); box-shadow:0 4px 14px rgba(0,0,0,0.08); }
+  .btn-secondary:active { transform:translateY(0) scale(0.97); }
   .btn-danger { background:var(--rojo); color:#fff; box-shadow:0 1px 3px rgba(0,0,0,0.2); }
   .btn-danger:hover { background:var(--rojo-2); transform:translateY(-1px); box-shadow:0 4px 14px rgba(192,25,15,0.35); }
+  .btn-danger:active { transform:translateY(0) scale(0.97); }
   .btn-sm { padding:5px 12px; font-size:11px; }
   .btn:disabled { opacity:0.38; cursor:not-allowed; transform:none !important; box-shadow:none !important; }
 
@@ -326,7 +337,7 @@
   .upload-zone {
     border:1.5px dashed rgba(0,0,0,0.12); border-radius:var(--radio-lg);
     padding:22px; text-align:center; cursor:pointer;
-    transition:all var(--t) var(--ease);
+    transition:border-color var(--t) var(--ease), background var(--t) var(--ease), box-shadow var(--t) var(--ease);
     background:rgba(255,255,255,0.4); backdrop-filter:blur(8px);
   }
   .upload-zone:hover, .upload-zone.drag {
@@ -355,9 +366,9 @@
     -webkit-backdrop-filter:blur(20px) saturate(180%);
     border:1px solid var(--glass-borde); box-shadow:var(--glass-sombra);
     border-radius:var(--radio-lg); padding:20px 22px; margin-bottom:12px;
-    transition:transform var(--t) var(--spring), box-shadow var(--t) var(--ease);
+    transition:transform var(--t) var(--ease), box-shadow var(--t) var(--ease);
   }
-  .semana-card:hover { transform:translateY(-2px); box-shadow:0 20px 60px rgba(0,0,0,0.1), 0 1px 0 rgba(255,255,255,0.9) inset; }
+  .semana-card:hover { box-shadow:0 20px 60px rgba(0,0,0,0.1), 0 1px 0 rgba(255,255,255,0.9) inset; }
   .semana-header { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px; margin-bottom:12px; }
   .semana-header h3 { font-size:15px; font-weight:700; letter-spacing:-0.3px; }
   .semana-header .dates { font-size:11px; color:var(--texto-3); margin-top:2px; }
@@ -393,6 +404,28 @@
   .month-header-bar .mstat .v { font-size:18px; font-weight:700; }
   .month-header-bar .mstat .l { font-size:10px; opacity:0.45; text-transform:uppercase; letter-spacing:0.06em; }
 
+  /* ── MODAL OVERLAY (bitácora / PDF escaneado) ── */
+  .modal-overlay {
+    position:fixed; inset:0; z-index:9998;
+    background:rgba(0,0,0,0.65);
+    display:flex; align-items:flex-start; justify-content:center;
+    overflow-y:auto; padding:24px;
+    opacity:0; transition:opacity 200ms var(--ease);
+  }
+  .modal-overlay.show { opacity:1; }
+  .modal-card {
+    background:#fff; border-radius:var(--radio-lg); width:100%; max-width:960px;
+    box-shadow:0 20px 60px rgba(0,0,0,0.3); overflow:hidden; margin:auto;
+    transform:scale(0.95); opacity:0;
+    transition:transform 200ms var(--spring), opacity 200ms var(--ease);
+  }
+  .modal-overlay.show .modal-card { transform:scale(1); opacity:1; }
+  .modal-header {
+    background:var(--negro); color:#fff; padding:18px 24px;
+    display:flex; align-items:center; justify-content:space-between;
+    position:sticky; top:0; z-index:1;
+  }
+
   /* ── TOAST ── */
   #toast {
     position:fixed; bottom:24px; right:24px; z-index:9999;
@@ -402,7 +435,7 @@
     font-size:13px; font-weight:500;
     box-shadow:0 16px 48px rgba(0,0,0,0.25), 0 0 0 1px rgba(255,255,255,0.07);
     transform:translateY(80px) scale(0.96); opacity:0;
-    transition:all 0.32s var(--spring);
+    transition:transform 0.32s var(--spring), opacity 0.32s var(--ease);
     pointer-events:none; max-width:320px;
     border-left:2px solid var(--verde-3);
   }
@@ -425,10 +458,9 @@
     aspect-ratio:1; border-radius:6px;
     display:flex; flex-direction:column; align-items:center; justify-content:center;
     font-size:11px; font-weight:600; cursor:default; min-height:36px;
-    transition:transform 0.18s var(--spring);
+    transition:transform 0.18s var(--ease);
     border:1px solid transparent;
   }
-  .cal-day:hover { transform:scale(1.1); z-index:1; }
   .cal-day.ok    { background:rgba(10,110,53,0.1); color:var(--verde); border-color:rgba(10,110,53,0.18); }
   .cal-day.warn  { background:rgba(154,96,0,0.1); color:var(--dorado); border-color:rgba(154,96,0,0.18); }
   .cal-day.bad   { background:rgba(192,25,15,0.08); color:var(--rojo); border-color:rgba(192,25,15,0.14); }
@@ -444,9 +476,8 @@
     border-radius:var(--radio); padding:12px 14px;
     border:1px solid var(--glass-borde); box-shadow:var(--glass-sombra);
     border-left:2px solid var(--verde-3);
-    transition:transform 0.18s var(--spring), box-shadow var(--t) var(--ease);
+    transition:transform 0.18s var(--ease), box-shadow var(--t) var(--ease);
   }
-  .top-dia-card:hover { transform:translateY(-2px); box-shadow:0 12px 32px rgba(0,0,0,0.1); }
   .top-dia-card.bad { border-left-color:var(--rojo-2); }
   .top-dia-rank { font-size:10px; font-weight:600; text-transform:uppercase; letter-spacing:0.08em; color:var(--texto-3); margin-bottom:4px; }
   .top-dia-kg { font-size:20px; font-weight:700; color:var(--texto); letter-spacing:-0.5px; }
@@ -471,7 +502,7 @@
     background:rgba(255,255,255,0.6); backdrop-filter:blur(12px);
     border-radius:var(--radio-lg);
     border:1px solid var(--glass-borde); box-shadow:var(--glass-sombra);
-    margin-bottom:12px; user-select:none; transition:all var(--t) var(--ease);
+    margin-bottom:12px; user-select:none; transition:background var(--t) var(--ease);
   }
   .nueva-semana-toggle:hover { background:rgba(255,255,255,0.85); }
   .nueva-semana-toggle .ns-icon { font-size:16px; }
@@ -487,8 +518,8 @@
   .rh-stat .rl { font-size:10px; color:var(--texto-3); margin-top:2px; text-transform:uppercase; letter-spacing:0.06em; }
 
   .equipo-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:12px; margin-bottom:20px; }
-  .equipo-card { background:rgba(255,255,255,0.6); backdrop-filter:blur(12px); border-radius:var(--radio); padding:14px 16px; border:1px solid var(--glass-borde); display:flex; align-items:center; gap:12px; transition:all var(--t) var(--ease); }
-  .equipo-card:hover { background:rgba(255,255,255,0.85); transform:translateY(-1px); }
+  .equipo-card { background:rgba(255,255,255,0.6); backdrop-filter:blur(12px); border-radius:var(--radio); padding:14px 16px; border:1px solid var(--glass-borde); display:flex; align-items:center; gap:12px; transition:background var(--t) var(--ease), transform var(--t) var(--ease); }
+  .equipo-card:hover { background:rgba(255,255,255,0.85); }
   .equipo-avatar { width:34px; height:34px; border-radius:50%; background:var(--verde); color:#fff; display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:700; flex-shrink:0; }
   .equipo-avatar.excluido { background:var(--texto-4); }
   .equipo-info { flex:1; min-width:0; }
@@ -508,6 +539,25 @@
   .sb-number { font-size:38px; font-weight:800; letter-spacing:-2px; line-height:1; }
   .sb-unit { font-size:15px; font-weight:600; color:var(--texto-3); }
   .sb-sub { font-size:12px; color:var(--texto-3); }
+
+  /* ── HOVER LIFT/SCALE — solo dispositivos con hover real (evita "hover pegado" al tocar en tablet) ── */
+  @media (hover:hover) and (pointer:fine) {
+    .kpi-hero:hover      { transform: translateY(-2px) scale(1.005); }
+    .semana-card:hover   { transform: translateY(-2px); }
+    .equipo-card:hover   { transform: translateY(-1px); }
+    .cal-day:hover       { transform: scale(1.1); z-index: 1; }
+    .top-dia-card:hover  { transform: translateY(-2px); box-shadow: 0 12px 32px rgba(0,0,0,0.1); }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+    html { scroll-behavior: auto; }
+  }
+
   @media (max-width:900px) {
     main { padding:16px; } nav { padding:0 16px; } header { padding:0 16px; }
     .hero-grid { grid-template-columns:repeat(2,1fr); }
@@ -985,6 +1035,22 @@ const META_KG_H    = 12;
 const EXCLUIDO_RH  = 'Mario Alberto Hernández';
 const EXCLUIDO_CSV = 'HERNANDEZ ALCALA, MARIO ALBERTO';
 
+// Meta semanal: sube de 3,600 a 3,900 kg a partir de esta fecha de inicio de semana
+const META_SEM_CUTOFF = '2026-05-01';
+const META_SEM_ANTES  = 3600;
+const META_SEM_DESDE  = 3900;
+function metaSemana(fechaInicio) { return fechaInicio >= META_SEM_CUTOFF ? META_SEM_DESDE : META_SEM_ANTES; }
+
+// "Hoy" siempre en hora de Toronto, sin importar la zona horaria del navegador
+const TZ = 'America/Toronto';
+function hoyISO()     { return new Date().toLocaleDateString('en-CA', {timeZone: TZ}); }
+function hoyToronto() { return new Date(hoyISO() + 'T12:00:00'); }
+function isoAddDays(iso, days) { const d = new Date(iso + 'T12:00:00'); d.setDate(d.getDate() + days); return d.toISOString().split('T')[0]; }
+
+function escapeHtml(s) {
+  return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
 // COGS histórico por año (fuente: COGS report Excel)
 var cogsAnoSel = 'total';
 const COGS_SETS = {
@@ -1166,6 +1232,36 @@ function toast(msg, type='ok') {
   clearTimeout(el._t);
   el._t = setTimeout(() => el.className = '', 3200);
 }
+function openModalAnimated(id) {
+  requestAnimationFrame(() => { const m = document.getElementById(id); if (m) m.classList.add('show'); });
+}
+function closeModalAnimated(id) {
+  const m = document.getElementById(id);
+  if (!m) return;
+  m.classList.remove('show');
+  setTimeout(() => m.remove(), 200);
+}
+function confirmDialog(msg) {
+  return new Promise(resolve => {
+    const id = 'confirm-modal-' + Date.now();
+    const modal = document.createElement('div');
+    modal.id = id;
+    modal.className = 'modal-overlay';
+    modal.innerHTML =
+      '<div class="modal-card" style="max-width:360px">' +
+      '<div style="padding:22px 24px 18px">' +
+      '<div style="font-size:14px;font-weight:600;color:var(--texto);margin-bottom:18px">' + escapeHtml(msg) + '</div>' +
+      '<div style="display:flex;justify-content:flex-end;gap:10px">' +
+      '<button class="btn btn-secondary" id="' + id + '-no">Cancelar</button>' +
+      '<button class="btn btn-danger" id="' + id + '-yes">Eliminar</button>' +
+      '</div></div></div>';
+    document.body.appendChild(modal);
+    openModalAnimated(id);
+    const cleanup = result => { closeModalAnimated(id); resolve(result); };
+    modal.querySelector('#' + id + '-yes').onclick = () => cleanup(true);
+    modal.querySelector('#' + id + '-no').onclick = () => cleanup(false);
+  });
+}
 function fmt(n, dec=1) {
   if (n == null || isNaN(n)) return '—';
   return Number(n).toLocaleString('es-MX', {minimumFractionDigits:dec,maximumFractionDigits:dec});
@@ -1295,7 +1391,7 @@ function getAvailableMonths() {
 
 function populateMonthSelects() {
   const months = getAvailableMonths();
-  const currentMonth = new Date().toISOString().slice(0,7);
+  const currentMonth = hoyISO().slice(0,7);
   ['captura-mes-sel','semanal-mes-sel','mes-mes-sel','hist-mes-sel','graf-mes-sel','cal-mes-sel','inv-mes-sel'].forEach(id => {
     const el = document.getElementById(id);
     if (!el) return;
@@ -1426,7 +1522,7 @@ async function handleNuevaSemanaSubmit(e) {
 // TAB: CAPTURA DIARIA
 // =====================================================================
 function setTodayDate() {
-  const iso = new Date().toISOString().split('T')[0];
+  const iso = hoyISO();
   document.getElementById('f-fecha').value = iso;
   autoSelectSemana(iso);
 }
@@ -1450,7 +1546,7 @@ async function handleFormDiaSubmit(e) {
   const turno     = document.getElementById('f-turno').value || null;
   const notas     = document.getElementById('f-notas').value.trim();
 
-  const hoy = new Date().toISOString().split('T')[0];
+  const hoy = hoyISO();
   if (!fecha) { toast('Selecciona una fecha', 'err'); btn.disabled=false; btn.textContent='💾 Guardar Registro'; return; }
   if (fecha > hoy) { toast('La fecha no puede ser futura', 'err'); btn.disabled=false; btn.textContent='💾 Guardar Registro'; return; }
   if (isNaN(kg) || kg <= 0) { toast('Ingresa un valor válido de kg (mayor a 0)', 'err'); btn.disabled=false; btn.textContent='💾 Guardar Registro'; return; }
@@ -1506,9 +1602,8 @@ async function renderRecientes() {
     desde = mesSel + '-01';
     hasta = new Date(y, m, 0).toISOString().split('T')[0];
   } else {
-    const d14 = new Date(); d14.setDate(d14.getDate()-14);
-    desde = d14.toISOString().split('T')[0];
-    hasta = new Date().toISOString().split('T')[0];
+    desde = isoAddDays(hoyISO(), -14);
+    hasta = hoyISO();
   }
   const rows = (await fetchDiasByRange(desde, hasta))
     .sort((a,b) => b.fecha.localeCompare(a.fecha)).slice(0, 60);
@@ -1538,13 +1633,13 @@ function buildDiasTable(rows) {
         + '<td>' + (r.dia_nombre||'—') + '</td>'
         + '<td>' + (sem?'S'+sem.numero_semana:'—') + '</td>'
         + '<td class="td-num"><strong>' + fmt(r.kg_producidos) + '</strong></td>'
-        + '<td><div class="progress-bar"><div class="progress-fill ' + progClass(pct) + '" style="width:' + Math.min(pct,100) + '%"></div></div><small style="color:#888;font-size:11px">' + Math.round(pct) + '%</small></td>'
+        + '<td><div class="progress-bar"><div class="progress-fill ' + progClass(pct) + '" style="transform:scaleX(' + (Math.min(pct,100)/100) + ')"></div></div><small style="color:#888;font-size:11px">' + Math.round(pct) + '%</small></td>'
         + '<td class="td-num">' + fmt(r.horas_rh) + '</td>'
         + '<td class="td-num">' + fmt(r.kg_hora) + ' ' + badgeEfic(r.kg_hora) + '</td>'
         + '<td>' + badgeKg(r.kg_producidos) + '</td>'
         + '<td class="td-num">' + (r.operadores??'—') + '</td>'
         + '<td>' + (r.turno||'—') + '</td>'
-        + '<td style="max-width:160px;font-size:12px;color:#555">' + (r.notas||'—') + '</td>'
+        + '<td style="max-width:160px;font-size:12px;color:#555">' + escapeHtml(r.notas||'—') + '</td>'
         + '<td><button class="btn btn-secondary" style="padding:3px 8px;font-size:11px;margin-right:4px" onclick="editarDia(\'' + r.id + '\')">✏️</button>'
         + '<button class="btn btn-danger" style="padding:3px 8px;font-size:12px" onclick="eliminarDia(\'' + r.id + '\',\'' + r.fecha + '\')">🗑</button></td>'
         + '</tr>';
@@ -1553,7 +1648,7 @@ function buildDiasTable(rows) {
 }
 
 async function eliminarDia(id, fecha) {
-  if (!confirm('¿Eliminar registro del ' + fmtDate(fecha) + '?')) return;
+  if (!await confirmDialog('¿Eliminar registro del ' + fmtDate(fecha) + '?')) return;
   const {error} = await db.from('dias').delete().eq('id',id);
   if (error) { toast('Error: '+error.message,'err'); return; }
   toast('Registro eliminado','ok');
@@ -1596,7 +1691,7 @@ async function cancelarEditDia(id) {
 
 async function renderKPIs() {
   const mesSel = document.getElementById('captura-mes-sel').value;
-  const hoy    = new Date().toISOString().split('T')[0];
+  const hoy    = hoyISO();
   let semActual;
   if (mesSel !== 'all') {
     const semsInMonth = semanas.filter(s =>
@@ -1643,7 +1738,7 @@ async function renderKPIs() {
   const kgFechaLabel = hoyData?.fecha ? ' · ' + fmtDate(hoyData.fecha) : '';
   setKPI('kpi-hoy-kg',    hoyData?.kg_producidos??null, META_KG_DIA, hoyExact?'Kg Hoy':'Últ. Día', 'Meta: 600 kg/día' + kgFechaLabel, 'kg',  avg4wKgDia);
   setKPI('kpi-hoy-efic',  eficMes,       META_KG_H,  'Efic. Promedio Mes',  'Meta: 12 kg/h',     'kg/h', avg4wEfic);
-  setKPI('kpi-semana-kg', totalKgSem||null, semActual?.fecha_inicio>='2026-05-01'?3900:3600, 'Kg Semana Actual', 'Meta: 3,900 kg', 'kg', avg4wKgSem);
+  setKPI('kpi-semana-kg', totalKgSem||null, metaSemana(semActual?.fecha_inicio), 'Kg Semana Actual', 'Meta: 3,900 kg', 'kg', avg4wKgSem);
   setKPI('kpi-promedio',  promMes,        META_KG_DIA,'Prom. Diario Mes',    diasMesTrab.length+' días trabajados', 'kg', avg4wKgDia);
 }
 
@@ -1761,7 +1856,7 @@ async function renderSemanal() {
       </div>`;
     for (const {s, rows, totalKg, totalH} of weekData) {
       const efic      = totalH>0 ? totalKg/totalH : 0;
-      const metaKg6   = s.fecha_inicio >= '2026-05-01' ? 3900 : 3600;
+      const metaKg6   = metaSemana(s.fecha_inicio);
       const esMala    = totalKg < 3700 || (efic > 0 && efic < 11.5);
       const cardStyle = esMala ? 'border-left:3px solid rgba(220,38,38,0.55)' : '';
       const badgeKg   = totalKg < 3700 ? '<span style="font-size:11px;background:rgba(220,38,38,0.1);color:#c0190f;border:1px solid rgba(220,38,38,0.25);padding:2px 8px;border-radius:20px;font-weight:600">⚠ Kg bajo</span>' : '';
@@ -1784,7 +1879,7 @@ async function renderSemanal() {
             <span>Avance vs meta (${fmt(metaKg6,0)} kg)</span>
             <span>${Math.round(totalKg/metaKg6*100)}%</span>
           </div>
-          <div class="progress-bar"><div class="progress-fill ${progClass(totalKg/metaKg6*100)}" style="width:${Math.min(totalKg/metaKg6*100,100)}%"></div></div>
+          <div class="progress-bar"><div class="progress-fill ${progClass(totalKg/metaKg6*100)}" style="transform:scaleX(${Math.min(totalKg/metaKg6*100,100)/100})"></div></div>
         </div>
         ${notasHtml}
         ${rows.length ? buildDiasTable(rows) : '<div class="empty" style="padding:20px"><p>Sin registros esta semana</p></div>'}
@@ -1854,7 +1949,7 @@ async function renderMes() {
           <td class="td-num">${fmt(s.avgKg,1)}</td>
           <td class="td-num">${fmt(s.totalH,1)}</td>
           <td class="td-num">${fmt(s.efic,2)} ${badgeEfic(s.efic)}</td>
-          <td><div class="progress-bar"><div class="progress-fill ${progClass(pct)}" style="width:${Math.min(pct,100)}%"></div></div>
+          <td><div class="progress-bar"><div class="progress-fill ${progClass(pct)}" style="transform:scaleX(${Math.min(pct,100)/100})"></div></div>
             <small style="font-size:11px;color:#888">${Math.round(pct)}%</small></td>
         </tr>`;
       }).join('')}
@@ -1982,7 +2077,7 @@ async function renderGraficas() {
       {label:'Kg producidos', data:semKgs,
         backgroundColor:semKgs.map(function(kg){return kg<UMBRAL_SEM?'rgba(220,38,38,0.75)':'rgba(59,130,246,0.85)';}),
         borderRadius:6},
-      {label:'Meta semanal', data:filteredSems.map(function(s){return s.fecha_inicio>='2026-05-01'?3900:3600;}),
+      {label:'Meta semanal', data:filteredSems.map(function(s){return metaSemana(s.fecha_inicio);}),
         type:'line',borderColor:'rgba(200,147,10,0.5)',borderDash:[6,3],borderWidth:2,pointRadius:0,fill:false},
       {label:'Prom. móvil 4 sem', data:movAvg4,
         type:'line',borderColor:'rgba(139,92,246,0.8)',borderWidth:2,pointRadius:3,fill:false,tension:0.3},
@@ -2362,8 +2457,7 @@ function showBitacoraModal(pageImages, numPages) {
   var ex = document.getElementById('bitacora-modal');
   if (ex) ex.remove();
   function suggestDate(i) {
-    var d = new Date(); d.setDate(d.getDate() - (numPages - 1 - i));
-    return d.toISOString().split('T')[0];
+    return isoAddDays(hoyISO(), -(numPages - 1 - i));
   }
   function buildTable(i) {
     var t = '<table style="width:100%;font-size:12px;border-collapse:collapse">';
@@ -2404,19 +2498,20 @@ function showBitacoraModal(pageImages, numPages) {
   }
   var modal = document.createElement('div');
   modal.id = 'bitacora-modal';
-  modal.style.cssText = 'position:fixed;inset:0;z-index:9998;background:rgba(0,0,0,0.65);display:flex;align-items:flex-start;justify-content:center;overflow-y:auto;padding:24px';
+  modal.className = 'modal-overlay';
   modal.innerHTML =
-    '<div style="background:white;border-radius:14px;width:100%;max-width:960px;box-shadow:0 20px 60px rgba(0,0,0,0.3);overflow:hidden;margin:auto">' +
-    '<div style="background:#111827;color:white;padding:18px 24px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:1">' +
+    '<div class="modal-card">' +
+    '<div class="modal-header">' +
     '<div><div style="font-size:15px;font-weight:700">📷 PDF Escaneado — Bitácora</div>' +
     '<div style="font-size:12px;opacity:0.5;margin-top:2px">Haz clic en 🔍 OCR por página para prellenar. Confirma y guarda.</div></div>' +
-    '<button onclick="document.getElementById(\'bitacora-modal\').remove()" style="background:rgba(255,255,255,0.1);border:none;color:white;width:32px;height:32px;border-radius:6px;font-size:18px;cursor:pointer">✕</button>' +
+    '<button onclick="closeModalAnimated(\'bitacora-modal\')" style="background:rgba(255,255,255,0.1);border:none;color:white;width:32px;height:32px;border-radius:6px;font-size:18px;cursor:pointer">✕</button>' +
     '</div><div style="padding:24px">' + pages +
     '<div style="display:flex;justify-content:flex-end;gap:10px;margin-top:8px">' +
-    '<button onclick="document.getElementById(\'bitacora-modal\').remove()" style="padding:9px 18px;border:1px solid #e5e7eb;border-radius:8px;background:white;cursor:pointer;font-size:13px">Cancelar</button>' +
-    '<button onclick="guardarBitacoraData(' + numPages + ')" style="padding:9px 22px;border:none;border-radius:8px;background:#059669;color:white;font-weight:700;cursor:pointer;font-size:13px">💾 Guardar todos</button>' +
+    '<button class="btn btn-secondary" onclick="closeModalAnimated(\'bitacora-modal\')">Cancelar</button>' +
+    '<button class="btn btn-primary" onclick="guardarBitacoraData(' + numPages + ')">💾 Guardar todos</button>' +
     '</div></div></div>';
   document.body.appendChild(modal);
+  openModalAnimated('bitacora-modal');
   window._bitImgs = pageImages;
 }
 
@@ -2512,13 +2607,15 @@ async function guardarBitacoraData(numPages) {
     var notas = 'Inv: '+totIni.toFixed(2)+' → '+totFin.toFixed(2);
     var diasRes = await db.from('dias').upsert({fecha,semana_id,prod:kgProd,notas,horas:null},{onConflict:'fecha'});
     if (diasRes.error) { errores++; continue; }
-    await db.from('dias_productos').delete().eq('fecha', fecha);
+    var delRes = await db.from('dias_productos').delete().eq('fecha', fecha);
+    if (delRes.error) { errores++; continue; }
     var dpRows = productos.map(function(pp){ return {fecha,semana_id,producto:pp.producto,kg_inicio:pp.kg_inicio,kg_fin:pp.kg_fin,kg_prod:pp.kg_prod}; });
-    await db.from('dias_productos').insert(dpRows);
+    var dpRes = await db.from('dias_productos').insert(dpRows);
+    if (dpRes.error) { errores++; continue; }
     guardados++;
   }
   if (saveBtn) { saveBtn.disabled=false; saveBtn.textContent='💾 Guardar todos'; }
-  if (modal) modal.remove();
+  closeModalAnimated('bitacora-modal');
   toast(guardados+' día(s) guardado(s) con desglose por producto'+(errores?' · '+errores+' error(es)':''), errores&&!guardados?'err':'ok');
   if (guardados > 0) await refreshAll();
 }
@@ -2574,15 +2671,15 @@ function showScannedPDFModal(pageImages, numPages) {
 
   const modal = document.createElement('div');
   modal.id = 'scanned-modal';
-  modal.style.cssText = 'position:fixed;inset:0;z-index:9998;background:rgba(0,0,0,0.65);display:flex;align-items:flex-start;justify-content:center;overflow-y:auto;padding:24px;';
+  modal.className = 'modal-overlay';
   modal.innerHTML = `
-    <div style="background:white;border-radius:14px;width:100%;max-width:920px;box-shadow:0 20px 60px rgba(0,0,0,0.35);overflow:hidden;margin:auto">
-      <div style="background:var(--gris-950);color:white;padding:18px 24px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:1">
+    <div class="modal-card" style="max-width:920px">
+      <div class="modal-header">
         <div>
           <div style="font-size:15px;font-weight:700">📷 PDF Escaneado — Ingresa los totales</div>
           <div style="font-size:12px;opacity:0.55;margin-top:2px">Mira la fila TOTAL de cada página y escribe los dos números</div>
         </div>
-        <button onclick="document.getElementById('scanned-modal').remove()"
+        <button onclick="closeModalAnimated('scanned-modal')"
           style="background:rgba(255,255,255,0.1);border:none;color:white;width:32px;height:32px;border-radius:6px;font-size:18px;cursor:pointer">✕</button>
       </div>
       <div style="padding:24px">
@@ -2591,11 +2688,12 @@ function showScannedPDFModal(pageImages, numPages) {
           <button onclick="guardarScannedDias(${numPages})" class="btn btn-primary" style="flex:1;justify-content:center;padding:13px;font-size:14px">
             💾 Guardar ${numPages} día(s) en Supabase
           </button>
-          <button onclick="document.getElementById('scanned-modal').remove()" class="btn btn-secondary">Cancelar</button>
+          <button onclick="closeModalAnimated('scanned-modal')" class="btn btn-secondary">Cancelar</button>
         </div>
       </div>
     </div>`;
   document.body.appendChild(modal);
+  openModalAnimated('scanned-modal');
 }
 
 function calcScannedProd(i) {
@@ -2642,7 +2740,7 @@ async function guardarScannedDias(numPages) {
     if (error) errores++; else guardados++;
   }
   if (btn){btn.disabled=false;btn.textContent=`💾 Guardar ${numPages} día(s) en Supabase`;}
-  document.getElementById('scanned-modal')?.remove();
+  closeModalAnimated('scanned-modal');
   toast(`${guardados} día(s) guardado(s)${errores?` · ${errores} sin datos`:''}`,errores&&!guardados?'err':'ok');
   if (guardados>0) await refreshAll();
 }
@@ -2701,7 +2799,7 @@ function renderSingleDayPDF(d) {
         <div class="ev-item"><div class="ev-val" style="color:#2980b9">${d.kgProd.toFixed(2)}</div><div class="ev-lbl">Kg Producidos</div></div>
       </div>
       ${d.fecha?`<div style="font-size:12px;color:#666;margin-bottom:6px">📅 Fecha detectada: <strong>${d.fecha}</strong></div>`:''}
-      <div style="font-size:11px;color:#aaa;margin-bottom:10px">TOTAL: "${d.rawLine}"</div>
+      <div style="font-size:11px;color:#aaa;margin-bottom:10px">TOTAL: "${escapeHtml(d.rawLine)}"</div>
       <button class="btn btn-primary" style="margin-top:8px"
         onclick="aplicarDatosPDF('${d.fecha||''}',${d.kgInicio.toFixed(2)},${d.kgFin.toFixed(2)},${d.kgProd.toFixed(2)})">
         ↓ Usar en formulario
@@ -2722,7 +2820,7 @@ function renderMultiDayPDF(dias, fail) {
       <td class="td-center"><span id="pdf-status-${i}">⏳</span></td>
     </tr>`).join('');
   const failHtml = fail.length
-    ? `<div style="margin-top:8px;font-size:12px;color:#c0392b">⚠️ No procesados: ${fail.map(f=>f.archivo+': '+f.error).join(' | ')}</div>`
+    ? `<div style="margin-top:8px;font-size:12px;color:#c0392b">⚠️ No procesados: ${fail.map(f=>escapeHtml(f.archivo+': '+f.error)).join(' | ')}</div>`
     : '';
   result.innerHTML=`
     <div class="extract-result">
@@ -2784,16 +2882,15 @@ async function guardarTodosPDF(datos) {
       {fecha, semana_id, prod:d.kgProd, notas, horas:null},
       {onConflict:'fecha'}
     );
-    if (error) { statusEl.textContent='❌'; errores++; }
-    else {
-      if (d.productos && d.productos.length > 0) {
-        await db.from('dias_productos').delete().eq('fecha', fecha);
-        const dpRows = d.productos.map(p => ({fecha, semana_id, producto:p.producto,
-          kg_inicio:p.kg_inicio, kg_fin:p.kg_fin, kg_prod:p.kg_prod}));
-        await db.from('dias_productos').insert(dpRows);
-      }
-      statusEl.textContent='✅'; guardados++;
+    if (error) { statusEl.textContent='❌'; errores++; continue; }
+    if (d.productos && d.productos.length > 0) {
+      const delRes = await db.from('dias_productos').delete().eq('fecha', fecha);
+      const dpRows = d.productos.map(p => ({fecha, semana_id, producto:p.producto,
+        kg_inicio:p.kg_inicio, kg_fin:p.kg_fin, kg_prod:p.kg_prod}));
+      const dpRes = await db.from('dias_productos').insert(dpRows);
+      if (delRes.error || dpRes.error) { statusEl.textContent='⚠️'; errores++; continue; }
     }
+    statusEl.textContent='✅'; guardados++;
   }
   btn.disabled = false; btn.textContent = '💾 Guardar todos los días';
   toast(`${guardados} día(s) guardado(s)${errores?` · ${errores} error(es)`:''}`, errores?'err':'ok');
@@ -2864,7 +2961,7 @@ async function handleXLSXFile(file) {
     const hoursKey=allKeys.find(k=>k.toLowerCase()==='hours');
     const jobKey=allKeys.find(k=>k.toLowerCase().includes('jobcode')||k.toLowerCase().includes('job'));
     if (!fnameKey||!lnameKey){
-      result.innerHTML=`<div style="color:#c0392b;font-size:13px;margin-top:10px">⚠️ Columnas no reconocidas. Detectadas: ${allKeys.join(', ')}</div>`;
+      result.innerHTML=`<div style="color:#c0392b;font-size:13px;margin-top:10px">⚠️ Columnas no reconocidas. Detectadas: ${escapeHtml(allKeys.join(', '))}</div>`;
       return;
     }
     const empMap={};
@@ -2912,7 +3009,7 @@ async function handleCSVFile(file) {
     // ot can be multiple columns — sum them
     const otCols = Array.isArray(idx.ot) ? idx.ot : (idx.ot!=null?[idx.ot]:[]);
     if (idx.name==null||idx.reg==null){
-      result.innerHTML=`<div style="color:#c0392b;font-size:13px;margin-top:10px">⚠️ Columnas no encontradas. Detectadas: ${header.join(', ')}</div>`;
+      result.innerHTML=`<div style="color:#c0392b;font-size:13px;margin-top:10px">⚠️ Columnas no encontradas. Detectadas: ${escapeHtml(header.join(', '))}</div>`;
       return;
     }
     const employees=[];let totalIncluido=0,totalExcluido=0;
@@ -2944,7 +3041,7 @@ function renderCSVResult(employees,totalIncluido,totalExcluido) {
   const isXLSX=employees.length&&employees[0].reg===undefined;
   const rows=employees.map(e=>`
     <tr class="${e.excluido?'excluido-row':''}">
-      <td>${e.excluido?'🚫 ':''}${e.name}</td>
+      <td>${e.excluido?'🚫 ':''}${escapeHtml(e.name)}</td>
       ${!isXLSX?`<td>${e.group||'—'}</td><td class="td-num">${fmt(e.reg)}</td><td class="td-num">${fmt(e.ot)}</td>`:''}
       <td class="td-num"><strong>${fmt(e.total)}</strong></td>
       <td>${e.excluido?'<span class="badge badge-bad">Excluido</span>':'<span class="badge badge-ok">Incluido</span>'}</td>
@@ -3062,8 +3159,8 @@ async function renderStatusBar() {
   const container = document.getElementById('status-bar-row');
   if (!container) return;
 
-  const hoy   = new Date().toISOString().split('T')[0];
-  const hace7 = new Date(Date.now() - 7*86400000).toISOString().split('T')[0];
+  const hoy   = hoyISO();
+  const hace7 = isoAddDays(hoyISO(), -7);
 
   // --- Card 1: último día vs meta ---
   const diasRec = await fetchDiasByRange(hace7, hoy);
@@ -3160,7 +3257,7 @@ async function renderKgMesYTop3() {
   if (!container) return;
 
   // Get current month range
-  const now = new Date();
+  const now = hoyToronto();
   const mesInicio = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
   const mesFin    = new Date(now.getFullYear(), now.getMonth()+1, 0).toISOString().split('T')[0];
   const meses = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
@@ -3202,7 +3299,7 @@ async function renderKgMesYTop3() {
       <div class="kh-label">${mesNombre} ${now.getFullYear()} — Producción</div>
       <div class="kh-value" style="font-size:42px;letter-spacing:-2px;margin:10px 0">${fmt(totalKgMes)}<span>kg</span></div>
       <div style="background:rgba(0,0,0,0.07);border-radius:3px;height:5px;overflow:hidden;margin-bottom:10px">
-        <div style="height:100%;border-radius:3px;width:${pctMes}%;background:${clsMes==='ok'?'var(--verde-3)':clsMes==='warn'?'#d97706':'var(--rojo-2)'};transition:width 1s var(--ease)"></div>
+        <div style="height:100%;width:100%;border-radius:3px;transform-origin:left;transform:scaleX(${pctMes/100});background:${clsMes==='ok'?'var(--verde-3)':clsMes==='warn'?'#d97706':'var(--rojo-2)'};transition:transform 1s var(--ease)"></div>
       </div>
       <div class="kh-meta">${diasTrabajados} días trabajados · ${fmt(totalKgMes/Math.max(diasTrabajados,1),1)} kg/día prom</div>
     </div>
@@ -3222,7 +3319,7 @@ async function renderKgMesYTop3() {
                 <span style="font-size:13px;font-weight:700;font-family:var(--mono)">${fmt(p.kg,1)} kg</span>
               </div>
               <div style="background:rgba(0,0,0,0.07);border-radius:3px;height:5px;overflow:hidden">
-                <div style="height:100%;border-radius:3px;width:${pct}%;background:var(--verde-3);transition:width 1s var(--ease)"></div>
+                <div style="height:100%;width:100%;border-radius:3px;transform-origin:left;transform:scaleX(${pct/100});background:var(--verde-3);transition:transform 1s var(--ease)"></div>
               </div>
             </div>`;
           }).join('')}
@@ -3261,7 +3358,7 @@ async function renderSemComparativo() {
   const diffEf  = efAct - efAnt;
   const upKg    = diffKg >= 0;
   const upEf    = diffEf >= 0;
-  const metaAct = semAct.fecha_inicio >= '2026-05-01' ? 3900 : 3600;
+  const metaAct = metaSemana(semAct.fecha_inicio);
   const pctAct  = Math.min(kgAct/metaAct*100, 100);
 
   const cardStyle = `background:var(--glass);backdrop-filter:blur(20px) saturate(180%);-webkit-backdrop-filter:blur(20px) saturate(180%);border:1px solid var(--glass-borde);box-shadow:var(--glass-sombra);border-radius:var(--radio-lg);padding:20px 22px`;
@@ -3276,7 +3373,7 @@ async function renderSemComparativo() {
         </span>` : ''}
       </div>
       <div style="background:rgba(0,0,0,0.07);border-radius:3px;height:5px;overflow:hidden;margin-bottom:8px">
-        <div style="height:100%;border-radius:3px;width:${pctAct}%;background:${pctAct>=100?'var(--verde-3)':pctAct>=80?'#d97706':'var(--rojo-2)'};transition:width 1s var(--ease)"></div>
+        <div style="height:100%;width:100%;border-radius:3px;transform-origin:left;transform:scaleX(${pctAct/100});background:${pctAct>=100?'var(--verde-3)':pctAct>=80?'#d97706':'var(--rojo-2)'};transition:transform 1s var(--ease)"></div>
       </div>
       <div class="kh-meta">${pctAct.toFixed(0)}% de meta ${fmt(metaAct,0)} kg · ${diasAct.filter(d=>d.kg_producidos>0).length} días</div>
     </div>
@@ -3310,8 +3407,8 @@ async function renderAlertaInventario() {
   if (!container) return;
 
   // Get last day's inventory
-  const hoy   = new Date().toISOString().split('T')[0];
-  const hace7 = new Date(Date.now()-7*86400000).toISOString().split('T')[0];
+  const hoy   = hoyISO();
+  const hace7 = isoAddDays(hoyISO(), -7);
   const dias  = await fetchDiasByRange(hace7, hoy);
   const ultimo = dias.filter(d=>d.kg_producidos>0).sort((a,b)=>b.fecha.localeCompare(a.fecha))[0];
 
@@ -3362,14 +3459,14 @@ async function renderStockDias() {
   };
 
   // Producción por producto últimos 28 días
-  const hoy    = new Date().toISOString().split('T')[0];
-  const hace28 = new Date(Date.now() - 28*86400000).toISOString().split('T')[0];
+  const hoy    = hoyISO();
+  const hace28 = isoAddDays(hoyISO(), -28);
   const prodRsp = await db.from('dias_productos').select('producto,kg_prod').gte('fecha',hace28).lte('fecha',hoy);
   const kgByKey = {};
   if (prodRsp.data) {
     prodRsp.data.forEach(function(r) {
       const up = (r.producto||'').toUpperCase();
-      const key = Object.keys(INV_STOCK).find(function(k){ return up===k || up.includes(k) || up.startsWith(k.split(' ')[0]); });
+      const key = getStockKey(up);
       if (!key) return;
       kgByKey[key] = (kgByKey[key]||0) + Math.max(0, r.kg_prod||0);
     });
@@ -3379,7 +3476,7 @@ async function renderStockDias() {
   const cards = [];
   invRows.forEach(function(r) {
     const up  = (r.producto||'').toUpperCase();
-    const key = Object.keys(INV_STOCK).find(function(k){ return up===k || up.includes(k) || up.startsWith(k.split(' ')[0]); });
+    const key = getStockKey(up);
     if (!key) return;
     const s       = INV_STOCK[key];
     const kgStock = (r.inv_final||0) * s.kg_bolsa;
@@ -3428,8 +3525,8 @@ async function renderStockDias() {
 // ═══════════════════════════════════════════════════════════════
 async function renderDiaDestacado() {
   // Get last 30 days
-  const hoy   = new Date().toISOString().split('T')[0];
-  const hace30= new Date(Date.now()-30*86400000).toISOString().split('T')[0];
+  const hoy   = hoyISO();
+  const hace30= isoAddDays(hoyISO(), -30);
   const dias  = (await fetchDiasByRange(hace30, hoy)).filter(d=>d.kg_producidos>0);
   if (dias.length === 0) return;
 
@@ -3468,9 +3565,9 @@ async function renderDiaDestacado() {
 async function renderChartDiarioMain() {
   const canvas=document.getElementById('chart-diario-main');
   if (!canvas) return;
-  const hasta=new Date().toISOString().split('T')[0];
-  const desde30=new Date(); desde30.setDate(desde30.getDate()-15);
-  const rows=(await fetchDiasByRange(desde30.toISOString().split('T')[0],hasta)).sort((a,b)=>a.fecha.localeCompare(b.fecha));
+  const hasta=hoyISO();
+  const desde30=isoAddDays(hoyISO(), -15);
+  const rows=(await fetchDiasByRange(desde30,hasta)).sort((a,b)=>a.fecha.localeCompare(b.fecha));
   if (window._chartDiarioMain) window._chartDiarioMain.destroy();
   window._chartDiarioMain=new Chart(canvas,{
     type:'bar',
@@ -3494,9 +3591,9 @@ async function renderChartDiarioMain() {
 async function renderChartEficMain() {
   const canvas=document.getElementById('chart-efic-main');
   if (!canvas) return;
-  const hasta=new Date().toISOString().split('T')[0];
-  const desde30=new Date(); desde30.setDate(desde30.getDate()-15);
-  const rows=(await fetchDiasByRange(desde30.toISOString().split('T')[0],hasta))
+  const hasta=hoyISO();
+  const desde30=isoAddDays(hoyISO(), -15);
+  const rows=(await fetchDiasByRange(desde30,hasta))
     .filter(r=>r.kg_hora).sort((a,b)=>a.fecha.localeCompare(b.fecha));
   if (window._chartEficMain) window._chartEficMain.destroy();
   window._chartEficMain=new Chart(canvas,{
@@ -3522,12 +3619,11 @@ async function renderChartEficMain() {
 async function renderSemanasStrip() {
   const container=document.getElementById('semanas-bars-strip');
   if (!container) return;
-  const META_SEM = s => s.fecha_inicio >= '2026-05-01' ? 3900 : 3600;
   if (!semanas.length){container.innerHTML='<div class="empty"><p>Sin semanas</p></div>';return;}
   const items=await Promise.all(semanas.map(async s=>{
     const dias=await fetchDiasByRange(s.fecha_inicio,s.fecha_fin);
     const total=dias.reduce((a,d)=>a+(d.kg_producidos||0),0);
-    const metaSem = s.fecha_inicio >= '2026-05-01' ? 3900 : 3600;
+    const metaSem = metaSemana(s.fecha_inicio);
     return{label:weekLabel(s),total,pct:Math.min(total/metaSem*100,100),metaSem};
   }));
   container.innerHTML=items.map(item=>{
@@ -3535,7 +3631,7 @@ async function renderSemanasStrip() {
     return `<div class="sem-bar-item">
       <div class="sem-bar-dot ${cls}"></div>
       <div class="sem-bar-label">${item.label}</div>
-      <div class="sem-bar-track"><div class="sem-bar-fill ${cls}" style="width:${item.pct}%"></div></div>
+      <div class="sem-bar-track"><div class="sem-bar-fill ${cls}" style="transform:scaleX(${item.pct/100})"></div></div>
       <div class="sem-bar-kg">${fmt(item.total)} kg</div>
       <div class="sem-bar-pct">${item.pct.toFixed(0)}%</div>
     </div>`;
@@ -3545,7 +3641,7 @@ async function renderSemanasStrip() {
 async function renderChartMesMain() {
   const canvas=document.getElementById('chart-mes-main');
   if (!canvas) return;
-  const allDias=await fetchDiasByRange('2026-01-01',new Date().toISOString().split('T')[0]);
+  const allDias=await fetchDiasByRange('2026-01-01',hoyISO());
   const byMes={};
   for (const d of allDias){const m=d.fecha.slice(0,7);byMes[m]=(byMes[m]||0)+(d.kg_producidos||0);}
   const meses=Object.keys(byMes).sort();
@@ -4127,7 +4223,7 @@ const BOLSA_KG={
   zone.addEventListener('drop',e=>{e.preventDefault();zone.classList.remove('drag');const f=e.dataTransfer.files[0];if(f)invLeerXLSX(f);});
   input.addEventListener('change',e=>{if(e.target.files[0])invLeerXLSX(e.target.files[0]);});
   const fechaEl=document.getElementById('inv-fecha');
-  if (fechaEl) fechaEl.value=new Date().toISOString().split('T')[0];
+  if (fechaEl) fechaEl.value=hoyISO();
 })();
 
 
@@ -4160,12 +4256,16 @@ const INV_BASEMENT = ['ASADA','BARBACOA','BIRRIA','CARNITAS','CHICKEN','BBJ',
 const INV_UPSTAIRS = ['MILD','MEDIUM','HOT','HOT JALAPEÑO','HOT JARS','MACHA',
   'MAYO','FISH FLOUR','ONION','MUSHROOMS','LETTUCE','CILANTRO','PORTUGUESE BUNS','MOZZARELLA'];
 
-function getStockInfo(prod){
-  const up = prod.toUpperCase().trim();
-  if (INV_STOCK[up]) return INV_STOCK[up];
-  const key = Object.keys(INV_STOCK)
+function getStockKey(prod){
+  const up = (prod||'').toUpperCase().trim();
+  if (INV_STOCK[up]) return up;
+  // Ordenar por longitud descendente: evita que "BIRRIA" gane el match antes que "BIRRIA CONSO"
+  return Object.keys(INV_STOCK)
     .sort((a,b) => b.length - a.length)
-    .find(k => up.includes(k));
+    .find(k => up.includes(k)) || null;
+}
+function getStockInfo(prod){
+  const key = getStockKey(prod);
   return key ? INV_STOCK[key] : null;
 }
 function getSeccion(prod){
@@ -4174,7 +4274,7 @@ function getSeccion(prod){
 
 async function invRenderDefault(){
   const fechaSel = document.getElementById('inv-fecha-sel');
-  if (fechaSel && !fechaSel.value) fechaSel.value = new Date().toISOString().split('T')[0];
+  if (fechaSel && !fechaSel.value) fechaSel.value = hoyISO();
   invRenderGrid({},{});
   await invCargarHistorial();
 }
@@ -4223,7 +4323,7 @@ async function invCargarDia(){
 async function invCargarAyer() {
   const sel = document.getElementById('inv-fecha-sel');
   if (!sel) return;
-  const base = sel.value || new Date().toISOString().split('T')[0];
+  const base = sel.value || hoyISO();
   const d = new Date(base+'T12:00:00');
   d.setDate(d.getDate()-1);
   sel.value = d.toISOString().split('T')[0];
@@ -4291,7 +4391,7 @@ function invRenderGrid(basement, upstairs){
       <div style="font-size:30px;font-weight:700;line-height:1;color:${bigClr};margin-bottom:2px" id="inv-big-${safeId}">${inv_final}</div>
       <div style="font-size:11px;color:var(--texto-3);margin-bottom:8px" id="inv-kg-${safeId}">${kgFinal}</div>
       ${stock?`<div style="background:rgba(0,0,0,0.07);border-radius:4px;height:8px;overflow:hidden;margin-bottom:10px">
-        <div id="inv-bar-${safeId}" style="height:100%;border-radius:4px;width:${pct}%;background:${barColor};transition:width 0.4s"></div>
+        <div id="inv-bar-${safeId}" style="height:100%;width:100%;border-radius:4px;transform-origin:left;transform:scaleX(${pct/100});background:${barColor};transition:transform 0.4s"></div>
       </div>`:''}
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:8px">
         <div>
@@ -4425,7 +4525,7 @@ function invRecalcular(prod){
     else if (final_v<stock.min)     bc='#d97706';
     else if (final_v>stock.max)     bc='#d97706';
     const bigClr = bc==='var(--rojo-2)'?'var(--rojo)':bc==='#d97706'?'#d97706':'var(--texto)';
-    if (barEl){ barEl.style.width=pct+'%'; barEl.style.background=bc; }
+    if (barEl){ barEl.style.transform='scaleX('+(pct/100)+')'; barEl.style.background=bc; }
     if (bigEl)  bigEl.style.color  = bigClr;
     if (finalEl) finalEl.style.color = bigClr;
     if (kgEl)  kgEl.textContent=(final_v*stock.kg_bolsa).toFixed(1)+' kg';
@@ -4509,9 +4609,10 @@ async function invGuardarConteo(){
     rows.push({fecha,producto:prod,seccion:getSeccion(prod),inv_cierre,pedidos,inv_inicial,producido,inv_final});
   }
 
-  await db.from('inventario_diario').delete().eq('fecha',fecha);
+  const {error:delError} = await db.from('inventario_diario').delete().eq('fecha',fecha);
+  if (delError){ statusEl.textContent='❌ Error: '+delError.message; toast('Error al guardar','err'); return; }
   const {error}=await db.from('inventario_diario').insert(rows);
-  if (error){ statusEl.textContent='❌ Error: '+error.message; toast('Error al guardar','err'); return; }
+  if (error){ statusEl.textContent='❌ Error: '+error.message+' — el conteo anterior de este día se borró, vuelve a intentar guardar'; toast('Error al guardar — reintenta','err'); return; }
   statusEl.textContent='✅ '+rows.length+' productos guardados — '+fecha;
   toast('Conteo del '+fecha+' guardado ✓','ok');
   await invCargarHistorial();
@@ -4525,7 +4626,7 @@ async function invDescargarExcel(){
       s.onload=res; s.onerror=rej; document.head.appendChild(s);
     });
   }
-  const fecha=document.getElementById('inv-fecha-sel')?.value||new Date().toISOString().split('T')[0];
+  const fecha=document.getElementById('inv-fecha-sel')?.value||hoyISO();
   const rows=[['Fecha','Sección','Producto','Inv Cierre','Pedidos','Inv Inicial Día','Producido','Inv Final','Stock Mín','Stock Máx','Kg Final']];
   for (const prod of [...INV_BASEMENT,...INV_UPSTAIRS]){
     const c =parseFloat(document.querySelector('[data-inv-prod="'+prod+'"][data-inv-field="cierre"]')?.value)||0;
@@ -4625,7 +4726,7 @@ document.addEventListener('DOMContentLoaded', async ()=>{
 function repIniciarMeses() {
   const sel = document.getElementById('rep-periodo-sel');
   if (!sel || sel.options.length > 0) return;
-  const now = new Date();
+  const now = hoyToronto();
   const inicio = new Date(2026, 2, 1); // marzo 2026
   const meses = [];
   let cur = new Date(inicio);
@@ -4652,7 +4753,7 @@ async function repGenerar() {
   if (!container) return;
   const periodo = document.getElementById('rep-periodo-sel')?.value || '2026-06';
   container.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
-  const now = new Date();
+  const now = hoyToronto();
 
   let fechaIni, fechaFin, periodoLabel;
 
@@ -4740,7 +4841,7 @@ async function repGenerar() {
   html += '<span>Avance vs meta</span><span>' + pct.toFixed(1) + '%</span></div>';
   html += '<div style="background:rgba(0,0,0,0.07);border-radius:4px;height:8px;overflow:hidden">';
   const barColor = pct>=100 ? 'var(--verde-2)' : pct>=80 ? '#d97706' : 'var(--rojo-2)';
-  html += '<div style="width:' + pct + '%;height:100%;background:' + barColor + ';border-radius:4px;transition:width 1s"></div>';
+  html += '<div style="width:100%;height:100%;transform-origin:left;transform:scaleX(' + (pct/100) + ');background:' + barColor + ';border-radius:4px;transition:transform 1s"></div>';
   html += '</div></div>';
 
   // Top productos
@@ -4907,7 +5008,7 @@ function renderCOGSSection(ano) {
 
 async function repDescargarPDF() {
   const body = document.getElementById('rep-body');
-  if (!body) { alert('Genera el reporte primero'); return; }
+  if (!body) { toast('Genera el reporte primero','err'); return; }
   
   // Cargar html2pdf solo cuando se necesita
   if (typeof html2pdf === 'undefined') {
