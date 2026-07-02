@@ -160,7 +160,7 @@
   }
 
   /* ── KPI HERO ── */
-  .hero-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 12px; margin-bottom: 20px; }
+  .hero-grid { display: grid; grid-template-columns: repeat(2,1fr); gap: 12px; margin-bottom: 20px; }
   .kpi-hero {
     background: var(--glass);
     backdrop-filter: blur(20px) saturate(180%);
@@ -372,7 +372,7 @@
     border-top:2px solid var(--verde); margin-bottom:12px;
   }
   .mes-card:nth-child(2n) { border-top-color:var(--rojo); }
-  .mes-card h3 { font-size:14px; font-weight:700; margin-bottom:14px; text-transform:capitalize; }
+  .mes-card h3 { font-size:14px; font-weight:700; margin-bottom:14px; }
   .mes-stats { display:grid; grid-template-columns:repeat(auto-fit,minmax(110px,1fr)); gap:10px; }
   .mes-stat  { background:rgba(0,0,0,0.03); border-radius:var(--radio); padding:12px; border:1px solid var(--borde); }
   .mes-stat .v { font-size:20px; font-weight:700; color:var(--texto); }
@@ -599,23 +599,11 @@
   <div id="status-bar-row" class="status-bar"></div>
   <div id="mes-top3-row" style="display:grid;grid-template-columns:1fr 2fr;gap:14px;margin-bottom:20px"></div>
   <div class="hero-grid" id="kpi-row">
-    <div class="kpi-hero" id="kpi-hoy-kg">
-      <div class="kh-icon">🥩</div>
-      <div class="kh-label">Último día</div>
-      <div class="kh-value">—<span>kg</span></div>
-      <div class="kh-meta">Meta: 600 kg/día</div>
-    </div>
     <div class="kpi-hero" id="kpi-hoy-efic">
       <div class="kh-icon">⚡</div>
       <div class="kh-label">Eficiencia</div>
       <div class="kh-value">—<span>kg/h</span></div>
       <div class="kh-meta">Meta: 12 kg/h</div>
-    </div>
-    <div class="kpi-hero" id="kpi-semana-kg">
-      <div class="kh-icon">📦</div>
-      <div class="kh-label">Semana actual</div>
-      <div class="kh-value">—<span>kg</span></div>
-      <div class="kh-meta">Meta: 3,600 kg</div>
     </div>
     <div class="kpi-hero" id="kpi-promedio">
       <div class="kh-icon">📈</div>
@@ -1277,7 +1265,8 @@ function fmtDate(d) {
   return `${day}/${m}/${y}`;
 }
 function monthLabel(ym) {
-  return new Date(ym + '-15T12:00:00').toLocaleDateString('es-MX', {month:'long',year:'numeric'});
+  const s = new Date(ym + '-15T12:00:00').toLocaleDateString('es-MX', {month:'long',year:'numeric'});
+  return s.charAt(0).toUpperCase() + s.slice(1);
 }
 function weekLabel(s) {
   if (s.label) return s.label;
@@ -1405,7 +1394,7 @@ function populateMonthSelects() {
     months.forEach(m => {
       const o = document.createElement('option');
       o.value = m;
-      o.textContent = monthLabel(m).replace(/^\w/, c => c.toUpperCase());
+      o.textContent = monthLabel(m);
       el.appendChild(o);
     });
     if (prev && prev !== 'all' && [...el.options].some(o => o.value===prev)) {
@@ -1694,21 +1683,7 @@ async function cancelarEditDia(id) {
 }
 
 async function renderKPIs() {
-  const mesSel = document.getElementById('captura-mes-sel').value;
   const hoy    = hoyISO();
-  let semActual;
-  if (mesSel !== 'all') {
-    const semsInMonth = semanas.filter(s =>
-      s.fecha_inicio.slice(0,7)===mesSel || s.fecha_fin.slice(0,7)===mesSel);
-    semActual = semsInMonth[semsInMonth.length-1] || semanas[semanas.length-1];
-  } else {
-    semActual = semanas.find(s => hoy>=s.fecha_inicio && hoy<=s.fecha_fin)
-      || semanas[semanas.length-1];
-  }
-  const diasSem = semActual ? await fetchDiasByRange(semActual.fecha_inicio, semActual.fecha_fin) : [];
-  const hoyExact = diasSem.find(d => d.fecha===hoy);
-  const hoyData  = hoyExact || [...diasSem].sort((a,b) => b.fecha.localeCompare(a.fecha))[0] || null;
-  const totalKgSem = diasSem.reduce((a,d) => a+(d.kg_producidos||0), 0);
 
   // Promedio y eficiencia del MES actual
   const mesInicio = hoy.slice(0,7)+'-01';
@@ -1724,7 +1699,7 @@ async function renderKPIs() {
     .filter(s => s.fecha_fin < hoy)
     .sort((a,b) => b.fecha_inicio.localeCompare(a.fecha_inicio))
     .slice(0,4);
-  let avg4wKgDia=null, avg4wKgSem=null, avg4wEfic=null;
+  let avg4wKgDia=null, avg4wEfic=null;
   if (semsCompletas.length > 0) {
     const diasPorSem = await Promise.all(semsCompletas.map(s => fetchDiasByRange(s.fecha_inicio, s.fecha_fin)));
     let kgTotal=0, hTotal=0, diasTot=0;
@@ -1734,15 +1709,11 @@ async function renderKPIs() {
       hTotal  += semsCompletas[i].horas || 0;
       diasTot += ds.filter(d => (d.kg_producidos||0)>0).length;
     });
-    avg4wKgSem = semsCompletas.length > 0 ? kgTotal/semsCompletas.length : null;
     avg4wKgDia = diasTot > 0 ? kgTotal/diasTot : null;
     avg4wEfic  = hTotal  > 0 ? kgTotal/hTotal  : null;
   }
 
-  const kgFechaLabel = hoyData?.fecha ? ' · ' + fmtDate(hoyData.fecha) : '';
-  setKPI('kpi-hoy-kg',    hoyData?.kg_producidos??null, META_KG_DIA, hoyExact?'Kg Hoy':'Últ. Día', 'Meta: 600 kg/día' + kgFechaLabel, 'kg',  avg4wKgDia);
   setKPI('kpi-hoy-efic',  eficMes,       META_KG_H,  'Efic. Promedio Mes',  'Meta: 12 kg/h',     'kg/h', avg4wEfic);
-  setKPI('kpi-semana-kg', totalKgSem||null, metaSemana(semActual?.fecha_inicio), 'Kg Semana Actual', 'Meta: 3,900 kg', 'kg', avg4wKgSem);
   setKPI('kpi-promedio',  promMes,        META_KG_DIA,'Prom. Diario Mes',    diasMesTrab.length+' días trabajados', 'kg', avg4wKgDia);
 }
 
@@ -1849,7 +1820,7 @@ async function renderSemanal() {
     const mLabel = monthLabel(m);
     html += `<div style="margin-bottom:28px">
       <div class="month-header-bar">
-        <div><h2 style="text-transform:capitalize">${mLabel}</h2>
+        <div><h2>${mLabel}</h2>
           <div class="sub">${weeksInMonth.length} semana${weeksInMonth.length>1?'s':''} · ${mDias} días</div>
         </div>
         <div class="mstats">
@@ -1947,7 +1918,7 @@ async function renderMes() {
       ${summaries.map(s => {
         const pct = s.efic/META_KG_H*100;
         return `<tr>
-          <td><strong style="text-transform:capitalize">${s.label}</strong></td>
+          <td><strong>${s.label}</strong></td>
           <td class="td-num"><strong>${fmt(s.totalKg,1)}</strong></td>
           <td class="td-num">${s.rows.length}</td>
           <td class="td-num">${fmt(s.avgKg,1)}</td>
@@ -2140,7 +2111,7 @@ async function renderChartMixProductos(filteredSems) {
   if (!data.length) return;
   // group by semana matching fecha to date range (semana_id may be null/inconsistent in older records)
   const semMap = {};
-  const productosObj = {};
+  const totalesProducto = {};
   for (let k=0;k<data.length;k++) {
     const r = data[k];
     const sem = filteredSems.find(function(s){return r.fecha>=s.fecha_inicio && r.fecha<=s.fecha_fin;});
@@ -2148,13 +2119,17 @@ async function renderChartMixProductos(filteredSems) {
     if (!semMap[sem.id]) semMap[sem.id] = {};
     if (!semMap[sem.id][r.producto]) semMap[sem.id][r.producto] = 0;
     semMap[sem.id][r.producto] += (r.kg_prod||0);
-    productosObj[r.producto] = true;
+    totalesProducto[r.producto] = (totalesProducto[r.producto]||0) + (r.kg_prod||0);
   }
-  const productos = Object.keys(productosObj).sort();
+  // Top productos por volumen total; el resto se agrupa en "Otros" para no saturar de colores
+  // (todas las semanas y todo el kg siguen presentes, solo se consolida la leyenda)
+  const MAX_SERIES = 7;
+  const productosOrdenados = Object.keys(totalesProducto).sort(function(a,b){return totalesProducto[b]-totalesProducto[a];});
+  const top   = productosOrdenados.slice(0, MAX_SERIES);
+  const resto = productosOrdenados.slice(MAX_SERIES);
   const COLORES = ['rgba(239,68,68,0.8)','rgba(59,130,246,0.8)','rgba(34,197,94,0.8)','rgba(249,115,22,0.8)',
-    'rgba(168,85,247,0.8)','rgba(20,184,166,0.8)','rgba(234,179,8,0.8)','rgba(236,72,153,0.8)',
-    'rgba(14,165,233,0.8)','rgba(132,204,22,0.8)','rgba(244,63,94,0.8)','rgba(99,102,241,0.8)'];
-  const datasets = productos.map(function(prod,i){
+    'rgba(168,85,247,0.8)','rgba(20,184,166,0.8)','rgba(234,179,8,0.8)'];
+  const datasets = top.map(function(prod,i){
     return {
       label:prod,
       data:filteredSems.map(function(s){return semMap[s.id]&&semMap[s.id][prod]?semMap[s.id][prod]:0;}),
@@ -2162,6 +2137,16 @@ async function renderChartMixProductos(filteredSems) {
       borderRadius:2
     };
   });
+  if (resto.length) {
+    datasets.push({
+      label:'Otros ('+resto.length+')',
+      data:filteredSems.map(function(s){
+        return resto.reduce(function(a,prod){return a+(semMap[s.id]&&semMap[s.id][prod]?semMap[s.id][prod]:0);},0);
+      }),
+      backgroundColor:'rgba(148,163,184,0.6)',
+      borderRadius:2
+    });
+  }
   const semLabels2 = filteredSems.map(function(s){return weekLabel(s).replace(/\(.*\)/,'').trim();});
   destroyChart('mix-productos');
   charts['mix-productos'] = new Chart(canvas, {
@@ -2169,7 +2154,8 @@ async function renderChartMixProductos(filteredSems) {
     data:{labels:semLabels2, datasets:datasets},
     options:{
       responsive:true, maintainAspectRatio:false,
-      plugins:{legend:{position:'top',labels:{font:{size:10},boxWidth:12}}},
+      plugins:{legend:{position:'top',labels:{font:{size:10},boxWidth:12}},
+        tooltip:{callbacks:{label:function(ctx){return ' '+ctx.dataset.label+': '+fmt(ctx.raw)+' kg';}}}},
       scales:{x:{stacked:true,grid:{display:false}},y:{stacked:true,min:0}}
     }
   });
@@ -4609,14 +4595,37 @@ function invActualizarAlertas(){
     else if (final_v<stock.min*0.6) alertas.push({prod,final_v,tipo:'critico',msg:'Crítico'});
     else if (final_v<stock.min)     alertas.push({prod,final_v,tipo:'warn',msg:'Bajo mínimo'});
   }
-  if (alertas.length>0){
-    alertasEl.innerHTML=alertas.map(a=>
-      '<div class="inv-alerta '+a.tipo+'" style="margin-bottom:6px">'+
-      (a.tipo==='critico'?'🚨':'⚡')+' <strong>'+a.prod+'</strong>: '+a.final_v+' bolsas — '+a.msg+
-      '</div>').join('');
-  } else {
+  const detalleHtml = alertas.map(a=>
+    '<div class="inv-alerta '+a.tipo+'" style="margin-bottom:6px">'+
+    (a.tipo==='critico'?'🚨':'⚡')+' <strong>'+a.prod+'</strong>: '+a.final_v+' bolsas — '+a.msg+
+    '</div>').join('');
+
+  const UMBRAL_RESUMEN = 3;
+  if (!alertas.length){
     alertasEl.innerHTML='<div class="inv-alerta ok">✅ Todos los productos dentro del rango</div>';
+  } else if (alertas.length<=UMBRAL_RESUMEN){
+    alertasEl.innerHTML=detalleHtml;
+  } else {
+    const nCritico = alertas.filter(a=>a.tipo==='critico').length;
+    const nWarn    = alertas.filter(a=>a.tipo==='warn').length;
+    const resumen  = [nCritico?nCritico+' sin stock/crítico'+(nCritico>1?'s':''):'', nWarn?nWarn+' bajo mínimo':'']
+      .filter(Boolean).join(' · ');
+    alertasEl.innerHTML =
+      '<div class="inv-alerta critico" style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">'
+      + '<span>🚨 <strong>'+alertas.length+' productos</strong> requieren atención — '+resumen+'</span>'
+      + '<button onclick="invToggleAlertas()" id="inv-alertas-toggle" style="background:transparent;border:1px solid currentColor;border-radius:6px;padding:3px 10px;font-size:11px;cursor:pointer;color:inherit;flex-shrink:0">Ver detalle</button>'
+      + '</div>'
+      + '<div id="inv-alertas-detalle" style="display:none;margin-top:6px">'+detalleHtml+'</div>';
   }
+}
+
+function invToggleAlertas(){
+  const det = document.getElementById('inv-alertas-detalle');
+  const btn = document.getElementById('inv-alertas-toggle');
+  if (!det) return;
+  const showing = det.style.display!=='none';
+  det.style.display = showing?'none':'block';
+  if (btn) btn.textContent = showing?'Ver detalle':'Ocultar detalle';
 }
 
 async function invGuardarConteo(){
@@ -5014,7 +5023,7 @@ function renderCOGSSection(ano) {
     var ml       = indent ? '16px' : '0';
     var row = '<div style="display:flex;align-items:center;gap:8px;margin-bottom:' + mb + ';margin-left:' + ml + '">';
     row += '<div style="width:' + (indent ? '114px' : '130px') + ';flex-shrink:0">';
-    row += '<div style="font-size:' + (indent ? '10.5px' : '11px') + ';color:var(--texto)">' + item.nombre + '</div>';
+    row += '<div style="font-size:' + (indent ? '10.5px' : '11px') + ';font-weight:' + (indent ? '400' : '700') + ';color:var(--texto)">' + item.nombre + '</div>';
     if (qtyLabel) row += '<div style="font-size:10px;color:var(--texto-3)">' + qtyLabel + '</div>';
     row += '</div>';
     row += '<div style="flex:1;background:rgba(0,0,0,0.07);border-radius:3px;height:' + barH + ';overflow:hidden">';
