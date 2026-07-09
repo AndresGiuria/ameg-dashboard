@@ -7,7 +7,6 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
-  <script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js"></script>
   <style>
   :root {
     --bg:          #f2f3f4;
@@ -441,24 +440,6 @@
   .empty .icon { font-size:36px; margin-bottom:10px; opacity:0.3; }
   .empty p { font-size:14px; }
 
-  /* ── CALENDARIO ── */
-  .cal-grid { display:grid; grid-template-columns:repeat(7,1fr); gap:4px; margin-top:12px; }
-  .cal-header { text-align:center; font-size:10px; font-weight:600; text-transform:uppercase; letter-spacing:0.1em; color:var(--texto-3); padding:4px 0; }
-  .cal-day {
-    aspect-ratio:1; border-radius:6px;
-    display:flex; flex-direction:column; align-items:center; justify-content:center;
-    font-size:11px; font-weight:600; cursor:default; min-height:36px;
-    transition:transform 0.18s var(--ease);
-    border:1px solid transparent;
-  }
-  .cal-day.ok    { background:rgba(10,110,53,0.1); color:var(--verde); border-color:rgba(10,110,53,0.18); }
-  .cal-day.warn  { background:rgba(154,96,0,0.1); color:var(--dorado); border-color:rgba(154,96,0,0.18); }
-  .cal-day.bad   { background:rgba(192,25,15,0.08); color:var(--rojo); border-color:rgba(192,25,15,0.14); }
-  .cal-day.feriado    { background:rgba(0,0,0,0.03); color:var(--texto-4); border-color:var(--borde); border-style:dashed; }
-  .cal-day.other-month { opacity:0.2; }
-  .cal-day .cal-kg { font-size:8px; font-weight:500; margin-top:1px; opacity:0.7; font-family:var(--mono); }
-  .cal-month-title { font-size:13px; font-weight:700; color:var(--texto); margin-bottom:8px; text-transform:capitalize; letter-spacing:-0.2px; }
-
   /* ── TOP DIAS ── */
   .top-dias { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:10px; margin-bottom:20px; }
   .top-dia-card {
@@ -485,22 +466,6 @@
 
   tr.excluido-row td { color:var(--texto-4); text-decoration:line-through; }
   tr.excluido-row td:last-child { text-decoration:none; }
-
-  .nueva-semana-toggle {
-    display:flex; align-items:center; gap:10px; cursor:pointer;
-    padding:13px 18px;
-    background:rgba(255,255,255,0.6); backdrop-filter:blur(12px);
-    border-radius:var(--radio-lg);
-    border:1px solid var(--glass-borde); box-shadow:var(--glass-sombra);
-    margin-bottom:12px; user-select:none; transition:background var(--t) var(--ease);
-  }
-  .nueva-semana-toggle:hover { background:rgba(255,255,255,0.85); }
-  .nueva-semana-toggle .ns-icon { font-size:16px; }
-  .nueva-semana-toggle .ns-title { font-size:13px; font-weight:600; flex:1; }
-  .nueva-semana-toggle .ns-arrow { font-size:11px; color:var(--texto-3); transition:transform 0.25s var(--ease); }
-  .nueva-semana-toggle.open .ns-arrow { transform:rotate(180deg); }
-  .nueva-semana-body { background:rgba(255,255,255,0.6); backdrop-filter:blur(12px); border-radius:0 0 var(--radio-lg) var(--radio-lg); border:1px solid var(--glass-borde); border-top:none; padding:18px; margin-top:-12px; margin-bottom:12px; display:none; }
-  .nueva-semana-body.open { display:block; animation:fadeUp 0.22s var(--ease) both; }
 
   .rh-stats { display:grid; grid-template-columns:repeat(auto-fit,minmax(140px,1fr)); gap:12px; margin-bottom:20px; }
   .rh-stat  { background:rgba(255,255,255,0.5); backdrop-filter:blur(8px); border-radius:var(--radio); padding:14px; border:1px solid var(--glass-borde); text-align:center; }
@@ -535,7 +500,6 @@
     .kpi-hero:hover      { transform: translateY(-2px) scale(1.005); }
     .semana-card:hover   { transform: translateY(-2px); }
     .equipo-card:hover   { transform: translateY(-1px); }
-    .cal-day:hover       { transform: scale(1.1); z-index: 1; }
     .top-dia-card:hover  { transform: translateY(-2px); box-shadow: 0 12px 32px rgba(0,0,0,0.1); }
   }
 
@@ -600,12 +564,11 @@
 <nav id="main-nav">
   <button class="active" data-tab="tablero">📊 Tablero</button>
   <button data-tab="inventario">📦 Inventario</button>
-  <button data-tab="calendario">🗕 Calendario</button>
   <button data-tab="graficas">📈 Gráficas</button>
   <button data-tab="datos">📋 Datos</button>
   <button data-tab="reporte">📄 Reporte</button>
   <span class="nav-spacer"></span>
-  <button class="nav-action" data-tab="semana-import">⚡ Semana nueva</button>
+  <button class="nav-action" data-tab="semana-import">📥 Importar Excel</button>
   <button class="nav-action" data-tab="captura">➕ Agregar día</button>
   <button class="nav-action" data-tab="config">⚙️ Config</button>
 </nav>
@@ -670,67 +633,43 @@
 <!-- CAPTURA SEMANAL -->
 <div class="tab-pane" id="tab-semana-import">
   <div style="background:var(--glass);border-radius:var(--radio-lg);padding:12px 16px;margin-bottom:16px;font-size:13px;color:var(--texto-3);border-left:3px solid var(--verde-2)">
-    <strong style="color:var(--texto)">⚡ Flujo semanal</strong> — Usa esto cada semana. Sube los PDFs de bitácora y el CSV de horas de 7shifts. El OCR prellena los datos y tú los confirmas.
+    <strong style="color:var(--texto)">📥 Importar Control Diario</strong> — Sube el Excel del control diario (una hoja por mes, un bloque por día). Se detectan los días automáticamente y se guardan producción por producto e inventarios. La producción de un día se calcula con el conteo del día siguiente, así que el último día del archivo solo carga inventario.
   </div>
-  <!-- PASO 1: Semana -->
+
+  <!-- PASO 1: Excel Control Diario -->
   <div class="card" style="margin-bottom:12px">
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
       <div style="width:26px;height:26px;border-radius:50%;background:var(--verde-2);color:#fff;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center">1</div>
-      <h2 style="margin:0">Selecciona la semana</h2>
+      <h2 style="margin:0">Sube el Excel del Control Diario</h2>
     </div>
-    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
-      <select id="sw-semana-sel" style="border:1px solid var(--borde);border-radius:8px;padding:8px 12px;font-size:13px;flex:1;min-width:200px">
-        <option value="">— Seleccionar semana existente —</option>
-      </select>
-      <span style="color:var(--texto-3);font-size:13px">o</span>
-      <button onclick="swToggleNuevaSemana()" style="border:1px dashed var(--borde);border-radius:8px;padding:8px 14px;font-size:13px;background:transparent;cursor:pointer;color:var(--texto-3)">+ Nueva semana</button>
+    <div class="upload-zone" id="ctrl-xlsx-zone">
+      <input type="file" id="ctrl-xlsx-input" accept=".xlsx,.xls">
+      <div class="uz-icon" id="ctrl-xlsx-icon">📗</div>
+      <p id="ctrl-xlsx-label">Arrastra aquí el Excel (ej. JUN-JUL.xlsx)</p>
+      <small>Acepta varias hojas — los días repetidos entre hojas se toman de la hoja más reciente</small>
     </div>
-    <div id="sw-nueva-sem-form" style="display:none;margin-top:12px;display:none;gap:10px;flex-wrap:wrap;align-items:center">
-      <input type="date" id="sw-ns-inicio" style="border:1px solid var(--borde);border-radius:8px;padding:7px 12px;font-size:13px">
-      <input type="date" id="sw-ns-fin" style="border:1px solid var(--borde);border-radius:8px;padding:7px 12px;font-size:13px">
-      <button onclick="swCrearNuevaSemana()" style="background:var(--verde-2);color:#fff;border:none;border-radius:8px;padding:8px 16px;font-size:13px;cursor:pointer">Crear semana</button>
-      <span id="sw-ns-status" style="font-size:12px;color:var(--texto-3)"></span>
-    </div>
-    <div id="sw-semana-badge" style="margin-top:10px"></div>
   </div>
 
-  <!-- PASO 2: PDFs -->
+  <!-- PASO 2: Horas (opcional) -->
   <div class="card" style="margin-bottom:12px">
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
       <div style="width:26px;height:26px;border-radius:50%;background:var(--verde-2);color:#fff;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center">2</div>
-      <h2 style="margin:0">Sube los PDFs de bitácora</h2>
-      <span style="font-size:12px;color:var(--texto-3);margin-left:4px">El botón 🔍 OCR prellena los números de cada página</span>
+      <h2 style="margin:0">Horas trabajadas (opcional)</h2>
+      <span style="font-size:12px;color:var(--texto-3);margin-left:4px">CSV/Excel con fecha y horas — Mario Alberto se excluye automáticamente</span>
     </div>
-    <div class="upload-zone" id="sw-pdf-zone">
-      <input type="file" id="sw-pdf-input" accept=".pdf" multiple>
-      <div class="uz-icon" id="sw-pdf-icon">📄</div>
-      <p id="sw-pdf-label">Arrastra los PDFs aquí (1 PDF por día o un PDF con varias páginas)</p>
-      <small>Usa 🔍 OCR para prellenar inicio/fin por producto y revisa contra la imagen</small>
+    <div class="upload-zone" id="ctrl-horas-zone">
+      <input type="file" id="ctrl-horas-input" accept=".csv,.txt,.xlsx,.xls">
+      <div class="uz-icon" id="ctrl-horas-icon">🕐</div>
+      <p id="ctrl-horas-label">Arrastra el archivo de horas aquí</p>
+      <small>Si no hay días cargados del paso 1, las horas se aplican a los días ya guardados</small>
     </div>
-    <div id="sw-pdf-progress" style="display:none;margin-top:12px"></div>
-    <div id="sw-dias-preview" style="margin-top:12px"></div>
+    <div id="ctrl-horas-resumen" style="margin-top:10px"></div>
   </div>
 
-  <!-- PASO 3: CSV Horas -->
-  <div class="card" style="margin-bottom:12px">
+  <!-- PASO 3: Revisar y guardar -->
+  <div class="card" id="ctrl-paso3" style="display:none">
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
       <div style="width:26px;height:26px;border-radius:50%;background:var(--verde-2);color:#fff;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center">3</div>
-      <h2 style="margin:0">Sube el CSV de horas (7shifts)</h2>
-      <span style="font-size:12px;color:var(--texto-3);margin-left:4px">Mario Alberto se excluye automáticamente</span>
-    </div>
-    <div class="upload-zone" id="sw-csv-zone">
-      <input type="file" id="sw-csv-input" accept=".csv,.txt,.xlsx,.xls">
-      <div class="uz-icon" id="sw-csv-icon">📊</div>
-      <p id="sw-csv-label">Arrastra el CSV/Excel de horas aquí</p>
-      <small>Se asignan automáticamente por fecha</small>
-    </div>
-    <div id="sw-horas-resumen" style="margin-top:10px"></div>
-  </div>
-
-  <!-- PASO 4: Guardar -->
-  <div class="card" id="sw-paso4" style="display:none">
-    <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
-      <div style="width:26px;height:26px;border-radius:50%;background:var(--verde-2);color:#fff;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center">4</div>
       <h2 style="margin:0">Revisa y guarda</h2>
     </div>
     <div class="table-wrap" style="margin-bottom:16px">
@@ -742,15 +681,16 @@
           <th class="td-num">Kg Prod.</th>
           <th class="td-num">Horas RH</th>
           <th class="td-num">kg/h</th>
+          <th>Notas</th>
           <th class="td-center">Estado</th>
         </tr></thead>
-        <tbody id="sw-tabla-body"></tbody>
-        <tfoot id="sw-tabla-foot"></tfoot>
+        <tbody id="ctrl-tabla-body"></tbody>
+        <tfoot id="ctrl-tabla-foot"></tfoot>
       </table>
     </div>
     <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
-      <button class="btn btn-primary" id="sw-btn-guardar" onclick="swGuardarTodo()">💾 Guardar semana completa</button>
-      <span id="sw-save-status" style="font-size:12px;color:var(--texto-3)"></span>
+      <button class="btn btn-primary" id="ctrl-btn-guardar" onclick="ctrlGuardarTodo()">💾 Guardar todos los días</button>
+      <span id="ctrl-save-status" style="font-size:12px;color:var(--texto-3)"></span>
     </div>
   </div>
 </div>
@@ -763,16 +703,6 @@
   <div class="filter-bar">
     <label>Mes:</label>
     <select id="captura-mes-sel" onchange="renderRecientes()"></select>
-  </div>
-  <div class="card" style="margin-bottom:16px">
-    <h2>📄 Importar desde Bitácora PDF</h2>
-    <div class="upload-zone" id="pdf-zone">
-      <input type="file" id="pdf-input" accept=".pdf" multiple>
-      <div class="uz-icon" id="pdf-icon">📋</div>
-      <p id="pdf-label">Clic aquí o arrastra uno o varios PDFs de bitácora</p>
-      <small>Puedes subir varios días a la vez — extrae fila TOTAL de cada PDF</small>
-    </div>
-    <div id="pdf-result"></div>
   </div>
   <div class="card">
     <h2>📋 Captura de Día Suelto</h2>
@@ -902,6 +832,7 @@
       <div class="chart-sub">distribución de kg por producto — stacked por semana</div>
       <div class="chart-wrap" style="height:300px"><canvas id="chart-mix-productos"></canvas></div>
     </div>
+    <div class="chart-card" style="grid-column:1/-1" id="graf-top-dias"></div>
   </div>
 </div>
 
@@ -927,6 +858,7 @@
       </div>
     </div>
     <div id="inv-save-status" style="margin-top:10px;font-size:12px;color:var(--texto-3)"></div>
+    <div style="margin-top:8px;font-size:12px;color:var(--texto-3)">💡 Captura diaria: registra cada mañana el conteo en bolsas (Cierre) y los pedidos enviados. Al guardar, la producción del día anterior se calcula sola con el conteo — igual que el Excel de control diario, pero directo a la base.</div>
   </div>
 
   <!-- Alertas -->
@@ -1004,15 +936,6 @@
     <div id="inv-historial" style="margin-top:12px"><div class="loading"><div class="spinner"></div></div></div>
   </div>
 
-</div>
-
-<!-- CALENDARIO -->
-<div class="tab-pane" id="tab-calendario">
-  <div class="filter-bar">
-    <label>Mes:</label>
-    <select id="cal-mes-sel" onchange="renderCalendario()"></select>
-  </div>
-  <div id="cal-content"><div class="loading"><div class="spinner"></div></div></div>
 </div>
 
 <div class="tab-pane" id="tab-reporte">
@@ -1271,10 +1194,6 @@ const COGS_SETS = {
 // Capture native fetch before any library can override it
 const _nativeFetch = window.fetch.bind(window);
 
-if (window.pdfjsLib) {
-  pdfjsLib.GlobalWorkerOptions.workerSrc = '';
-}
-
 const { createClient } = supabase;
 const db = createClient(SUPABASE_URL, SUPABASE_KEY, {
   global: {
@@ -1502,7 +1421,7 @@ function getAvailableMonths() {
 function populateMonthSelects() {
   const months = getAvailableMonths();
   const currentMonth = hoyISO().slice(0,7);
-  ['captura-mes-sel','semanal-mes-sel','mes-mes-sel','hist-mes-sel','graf-mes-sel','cal-mes-sel'].forEach(id => {
+  ['captura-mes-sel','semanal-mes-sel','mes-mes-sel','hist-mes-sel','graf-mes-sel'].forEach(id => {
     const el = document.getElementById(id);
     if (!el) return;
     const prev = el.value;
@@ -2112,6 +2031,26 @@ async function renderGraficas() {
   });
   await renderChartDiaSemana(allRows);
   await renderChartMixProductos(filteredSems);
+  renderTopDiasGraficas(rows);
+}
+
+// Ranking top/bottom 5 días (antes vivía en la pestaña Calendario)
+function renderTopDiasGraficas(rows) {
+  const cont = document.getElementById('graf-top-dias');
+  if (!cont) return;
+  const sorted = rows.filter(r => (r.kg_producidos||0) > 0).sort((a,b) => b.kg_producidos - a.kg_producidos);
+  if (!sorted.length) { cont.innerHTML = '<div class="empty"><p>Sin días con producción en el rango seleccionado</p></div>'; return; }
+  const top5 = sorted.slice(0,5);
+  const low5 = sorted.slice(-5).reverse();
+  const card = (r,i,bad) => `<div class="top-dia-card${bad?' bad':''}"><div class="top-dia-rank">#${i+1}</div>
+    <div class="top-dia-kg">${fmt(r.kg_producidos,0)} <span style="font-size:12px;font-weight:400;color:var(--gris-500)">kg</span></div>
+    <div class="top-dia-fecha">${fmtDate(r.fecha)} · ${r.dia_nombre||''}</div></div>`;
+  cont.innerHTML = `<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+    <div><h3 style="margin-bottom:10px">🏆 Top 5 días más productivos</h3>
+      <div class="top-dias">${top5.map((r,i)=>card(r,i,false)).join('')}</div></div>
+    <div><h3 style="margin-bottom:10px">📉 5 días con menor producción</h3>
+      <div class="top-dias">${low5.map((r,i)=>card(r,i,true)).join('')}</div></div>
+  </div>`;
 }
 
 async function renderChartDiaSemana(allRows) {
@@ -2202,582 +2141,6 @@ async function renderChartMixProductos(filteredSems) {
       scales:{x:{stacked:true,grid:{display:false}},y:{stacked:true,min:0}}
     }
   });
-}
-
-// =====================================================================
-// ██████╗ ██████╗ ███████╗    ███████╗██╗██╗  ██╗
-// ██╔══██╗██╔══██╗██╔════╝    ██╔════╝██║╚██╗██╔╝
-// ██████╔╝██║  ██║█████╗      █████╗  ██║ ╚███╔╝ 
-// ██╔═══╝ ██║  ██║██╔══╝      ██╔══╝  ██║ ██╔██╗ 
-// ██║     ██████╔╝██║         ██║     ██║██╔╝ ██╗
-// ╚═╝     ╚═════╝ ╚═╝         ╚═╝     ╚═╝╚═╝  ╚═╝
-// FUNCIÓN CORREGIDA: extrae todos los días de un PDF multi-página
-// dividiendo por encabezado "Fecha: DD de Mes, YYYY" en lugar de por página
-// =====================================================================
-
-// Punto de entrada unificado
-async function handleAllPDFs(files) {
-  const iconEl  = document.getElementById('pdf-icon');
-  const labelEl = document.getElementById('pdf-label');
-  const result  = document.getElementById('pdf-result');
-  iconEl.textContent  = '⏳';
-  labelEl.textContent = files.length===1 ? 'Procesando PDF… (puede tardar si es escaneado)' : `Procesando ${files.length} archivos…`;
-  result.innerHTML    = '<div class="loading"><div class="spinner"></div></div>';
-
-  const diasExtraidos = [];
-  for (const file of files) {
-    try {
-      const paginas = await extractPDFAllPages(file);
-      for (const p of paginas) diasExtraidos.push({...p, archivo: file.name});
-    } catch(e) {
-      diasExtraidos.push({error: e.message, archivo: file.name});
-    }
-  }
-
-  const ok   = diasExtraidos.filter(d => !d.error && d.kgProd !== undefined);
-  const fail = diasExtraidos.filter(d => d.error);
-
-  const usedOCR = ok.some(d => d._ocr);
-  iconEl.textContent  = fail.length && !ok.length ? '❌' : ok.length ? '✅' : '⚠️';
-  labelEl.textContent = `${ok.length} día(s) extraído(s)${usedOCR?' (OCR)':''}${fail.length ? ` · ${fail.length} error(es)` : ''}`;
-
-  if (!ok.length) {
-    result.innerHTML = `<div style="color:#c0392b;margin-top:10px;font-size:13px">
-      No se pudo extraer ningún día. Verifica que sean bitácoras AMEG correctas.</div>`;
-    return;
-  }
-  if (ok.length === 1) { renderSingleDayPDF(ok[0]); return; }
-  renderMultiDayPDF(ok, fail);
-}
-
-// ─── FUNCIÓN CORREGIDA + OCR ────────────────────────────────────────
-// Detecta automáticamente si el PDF es digital o escaneado.
-// - PDF digital: extrae texto con pdfjs (rápido)
-// - PDF escaneado: convierte a imagen y usa Tesseract OCR (lento ~5s/pág)
-
-async function extractPDFAllPages(file) {
-  if (!window.pdfjsLib) throw new Error('PDF.js no cargado');
-  const arrayBuffer = await file.arrayBuffer();
-  const pdf = await pdfjsLib.getDocument({data: arrayBuffer}).promise;
-
-  // 1. Intentar extracción de texto nativo
-  let totalTextLength = 0;
-  const pageTexts = [];
-  for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
-    const page = await pdf.getPage(pageNum);
-    const content = await page.getTextContent();
-    const text = content.items.map(i => i.str).join(' ');
-    totalTextLength += text.trim().length;
-    pageTexts.push({pageNum, text, page});
-  }
-
-  // 2. Si hay texto suficiente → PDF digital → usar extractor original
-  if (totalTextLength > 100) {
-    return extractFromDigitalPDF(pdf, pageTexts);
-  }
-
-  // 3. PDF escaneado → OCR con Tesseract
-  return extractFromScannedPDF(pdf);
-}
-
-// ── Extractor para PDFs digitales (texto nativo) ─────────────────────
-async function extractFromDigitalPDF(pdf, pageTexts) {
-  // Recopilar todos los items con coordenadas
-  const allItems = [];
-  for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
-    const page = await pdf.getPage(pageNum);
-    const content = await page.getTextContent();
-    const yOffset = (pageNum - 1) * 10000;
-    for (const item of content.items) {
-      const s = item.str?.trim();
-      if (!s) continue;
-      allItems.push({str: s, x: Math.round(item.transform[4]),
-                     y: Math.round(item.transform[5]) + yOffset, page: pageNum});
-    }
-  }
-
-  const yBuckets = {};
-  for (const item of allItems) {
-    let bucket = null;
-    for (const key of Object.keys(yBuckets)) {
-      const sample = yBuckets[key][0];
-      if (sample.page === item.page && Math.abs(item.y - Number(key)) <= 4) {
-        bucket = key; break;
-      }
-    }
-    if (!bucket) { bucket = String(item.y); yBuckets[bucket] = []; }
-    yBuckets[bucket].push(item);
-  }
-  const lines = Object.entries(yBuckets)
-    .sort(([a],[b]) => Number(b) - Number(a))
-    .map(([y, items]) => ({
-      y: Number(y), page: items[0].page,
-      text: items.sort((a,b) => a.x - b.x).map(i => i.str).join(' '),
-    }));
-
-  const MESES_ES = {
-    'enero':1,'febrero':2,'marzo':3,'abril':4,'mayo':5,'junio':6,
-    'julio':7,'agosto':8,'septiembre':9,'octubre':10,'noviembre':11,'diciembre':12,
-  };
-  const FECHA_RE = /Fecha[:\s]+(\d{1,2})\s+de\s+([A-Za-záéíóúÁÉÍÓÚ]+)[,\s]+(\d{4})/i;
-
-  const bloqueStarts = [];
-  lines.forEach((line, idx) => {
-    const m = line.text.match(FECHA_RE);
-    if (m) {
-      const day = parseInt(m[1]);
-      const mesNom = m[2].toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'');
-      const year = parseInt(m[3]);
-      const month = MESES_ES[m[2].toLowerCase()] || MESES_ES[mesNom];
-      const fecha = month
-        ? `${year}-${String(month).padStart(2,'0')}-${String(day).padStart(2,'0')}`
-        : null;
-      bloqueStarts.push({idx, fecha});
-    }
-  });
-
-  if (!bloqueStarts.length) return extractSingleDayFromLines(lines);
-
-  function parseNum(s) { const n = parseFloat(String(s).replace(/[,\s]/g,'')); return isNaN(n)?null:n; }
-  function extractNums(text) {
-    return [...text.matchAll(/\d[\d,\s]*(?:\.\d+)?/g)]
-      .map(m => parseNum(m[0])).filter(n => n !== null && n > 0 && n < 1_000_000);
-  }
-
-  const PDF_PRODUCT_NAMES = /^(ASADA|BARBACOA|BIRRIA|CONSOMÉ|CONSOME|TRIPAS|BUCHE|COSTILLA|CABEZA|LENGUA|FAJITA|CHORIZO|CARNITAS|CHICKEN|RAW PASTOR|FISH BASSA|BB JUICE|PASTOR MARINATE|BEANS)/i;
-  const resultados = [];
-
-  for (let b = 0; b < bloqueStarts.length; b++) {
-    const startIdx = bloqueStarts[b].idx;
-    const endIdx = b + 1 < bloqueStarts.length ? bloqueStarts[b+1].idx : lines.length;
-    const bloque = lines.slice(startIdx, endIdx);
-    const {fecha} = bloqueStarts[b];
-
-    const totalLine = bloque.find(l => /^\s*TOTAL/i.test(l.text))
-      || bloque.find(l => /TOTAL/i.test(l.text));
-    const productRows = bloque
-      .filter(l => PDF_PRODUCT_NAMES.test(l.text.trim()))
-      .map(l => ({name: l.text.trim().split(/\s+/)[0].toUpperCase(), nums: extractNums(l.text)}));
-
-    let kgInicio, kgFin, kgProd, rawLine;
-
-    if (totalLine) {
-      rawLine = totalLine.text.trim();
-      const nums = extractNums(totalLine.text);
-      if (nums.length >= 2) {
-        if (nums.length === 2) {
-          [kgInicio, kgFin] = nums; kgProd = +(kgFin - kgInicio).toFixed(2);
-        } else {
-          let found = false;
-          for (let i = 0; i <= nums.length - 3; i++) {
-            const [a,b,c] = [nums[i],nums[i+1],nums[i+2]];
-            if (Math.abs(a+b-c) < Math.max(5,c*0.01)){kgInicio=a;kgProd=b;kgFin=c;found=true;break;}
-          }
-          if (!found) {
-            const sorted = [...nums].sort((a,b)=>b-a);
-            kgFin=sorted[0]; kgInicio=sorted[1];
-            kgProd = +(kgFin-kgInicio).toFixed(2);
-          }
-        }
-      }
-    } else if (productRows.length >= 3) {
-      const withNums = productRows.filter(p=>p.nums.length>=2&&!/^TOTAL/i.test(p.name));
-      if (withNums.length >= 2) {
-        kgInicio = withNums.reduce((a,p)=>a+(p.nums[0]||0),0);
-        kgFin    = withNums.reduce((a,p)=>a+(p.nums[p.nums.length-1]||0),0);
-        kgProd   = +(kgFin-kgInicio).toFixed(2);
-        rawLine  = `(suma de ${withNums.length} productos)`;
-      }
-    }
-
-    if (kgProd !== undefined && kgInicio !== undefined && kgProd >= 0) {
-      const productos = productRows
-        .filter(p=>p.nums.length>=2&&!/^TOTAL/i.test(p.name))
-        .map(p=>({producto:p.name, kg_inicio:+(p.nums[0]||0).toFixed(2),
-                  kg_fin:+(p.nums[p.nums.length-1]||0).toFixed(2),
-                  kg_prod:+(Math.max(0,p.nums[p.nums.length-1]-p.nums[0])).toFixed(2)}));
-      resultados.push({fecha, kgInicio:+kgInicio.toFixed(2), kgFin:+kgFin.toFixed(2),
-                       kgProd:Math.max(0,kgProd), rawLine:rawLine||'', pagina:1, productos});
-    }
-  }
-  return resultados;
-}
-
-// ── Extractor para PDFs escaneados ───────────────────────────────────
-async function extractFromScannedPDF(pdf) {
-  const pageImages = [];
-  for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
-    const page = await pdf.getPage(pageNum);
-    const scale = 2.5;
-    const viewport = page.getViewport({scale});
-    const canvas = document.createElement('canvas');
-    canvas.width = viewport.width;
-    canvas.height = viewport.height;
-    const ctx = canvas.getContext('2d');
-    await page.render({canvasContext: ctx, viewport}).promise;
-    pageImages.push(canvas.toDataURL('image/jpeg', 0.82));
-  }
-  showBitacoraModal(pageImages, pdf.numPages);
-  return [];
-}
-
-// ── Bitácora: modal con tabla por producto + OCR ──────────────────────
-var BITACORA_PRODS = [
-  {key:'ASADA',           form:'ASADA'},
-  {key:'BARBACOA',        form:'BARBACOA'},
-  {key:'BIRRIA',          form:'BIRRIA'},
-  {key:'CARNITAS',        form:'CARNITAS'},
-  {key:'CHICKEN',         form:'CHICKEN'},
-  {key:'BB JUICE',        form:'BBJ'},
-  {key:'BIRRIA CONSO',    form:'BIRRIA CONSO'},
-  {key:'CONSOME BBQ',     form:'BBQ CONSO'},
-  {key:'BEANS',           form:'BEANS'},
-  {key:'RAW PASTOR',      form:'PASTOR'},
-  {key:'PASTOR MARINATE', form:'PAS MARINATE'},
-  {key:'FISH BASSA',      form:'FISH'},
-];
-
-async function cargarTesseract() {
-  if (window.Tesseract) return true;
-  return new Promise(function(res) {
-    var s = document.createElement('script');
-    s.src = 'https://cdn.jsdelivr.net/npm/tesseract.js@4/dist/tesseract.min.js';
-    s.onload = function(){ res(true); };
-    s.onerror = function(){ res(false); };
-    document.head.appendChild(s);
-  });
-}
-
-function parseBitacoraOCR(text) {
-  var lines = text.split('\n').map(function(l){ return l.trim(); }).filter(Boolean);
-  var result = {};
-  var used = {};
-  function getNums(str) {
-    var nums = [], m, re = /\d+\.?\d*/g;
-    while ((m = re.exec(str)) !== null) {
-      var n = parseFloat(m[0]);
-      if (!isNaN(n) && n >= 0) nums.push(n);
-    }
-    return nums;
-  }
-  for (var pi = 0; pi < BITACORA_PRODS.length; pi++) {
-    var prod = BITACORA_PRODS[pi];
-    var formUp = prod.form.toUpperCase();
-    for (var li = 0; li < lines.length; li++) {
-      if (used[li]) continue;
-      var upper = lines[li].toUpperCase();
-      var hit = false;
-      if (prod.key === 'BIRRIA')          hit = upper.indexOf('BIRRIA') >= 0 && upper.indexOf('CONSO') < 0;
-      else if (prod.key === 'RAW PASTOR') hit = upper.indexOf('PASTOR') >= 0 && upper.indexOf('MARINATE') < 0 && upper.indexOf('PAS M') < 0;
-      else if (prod.key === 'CONSOME BBQ') hit = upper.indexOf('BBQ') >= 0 && upper.indexOf('BIRRIA') < 0;
-      else                                 hit = upper.indexOf(formUp) >= 0;
-      if (!hit) continue;
-      var nums = getNums(lines[li]);
-      var start = 0, end = nums.length;
-      if (nums.length > 2 && nums[0] >= 1 && nums[0] <= 31) start = 1;
-      if (end > start + 1 && nums[end-1] >= 1 && nums[end-1] <= 5) end--;
-      var rel = nums.slice(start, end);
-      if (rel.length >= 2) result[prod.key] = {ini: rel[0], fin: rel[1]};
-      else if (rel.length === 1) result[prod.key] = {ini: 0, fin: rel[0]};
-      used[li] = true;
-      break;
-    }
-  }
-  return result;
-}
-
-function showBitacoraModal(pageImages, numPages) {
-  var ex = document.getElementById('bitacora-modal');
-  if (ex) ex.remove();
-  function suggestDate(i) {
-    return isoAddDays(hoyISO(), -(numPages - 1 - i));
-  }
-  function buildTable(i) {
-    var t = '<table style="width:100%;font-size:12px;border-collapse:collapse">';
-    t += '<thead><tr>';
-    t += '<th style="text-align:left;padding:3px 5px;border-bottom:1px solid #e5e7eb;color:#6b7280;font-size:10px">Producto</th>';
-    t += '<th style="text-align:right;padding:3px 5px;border-bottom:1px solid #e5e7eb;color:#6b7280;font-size:10px">Ini</th>';
-    t += '<th style="text-align:right;padding:3px 5px;border-bottom:1px solid #e5e7eb;color:#6b7280;font-size:10px">Fin</th>';
-    t += '<th style="text-align:right;padding:3px 5px;border-bottom:1px solid #e5e7eb;color:#2563eb;font-size:10px">Prod</th>';
-    t += '</tr></thead><tbody>';
-    var inp = ' type="number" step="0.01" min="0" style="width:60px;border:1px solid #e5e7eb;border-radius:4px;padding:2px 5px;font-size:12px;text-align:right"';
-    for (var pi = 0; pi < BITACORA_PRODS.length; pi++) {
-      var p = BITACORA_PRODS[pi], sk = p.key.replace(/ /g,'_');
-      t += '<tr style="border-bottom:1px solid #f3f4f6">';
-      t += '<td style="padding:3px 5px;font-size:11px;color:#374151;font-weight:500">' + p.key + '</td>';
-      t += '<td style="padding:2px 3px"><input' + inp + ' id="bini-' + i + '-' + sk + '" oninput="calcBitTot(' + i + ',\'' + sk + '\')"></td>';
-      t += '<td style="padding:2px 3px"><input' + inp + ' id="bfin-' + i + '-' + sk + '" oninput="calcBitTot(' + i + ',\'' + sk + '\')"></td>';
-      t += '<td style="padding:3px 5px;font-size:11px;font-weight:600;color:#2563eb;text-align:right;font-family:monospace" id="bdp-' + i + '-' + sk + '">—</td>';
-      t += '</tr>';
-    }
-    t += '<tr style="border-top:2px solid #d1d5db;background:#f9fafb">';
-    t += '<td style="padding:4px 5px;font-size:11px;font-weight:700">TOTAL</td>';
-    t += '<td style="padding:4px 5px;font-size:11px;font-weight:700;text-align:right;font-family:monospace" id="btotini-' + i + '">—</td>';
-    t += '<td style="padding:4px 5px;font-size:11px;font-weight:700;text-align:right;font-family:monospace" id="btotfin-' + i + '">—</td>';
-    t += '<td style="padding:4px 5px;font-size:11px;font-weight:700;color:#2563eb;text-align:right;font-family:monospace" id="btotprod-' + i + '">—</td>';
-    t += '</tr></tbody></table>';
-    return t;
-  }
-  var pages = '';
-  for (var i = 0; i < numPages; i++) {
-    pages += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:24px;padding-bottom:24px;border-bottom:1px solid #e5e7eb">';
-    pages += '<div><div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:#9ca3af;margin-bottom:8px">Página ' + (i+1) + ' / ' + numPages + '</div>';
-    pages += '<img src="' + pageImages[i] + '" style="width:100%;border-radius:8px;border:1px solid #e5e7eb"></div>';
-    pages += '<div>';
-    pages += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">';
-    pages += '<input type="date" id="bfecha-' + i + '" value="' + suggestDate(i) + '" style="border:1px solid #e5e7eb;border-radius:6px;padding:5px 9px;font-size:13px;flex:1">';
-    pages += '<button id="bocrbtn-' + i + '" onclick="ocrBitPage(' + i + ')" style="font-size:11px;padding:5px 11px;border:1px solid #3b82f6;border-radius:6px;background:#eff6ff;color:#1d4ed8;cursor:pointer;white-space:nowrap">🔍 OCR</button>';
-    pages += '</div>' + buildTable(i) + '</div></div>';
-  }
-  var modal = document.createElement('div');
-  modal.id = 'bitacora-modal';
-  modal.className = 'modal-overlay';
-  modal.innerHTML =
-    '<div class="modal-card">' +
-    '<div class="modal-header">' +
-    '<div><div style="font-size:15px;font-weight:700">📷 PDF Escaneado — Bitácora</div>' +
-    '<div style="font-size:12px;opacity:0.5;margin-top:2px">Haz clic en 🔍 OCR por página para prellenar. Confirma y guarda.</div></div>' +
-    '<button onclick="closeModalAnimated(\'bitacora-modal\')" style="background:rgba(255,255,255,0.1);border:none;color:white;width:32px;height:32px;border-radius:6px;font-size:18px;cursor:pointer">✕</button>' +
-    '</div><div style="padding:24px">' + pages +
-    '<div style="display:flex;justify-content:flex-end;gap:10px;margin-top:8px">' +
-    '<button class="btn btn-secondary" onclick="closeModalAnimated(\'bitacora-modal\')">Cancelar</button>' +
-    '<button class="btn btn-primary" onclick="guardarBitacoraData(' + numPages + ')">💾 Guardar todos</button>' +
-    '</div></div></div>';
-  document.body.appendChild(modal);
-  openModalAnimated('bitacora-modal');
-  window._bitImgs = pageImages;
-}
-
-function calcBitTot(pageIdx, sk) {
-  var ini = parseFloat(document.getElementById('bini-' + pageIdx + '-' + sk)?.value) || 0;
-  var fin = parseFloat(document.getElementById('bfin-' + pageIdx + '-' + sk)?.value) || 0;
-  var dp  = document.getElementById('bdp-'  + pageIdx + '-' + sk);
-  if (dp) { var diff = fin - ini; dp.textContent = diff !== 0 ? diff.toFixed(2) : '—'; dp.style.color = diff >= 0 ? '#2563eb' : '#dc2626'; }
-  var ti = 0, tf = 0;
-  for (var pi = 0; pi < BITACORA_PRODS.length; pi++) {
-    var s = BITACORA_PRODS[pi].key.replace(/ /g,'_');
-    ti += parseFloat(document.getElementById('bini-' + pageIdx + '-' + s)?.value) || 0;
-    tf += parseFloat(document.getElementById('bfin-' + pageIdx + '-' + s)?.value) || 0;
-  }
-  var tp = tf - ti;
-  var tiEl = document.getElementById('btotini-' + pageIdx);
-  var tfEl = document.getElementById('btotfin-' + pageIdx);
-  var tpEl = document.getElementById('btotprod-' + pageIdx);
-  if (tiEl) tiEl.textContent = ti.toFixed(2);
-  if (tfEl) tfEl.textContent = tf.toFixed(2);
-  if (tpEl) { tpEl.textContent = tp.toFixed(2); tpEl.style.color = tp > 0 ? '#2563eb' : '#dc2626'; }
-}
-
-async function ocrBitPage(pageIdx) {
-  var btn = document.getElementById('bocrbtn-' + pageIdx);
-  if (!btn) return;
-  btn.textContent = '⏳ Leyendo...'; btn.disabled = true;
-  try {
-    var loaded = await cargarTesseract();
-    if (!loaded) throw new Error('No se pudo cargar Tesseract.js');
-    var img = (window._bitImgs || [])[pageIdx];
-    if (!img) throw new Error('Sin imagen');
-    var res = await Tesseract.recognize(img, 'eng', {logger: function(){}});
-    var parsed = parseBitacoraOCR(res.data.text);
-    for (var pi = 0; pi < BITACORA_PRODS.length; pi++) {
-      var p = BITACORA_PRODS[pi], sk = p.key.replace(/ /g,'_');
-      var val = parsed[p.key];
-      if (val !== undefined) {
-        var iniEl = document.getElementById('bini-' + pageIdx + '-' + sk);
-        var finEl = document.getElementById('bfin-' + pageIdx + '-' + sk);
-        if (iniEl) iniEl.value = val.ini;
-        if (finEl) finEl.value = val.fin;
-        calcBitTot(pageIdx, sk);
-      }
-    }
-    btn.textContent = '✓ OK';
-    btn.style.cssText = 'font-size:11px;padding:5px 11px;border:1px solid #059669;border-radius:6px;background:#ecfdf5;color:#065f46;cursor:pointer;white-space:nowrap';
-  } catch(e) {
-    btn.textContent = '⚠ Error'; btn.title = e.message;
-    btn.style.cssText = 'font-size:11px;padding:5px 11px;border:1px solid #dc2626;border-radius:6px;background:#fef2f2;color:#991b1b;cursor:pointer;white-space:nowrap';
-  }
-  btn.disabled = false;
-}
-
-async function guardarBitacoraData(numPages) {
-  var modal = document.getElementById('bitacora-modal');
-  var saveBtn = modal ? modal.querySelector('button[onclick*="guardarBitacoraData"]') : null;
-  if (saveBtn) { saveBtn.disabled = true; saveBtn.textContent = 'Guardando...'; }
-  var guardados = 0, errores = 0;
-  for (var i = 0; i < numPages; i++) {
-    var fecha = document.getElementById('bfecha-' + i)?.value;
-    if (!fecha) { errores++; continue; }
-    var productos = [], totIni = 0, totFin = 0;
-    for (var pi = 0; pi < BITACORA_PRODS.length; pi++) {
-      var p = BITACORA_PRODS[pi], sk = p.key.replace(/ /g,'_');
-      var ini = parseFloat(document.getElementById('bini-' + i + '-' + sk)?.value) || 0;
-      var fin = parseFloat(document.getElementById('bfin-' + i + '-' + sk)?.value) || 0;
-      if (ini > 0 || fin > 0) {
-        productos.push({producto:p.key, kg_inicio:ini, kg_fin:fin, kg_prod:Math.max(0, +(fin-ini).toFixed(2))});
-        totIni += ini; totFin += fin;
-      }
-    }
-    if (!productos.length) { errores++; continue; }
-    var kgProd = +(totFin - totIni).toFixed(2);
-    var semRes = await obtenerOCrearSemana(fecha);
-    if (semRes.error) { errores++; continue; }
-    var semana_id = semRes.id;
-    var notas = 'Inv: '+totIni.toFixed(2)+' → '+totFin.toFixed(2);
-    var diasRes = await db.from('dias').upsert({fecha,semana_id,prod:kgProd,notas,horas:null},{onConflict:'fecha'});
-    if (diasRes.error) { errores++; continue; }
-    var dpRows = productos.map(function(pp){ return {fecha,semana_id,producto:pp.producto,kg_inicio:pp.kg_inicio,kg_fin:pp.kg_fin,kg_prod:pp.kg_prod}; });
-    var dpRes = await replaceRowsPorFecha('dias_productos', fecha, dpRows);
-    if (dpRes.error) { errores++; continue; }
-    guardados++;
-  }
-  if (saveBtn) { saveBtn.disabled=false; saveBtn.textContent='💾 Guardar todos'; }
-  closeModalAnimated('bitacora-modal');
-  toast(guardados+' día(s) guardado(s) con desglose por producto'+(errores?' · '+errores+' error(es)':''), errores&&!guardados?'err':'ok');
-  if (guardados > 0) await refreshAll();
-}
-
-// Fallback para PDFs de un solo día sin encabezado "Fecha:"
-function extractSingleDayFromLines(lines) {
-  function parseNum(s) { const n = parseFloat(String(s).replace(/[,\s]/g,'')); return isNaN(n)?null:n; }
-  function extractNums(text) {
-    return [...text.matchAll(/\d[\d,\s]*(?:\.\d+)?/g)]
-      .map(m => parseNum(m[0])).filter(n => n!==null && n>0 && n<1_000_000);
-  }
-  const totalLine = lines.find(l => /^\s*TOTAL/i.test(l.text))
-    || lines.find(l => /TOTAL/i.test(l.text));
-  if (!totalLine) return [];
-  const nums = extractNums(totalLine.text);
-  if (nums.length < 2) return [];
-  let kgInicio, kgFin, kgProd;
-  if (nums.length === 2) {
-    [kgInicio, kgFin] = nums; kgProd = +(kgFin - kgInicio).toFixed(2);
-  } else {
-    const sorted = [...nums].sort((a,b) => b-a);
-    kgFin=sorted[0]; kgInicio=sorted[1];
-    kgProd = +(kgFin - kgInicio).toFixed(2);
-  }
-  return [{fecha:null, kgInicio:+kgInicio.toFixed(2), kgFin:+kgFin.toFixed(2),
-           kgProd:Math.max(0,kgProd), rawLine:totalLine.text.trim(), pagina:1, productos:[]}];
-}
-// ─── FIN FUNCIÓN CORREGIDA + OCR ─────────────────────────────────────
-
-(function initPDFUpload() {
-  const zone=document.getElementById('pdf-zone'), input=document.getElementById('pdf-input');
-  zone.addEventListener('click', ()=>input.click());
-  zone.addEventListener('dragover', e=>{e.preventDefault();zone.classList.add('drag');});
-  zone.addEventListener('dragleave', ()=>zone.classList.remove('drag'));
-  zone.addEventListener('drop', e=>{
-    e.preventDefault(); zone.classList.remove('drag');
-    const files=[...e.dataTransfer.files].filter(f=>f.type==='application/pdf');
-    if (!files.length){toast('Solo se aceptan .pdf','err');return;}
-    handleAllPDFs(files);
-  });
-  input.addEventListener('change', e=>{
-    const files=[...e.target.files];
-    if (files.length) handleAllPDFs(files);
-  });
-})();
-
-function renderSingleDayPDF(d) {
-  const result=document.getElementById('pdf-result');
-  result.innerHTML=`
-    <div class="extract-result">
-      <div class="ev-grid">
-        <div class="ev-item"><div class="ev-val">${d.kgInicio.toFixed(2)}</div><div class="ev-lbl">Kg Inicio</div></div>
-        <div class="ev-sep">→</div>
-        <div class="ev-item"><div class="ev-val">${d.kgFin.toFixed(2)}</div><div class="ev-lbl">Kg Fin</div></div>
-        <div class="ev-sep">=</div>
-        <div class="ev-item"><div class="ev-val" style="color:#2980b9">${d.kgProd.toFixed(2)}</div><div class="ev-lbl">Kg Producidos</div></div>
-      </div>
-      ${d.fecha?`<div style="font-size:12px;color:#666;margin-bottom:6px">📅 Fecha detectada: <strong>${d.fecha}</strong></div>`:''}
-      <div style="font-size:11px;color:#aaa;margin-bottom:10px">TOTAL: "${escapeHtml(d.rawLine)}"</div>
-      <button class="btn btn-primary" style="margin-top:8px"
-        onclick="aplicarDatosPDF('${d.fecha||''}',${d.kgInicio.toFixed(2)},${d.kgFin.toFixed(2)},${d.kgProd.toFixed(2)})">
-        ↓ Usar en formulario
-      </button>
-    </div>`;
-}
-
-function renderMultiDayPDF(dias, fail) {
-  const result=document.getElementById('pdf-result');
-  const totalKg = dias.reduce((a,d)=>a+d.kgProd,0);
-  const rows = dias.map((d,i)=>`
-    <tr id="pdf-row-${i}">
-      <td><input type="date" id="pdf-fecha-${i}" value="${d.fecha||''}"
-        style="border:1px solid #dde3ea;border-radius:6px;padding:4px 8px;font-size:13px"></td>
-      <td class="td-num">${d.kgInicio.toFixed(2)}</td>
-      <td class="td-num">${d.kgFin.toFixed(2)}</td>
-      <td class="td-num" style="color:#2980b9;font-weight:700">${d.kgProd.toFixed(2)}</td>
-      <td class="td-center"><span id="pdf-status-${i}">⏳</span></td>
-    </tr>`).join('');
-  const failHtml = fail.length
-    ? `<div style="margin-top:8px;font-size:12px;color:#c0392b">⚠️ No procesados: ${fail.map(f=>escapeHtml(f.archivo+': '+f.error)).join(' | ')}</div>`
-    : '';
-  result.innerHTML=`
-    <div class="extract-result">
-      <div style="font-weight:600;margin-bottom:12px">
-        📋 ${dias.length} días detectados — Total: <span style="color:#2980b9">${totalKg.toFixed(2)} kg</span>
-      </div>
-      <p style="font-size:12px;color:#888;margin-bottom:10px">Verifica las fechas y haz clic en "💾 Guardar todos"</p>
-      <div class="table-wrap">
-        <table>
-          <thead><tr>
-            <th>Fecha</th><th class="td-num">Kg Inicio</th>
-            <th class="td-num">Kg Fin</th><th class="td-num">Kg Prod.</th>
-            <th class="td-center">Estado</th>
-          </tr></thead>
-          <tbody>${rows}</tbody>
-        </table>
-      </div>
-      ${failHtml}
-      <div style="display:flex;gap:10px;margin-top:14px;flex-wrap:wrap">
-        <button class="btn btn-primary" id="btn-guardar-todos-pdf" onclick="guardarTodosPDF(${JSON.stringify(dias.map(d=>({kgInicio:d.kgInicio,kgFin:d.kgFin,kgProd:d.kgProd,productos:d.productos||[]})))})">
-          💾 Guardar todos los días
-        </button>
-      </div>
-    </div>`;
-}
-
-async function guardarTodosPDF(datos) {
-  const btn = document.getElementById('btn-guardar-todos-pdf');
-  btn.disabled = true; btn.textContent = 'Guardando…';
-  let guardados=0, errores=0;
-  for (let i=0; i<datos.length; i++) {
-    const fechaEl  = document.getElementById(`pdf-fecha-${i}`);
-    const statusEl = document.getElementById(`pdf-status-${i}`);
-    const fecha = fechaEl?.value;
-    if (!fecha) { statusEl.textContent='⚠️ Sin fecha'; errores++; continue; }
-    const d = datos[i];
-    const semRes = await obtenerOCrearSemana(fecha);
-    if (semRes.error) { statusEl.textContent='❌'; errores++; continue; }
-    const semana_id = semRes.id;
-    const notas = `Inv: ${d.kgInicio} → ${d.kgFin}`;
-    const {error} = await db.from('dias').upsert(
-      {fecha, semana_id, prod:d.kgProd, notas, horas:null},
-      {onConflict:'fecha'}
-    );
-    if (error) { statusEl.textContent='❌'; errores++; continue; }
-    if (d.productos && d.productos.length > 0) {
-      const dpRows = d.productos.map(p => ({fecha, semana_id, producto:p.producto,
-        kg_inicio:p.kg_inicio, kg_fin:p.kg_fin, kg_prod:p.kg_prod}));
-      const dpRes = await replaceRowsPorFecha('dias_productos', fecha, dpRows);
-      if (dpRes.error) { statusEl.textContent='⚠️'; errores++; continue; }
-    }
-    statusEl.textContent='✅'; guardados++;
-  }
-  btn.disabled = false; btn.textContent = '💾 Guardar todos los días';
-  toast(`${guardados} día(s) guardado(s)${errores?` · ${errores} error(es)`:''}`, errores?'err':'ok');
-  if (guardados > 0) await refreshAll();
-}
-
-function aplicarDatosPDF(fecha, kgInicio, kgFin, kgProd) {
-  if (fecha) document.getElementById('f-fecha').value = fecha;
-  document.getElementById('f-kg').value = kgProd.toFixed(2);
-  const notasEl = document.getElementById('f-notas');
-  const inv = 'Inv: '+kgInicio+' → '+kgFin;
-  notasEl.value = notasEl.value.trim() ? (notasEl.value.trim()+' · '+inv) : inv;
-  toast('Datos del PDF aplicados ✓','ok');
-  document.getElementById('form-dia').scrollIntoView({behavior:'smooth',block:'start'});
 }
 
 // =====================================================================
@@ -2950,14 +2313,12 @@ function renderCSVResult(employees,totalIncluido,totalExcluido) {
 async function refreshAll() {
   populateSelects();
   populateMonthSelects();
-  swLlenarSemanas();
   await renderKPIs();
   await renderRecientes();
   const activeTab=document.querySelector('.tab-pane.active')?.id;
   if (activeTab==='tab-tablero')      await renderTablero();
   if (activeTab==='tab-datos')        await renderDatos();
   if (activeTab==='tab-graficas')     await renderGraficas();
-  if (activeTab==='tab-calendario')   await renderCalendario();
   if (activeTab==='tab-reporte')      await repGenerar();
 }
 
@@ -3541,528 +2902,369 @@ function fmtDateShort(iso){
 }
 
 // =====================================================================
+// IMPORTAR EXCEL "CONTROL DIARIO" (formato administración jul-2026)
+// Un bloque por día: fecha, luego PRODUCT | INVENTORY | ORDERED | TOTAL |
+// UM | KG Day Ending | Kg Starting | PRODUCCION (basement, en bolsas),
+// y sección UPSTAIRS COUNTING (sin UM). La producción del día N se deriva
+// del conteo del día N+1 → el último día del archivo solo trae inventario.
 // =====================================================================
-// CAPTURA SEMANAL — flujo guiado con OCR (Tesseract)
-// =====================================================================
-let swDiasPDF = [];
-let swHorasPorDia = {};
-let swSemanaId = null;
+let ctrlDias = [];
+let ctrlHorasPorDia = {};
 
-(function initSemanImport() {
-  const pdfZone  = document.getElementById('sw-pdf-zone');
-  const pdfInput = document.getElementById('sw-pdf-input');
-  const csvZone  = document.getElementById('sw-csv-zone');
-  const csvInput = document.getElementById('sw-csv-input');
+// nombre en el Excel → nombre canónico en dias_productos
+const CTRL_CANON = {
+  'ASADA':'ASADA','BARBACOA':'BARBACOA','BIRRIA':'BIRRIA','CARNITAS':'CARNITAS',
+  'CHICKEN':'CHICKEN','BBJ':'BB JUICE','BIRRIA CONSO':'BIRRIA CONSO',
+  'BBQ CONSO':'CONSOME BBQ','BEANS':'BEANS','PASTOR':'RAW PASTOR',
+  'PAS MARINATE':'PASTOR MARINATE','FISH VENERICA':'FISH BASSA',
+  'FISH BASSA CS':'FISH BASSA','FISH BASSA CIELOS':'FISH BASSA',
+};
+// nombre en el Excel → nombre en inventario_diario
+const CTRL_INV_NAME = {'FISH BASSA CS':'FISH BASSA CIELOS'};
+const CTRL_MESES_EN = ['january','february','march','april','may','june','july','august','september','october','november','december'];
 
-  pdfZone.addEventListener('click', () => pdfInput.click());
-  pdfZone.addEventListener('dragover', e => { e.preventDefault(); pdfZone.classList.add('drag'); });
-  pdfZone.addEventListener('dragleave', () => pdfZone.classList.remove('drag'));
-  pdfZone.addEventListener('drop', e => { e.preventDefault(); pdfZone.classList.remove('drag');
-    const files = [...e.dataTransfer.files].filter(f => f.type === 'application/pdf');
-    if (files.length) swProcesarPDFs(files);
+async function cargarXLSXLib() {
+  if (window.XLSX) return true;
+  return new Promise(function(res) {
+    var s = document.createElement('script');
+    s.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+    s.onload = function(){ res(true); };
+    s.onerror = function(){ res(false); };
+    document.head.appendChild(s);
   });
-  pdfInput.addEventListener('change', e => { if (e.target.files.length) swProcesarPDFs([...e.target.files]); });
+}
 
-  csvZone.addEventListener('click', () => csvInput.click());
-  csvZone.addEventListener('dragover', e => { e.preventDefault(); csvZone.classList.add('drag'); });
-  csvZone.addEventListener('dragleave', () => csvZone.classList.remove('drag'));
-  csvZone.addEventListener('drop', e => { e.preventDefault(); csvZone.classList.remove('drag');
-    const f = e.dataTransfer.files[0]; if (f) swProcesarHoras(f);
+(function initCtrlImport() {
+  const xZone  = document.getElementById('ctrl-xlsx-zone');
+  const xInput = document.getElementById('ctrl-xlsx-input');
+  const hZone  = document.getElementById('ctrl-horas-zone');
+  const hInput = document.getElementById('ctrl-horas-input');
+  if (!xZone || !hZone) return;
+
+  xZone.addEventListener('click', () => xInput.click());
+  xZone.addEventListener('dragover', e => { e.preventDefault(); xZone.classList.add('drag'); });
+  xZone.addEventListener('dragleave', () => xZone.classList.remove('drag'));
+  xZone.addEventListener('drop', e => { e.preventDefault(); xZone.classList.remove('drag');
+    const f = e.dataTransfer.files[0]; if (f) ctrlProcesarExcel(f);
   });
-  csvInput.addEventListener('change', e => { if (e.target.files[0]) swProcesarHoras(e.target.files[0]); });
+  xInput.addEventListener('change', e => { if (e.target.files[0]) ctrlProcesarExcel(e.target.files[0]); });
+
+  hZone.addEventListener('click', () => hInput.click());
+  hZone.addEventListener('dragover', e => { e.preventDefault(); hZone.classList.add('drag'); });
+  hZone.addEventListener('dragleave', () => hZone.classList.remove('drag'));
+  hZone.addEventListener('drop', e => { e.preventDefault(); hZone.classList.remove('drag');
+    const f = e.dataTransfer.files[0]; if (f) ctrlProcesarHoras(f);
+  });
+  hInput.addEventListener('change', e => { if (e.target.files[0]) ctrlProcesarHoras(e.target.files[0]); });
 })();
 
-function swLlenarSemanas() {
-  const sel = document.getElementById('sw-semana-sel');
-  if (!sel) return;
-  sel.innerHTML = '<option value="">— Seleccionar semana existente —</option>';
-  [...semanas].reverse().forEach(s => {
-    const opt = document.createElement('option');
-    opt.value = s.id;
-    opt.textContent = s.label || (s.fecha_inicio + ' a ' + s.fecha_fin);
-    sel.appendChild(opt);
-  });
-  sel.onchange = function() {
-    swSemanaId = sel.value || null;
-    const sem = semanas.find(s => s.id === swSemanaId);
-    const badge = document.getElementById('sw-semana-badge');
-    if (sem) {
-      badge.innerHTML = '<div style="display:inline-flex;align-items:center;gap:8px;background:var(--verde-bg);border:1px solid #bbf7d0;border-radius:8px;padding:8px 14px"><span>&#x2705;</span><strong style="color:var(--verde)">' + (sem.label||'') + '</strong><span style="font-size:11px;color:var(--texto-3)">' + sem.fecha_inicio + ' a ' + sem.fecha_fin + '</span></div>';
-    } else { badge.innerHTML = ''; }
-  };
+function ctrlNum(v) { return (typeof v === 'number' && isFinite(v)) ? v : null; }
+
+// serial de Excel → 'YYYY-MM-DD' (base 1899-12-30, sin zonas horarias)
+function ctrlSerialAFecha(serial) {
+  const d = new Date(Date.UTC(1899, 11, 30) + Math.round(serial) * 86400000);
+  return d.toISOString().split('T')[0];
 }
 
-function swToggleNuevaSemana() {
-  const f = document.getElementById('sw-nueva-sem-form');
-  f.style.display = f.style.display === 'none' ? 'flex' : 'none';
+function ctrlDetectarFecha(c0) {
+  if (typeof c0 === 'number' && c0 > 40000 && c0 < 60000) return ctrlSerialAFecha(c0);
+  if (c0 instanceof Date && !isNaN(c0)) {
+    // SheetJS con cellDates puede dar Date — usar componentes UTC para evitar off-by-one
+    return c0.toISOString().split('T')[0];
+  }
+  if (typeof c0 === 'string') {
+    const m = c0.trim().match(/^([A-Za-z]+)\s+(\d{1,2}),?\s+(\d{4})/);
+    if (m) {
+      const mi = CTRL_MESES_EN.indexOf(m[1].toLowerCase());
+      if (mi >= 0) return m[3] + '-' + String(mi+1).padStart(2,'0') + '-' + String(m[2]).padStart(2,'0');
+    }
+  }
+  return null;
 }
 
-async function swCrearNuevaSemana() {
-  const ini = document.getElementById('sw-ns-inicio').value;
-  const fin = document.getElementById('sw-ns-fin').value;
-  const st  = document.getElementById('sw-ns-status');
-  if (!ini || !fin) { st.textContent = 'Ingresa inicio y fin'; return; }
-  st.textContent = 'Creando...';
-  const d1 = new Date(ini+'T12:00:00'), d2 = new Date(fin+'T12:00:00');
-  // Calculate next ID from existing semanas
-  const {data: existing} = await db.from('semanas').select('id');
-  var maxNum = 0;
-  (existing || []).forEach(function(r) {
-    var n = parseInt((r.id || '').replace(/\D/g,''), 10);
-    if (!isNaN(n) && n > maxNum) maxNum = n;
-  });
-  var newId = 's' + (maxNum + 1);
-  const numSem = maxNum + 1;
-  const label = rangoSemanaLabel(numSem, d1, d2);
-  const {data, error} = await db.from('semanas').insert({id: newId, label, start_date: ini, end_date: fin}).select().single();
-  if (error) { st.textContent = 'Error: ' + error.message; return; }
-  semanas.push({...data, fecha_inicio: data.start_date, fecha_fin: data.end_date});
-  semanas.sort((a,b) => a.fecha_inicio.localeCompare(b.fecha_inicio));
-  swLlenarSemanas();
-  const sel = document.getElementById('sw-semana-sel');
-  sel.value = data.id;
-  sel.onchange();
-  swSemanaId = data.id;
-  st.textContent = 'Creada';
-  document.getElementById('sw-nueva-sem-form').style.display = 'none';
-}
-
-async function swPaginaABase64(pdf, pageNum) {
-  const page = await pdf.getPage(pageNum);
-  const viewport = page.getViewport({scale: 2.5});
-  const canvas = document.createElement('canvas');
-  canvas.width = viewport.width;
-  canvas.height = viewport.height;
-  await page.render({canvasContext: canvas.getContext('2d'), viewport}).promise;
-  return canvas.toDataURL('image/jpeg', 0.85);
-}
-
-async function swProcesarPDFs(files) {
-  const iconEl  = document.getElementById('sw-pdf-icon');
-  const labelEl = document.getElementById('sw-pdf-label');
-  const progEl  = document.getElementById('sw-pdf-progress');
-  const preview = document.getElementById('sw-dias-preview');
-  progEl.style.display = 'block';
-  progEl.innerHTML = '<div style="font-size:12px;color:var(--texto-3)">Procesando PDFs...</div>';
-  iconEl.textContent = '...';
-  swDiasPDF = [];
-
-  for (const file of files) {
+async function ctrlProcesarExcel(file) {
+  const iconEl  = document.getElementById('ctrl-xlsx-icon');
+  const labelEl = document.getElementById('ctrl-xlsx-label');
+  iconEl.textContent = '⏳'; labelEl.textContent = 'Procesando ' + file.name + '…';
+  try {
+    if (!(await cargarXLSXLib())) throw new Error('No se pudo cargar el lector de Excel');
     const ab = await file.arrayBuffer();
-    const pdf = await pdfjsLib.getDocument({data: ab}).promise;
-    for (let p = 1; p <= pdf.numPages; p++) {
-      const dataUrl = await swPaginaABase64(pdf, p);
-      swDiasPDF.push({ fecha: null, kgInicio: 0, kgFin: 0, kgProd: 0, productos: [], dataUrl });
-    }
-  }
+    const wb = XLSX.read(ab, {type:'array'});
 
-  iconEl.textContent = swDiasPDF.length ? '📄' : '⚠️';
-  labelEl.textContent = swDiasPDF.length + ' página(s) — ingresa los datos de cada día';
-  progEl.style.display = 'none';
-
-  window._swImgs = swDiasPDF.map(function(d){ return d.dataUrl; });
-
-  var html = '';
-  swDiasPDF.forEach(function(d, i) {
-    var tbl = '<table style="width:100%;font-size:11px;border-collapse:collapse">';
-    tbl += '<thead><tr>';
-    tbl += '<th style="text-align:left;padding:2px 4px;border-bottom:1px solid #e5e7eb;color:#6b7280;font-size:10px">Producto</th>';
-    tbl += '<th style="padding:2px 4px;border-bottom:1px solid #e5e7eb;color:#6b7280;font-size:10px;text-align:right">Inicio</th>';
-    tbl += '<th style="padding:2px 4px;border-bottom:1px solid #e5e7eb;color:#6b7280;font-size:10px;text-align:right">Fin</th>';
-    tbl += '<th style="padding:2px 4px;border-bottom:1px solid #e5e7eb;color:#6b7280;font-size:10px;text-align:right">Prod</th>';
-    tbl += '</tr></thead><tbody>';
-    for (var pi = 0; pi < BITACORA_PRODS.length; pi++) {
-      var p = BITACORA_PRODS[pi], sk = p.key.replace(/ /g,'_');
-      tbl += '<tr><td style="padding:2px 4px">' + p.key + '</td>';
-      tbl += '<td style="padding:2px 3px"><input type="number" id="sw-ini-' + i + '-' + sk + '" step="0.1" min="0" oninput="swCalcProdTot(' + i + ',\'' + sk + '\')" style="width:58px;border:1px solid #e5e7eb;border-radius:4px;padding:2px 4px;font-size:11px;text-align:right;font-family:var(--mono)"></td>';
-      tbl += '<td style="padding:2px 3px"><input type="number" id="sw-fin-' + i + '-' + sk + '" step="0.1" min="0" oninput="swCalcProdTot(' + i + ',\'' + sk + '\')" style="width:58px;border:1px solid #e5e7eb;border-radius:4px;padding:2px 4px;font-size:11px;text-align:right;font-family:var(--mono)"></td>';
-      tbl += '<td style="padding:2px 4px;font-family:var(--mono);text-align:right;color:var(--verde-2)" id="sw-dp-' + i + '-' + sk + '">—</td></tr>';
-    }
-    tbl += '</tbody><tfoot><tr style="border-top:2px solid #e5e7eb;font-weight:700">';
-    tbl += '<td style="padding:4px">TOTAL</td>';
-    tbl += '<td style="padding:4px;font-family:var(--mono);text-align:right" id="sw-totini-' + i + '">—</td>';
-    tbl += '<td style="padding:4px;font-family:var(--mono);text-align:right" id="sw-totfin-' + i + '">—</td>';
-    tbl += '<td style="padding:4px;font-family:var(--mono);text-align:right;color:var(--verde-2)" id="sw-totprod-' + i + '">—</td></tr></tfoot></table>';
-
-    html += '<div style="background:var(--glass);border-radius:var(--radio-lg);padding:16px;margin-bottom:16px;display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start">' +
-      '<img src="' + d.dataUrl + '" style="width:100%;border-radius:8px;border:0.5px solid var(--borde)">' +
-      '<div>' +
-        '<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">' +
-          '<span style="font-size:12px;font-weight:600;color:var(--texto-3)">PÁGINA ' + (i+1) + '</span>' +
-          '<input type="date" id="sw-man-fecha-' + i + '" onchange="swManualFechaChange(' + i + ')" style="flex:1;border:1px solid var(--borde);border-radius:8px;padding:5px 9px;font-size:13px;font-family:inherit">' +
-          '<button id="sw-ocrbtn-' + i + '" onclick="swOcrPage(' + i + ')" style="font-size:11px;padding:5px 11px;border:1px solid #3b82f6;border-radius:6px;background:#eff6ff;color:#1d4ed8;cursor:pointer;white-space:nowrap">🔍 OCR</button>' +
-        '</div>' +
-        tbl +
-      '</div></div>';
-  });
-  if (preview) preview.innerHTML = html;
-  swActualizarPreview();
-}
-
-function swManualFechaChange(i) {
-  var fecha = document.getElementById('sw-man-fecha-' + i)?.value || null;
-  if (swDiasPDF[i]) swDiasPDF[i].fecha = fecha;
-  swActualizarPreview();
-}
-
-function swCalcProdTot(i, sk) {
-  var ini = parseFloat(document.getElementById('sw-ini-' + i + '-' + sk)?.value) || 0;
-  var fin = parseFloat(document.getElementById('sw-fin-' + i + '-' + sk)?.value) || 0;
-  var prod = Math.max(0, +(fin - ini).toFixed(2));
-  var dpEl = document.getElementById('sw-dp-' + i + '-' + sk);
-  if (dpEl) dpEl.textContent = (ini > 0 || fin > 0) ? prod.toFixed(1) : '—';
-  // recalculate totals
-  var totIni = 0, totFin = 0, totProd = 0, productos = [];
-  for (var pi = 0; pi < BITACORA_PRODS.length; pi++) {
-    var p = BITACORA_PRODS[pi], s = p.key.replace(/ /g,'_');
-    var pIni = parseFloat(document.getElementById('sw-ini-' + i + '-' + s)?.value) || 0;
-    var pFin = parseFloat(document.getElementById('sw-fin-' + i + '-' + s)?.value) || 0;
-    if (pIni > 0 || pFin > 0) {
-      var pProd = Math.max(0, +(pFin - pIni).toFixed(2));
-      totIni += pIni; totFin += pFin; totProd += pProd;
-      productos.push({producto: p.key, kg_inicio: pIni, kg_fin: pFin, kg_prod: pProd});
-    }
-  }
-  var elTotIni = document.getElementById('sw-totini-' + i);
-  var elTotFin = document.getElementById('sw-totfin-' + i);
-  var elTotProd = document.getElementById('sw-totprod-' + i);
-  if (elTotIni) elTotIni.textContent = totIni > 0 ? totIni.toFixed(1) : '—';
-  if (elTotFin) elTotFin.textContent = totFin > 0 ? totFin.toFixed(1) : '—';
-  if (elTotProd) elTotProd.textContent = totProd > 0 ? totProd.toFixed(1) : '—';
-  if (swDiasPDF[i]) {
-    swDiasPDF[i].kgInicio = totIni;
-    swDiasPDF[i].kgFin = totFin;
-    swDiasPDF[i].kgProd = totProd;
-    swDiasPDF[i].productos = productos;
-  }
-  swActualizarPreview();
-}
-
-async function swOcrPage(pageIdx) {
-  var btn = document.getElementById('sw-ocrbtn-' + pageIdx);
-  if (!btn) return;
-  btn.textContent = '⏳ Leyendo...'; btn.disabled = true;
-  try {
-    var loaded = await cargarTesseract();
-    if (!loaded) throw new Error('No se pudo cargar Tesseract.js');
-    var img = (window._swImgs || [])[pageIdx];
-    if (!img) throw new Error('Sin imagen');
-    var res = await Tesseract.recognize(img, 'eng', {logger: function(){}});
-    var parsed = parseBitacoraOCR(res.data.text);
-    for (var pi = 0; pi < BITACORA_PRODS.length; pi++) {
-      var p = BITACORA_PRODS[pi], sk = p.key.replace(/ /g,'_');
-      var val = parsed[p.key];
-      if (val !== undefined) {
-        var iniEl = document.getElementById('sw-ini-' + pageIdx + '-' + sk);
-        var finEl = document.getElementById('sw-fin-' + pageIdx + '-' + sk);
-        if (iniEl) iniEl.value = val.ini;
-        if (finEl) finEl.value = val.fin;
-        swCalcProdTot(pageIdx, sk);
+    // fecha → {basement:[{prod,row}], upstairs:[...]} — hojas posteriores pisan días duplicados
+    const dias = {};
+    for (const name of wb.SheetNames) {
+      const rows = XLSX.utils.sheet_to_json(wb.Sheets[name], {header:1, raw:true, defval:null});
+      let cur = null, section = 'basement';
+      for (const row of rows) {
+        const c0 = row[0];
+        const fecha = ctrlDetectarFecha(c0);
+        if (fecha) { cur = fecha; dias[cur] = {basement:[], upstairs:[]}; section = 'basement'; continue; }
+        if (!cur || typeof c0 !== 'string') continue;
+        const s = c0.trim().toUpperCase();
+        if (!s) continue;
+        if (s.includes('UPSTAIRS')) { section = 'upstairs'; continue; }
+        if (s === 'PRODUCT') continue;
+        dias[cur][section].push({prod: s, row: row});
       }
     }
-    btn.textContent = '✓ OK';
-    btn.style.cssText = 'font-size:11px;padding:5px 11px;border:1px solid #059669;border-radius:6px;background:#ecfdf5;color:#065f46;cursor:pointer;white-space:nowrap';
-  } catch(e) {
-    btn.textContent = '⚠ Error'; btn.title = e.message;
-    btn.style.cssText = 'font-size:11px;padding:5px 11px;border:1px solid #dc2626;border-radius:6px;background:#fef2f2;color:#991b1b;cursor:pointer;white-space:nowrap';
-  }
-  btn.disabled = false;
-}
 
-async function swProcesarHoras(file) {
-  const iconEl  = document.getElementById('sw-csv-icon');
-  const labelEl = document.getElementById('sw-csv-label');
-  const resumen = document.getElementById('sw-horas-resumen');
-  iconEl.textContent = '...'; labelEl.textContent = 'Procesando horas...';
-  window._swHorasManualTotal = 0;
-  try {
-    const ext = file.name.split('.').pop().toLowerCase();
-    if (ext === 'xlsx' || ext === 'xls') {
-      swHorasPorDia = await swLeerXLSX(file);
-    } else {
-      swHorasPorDia = {};
-      await swLeerCSV(file);
-    }
-    const diasTotal = Object.values(swHorasPorDia).reduce((a,b) => a+b, 0);
-    const manualTotal = window._swHorasManualTotal || 0;
-    const total = manualTotal || diasTotal;
-    iconEl.textContent = 'OK';
-    labelEl.textContent = Object.keys(swHorasPorDia).length + ' dias - ' + total.toFixed(2) + 'h total';
-    if (Object.keys(swHorasPorDia).length > 0) {
-      let html = '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px">';
-      Object.entries(swHorasPorDia).sort().forEach(function(entry) {
-        html += '<div style="background:var(--glass);border-radius:6px;padding:4px 10px;font-size:12px"><span style="color:var(--texto-3)">' + entry[0].slice(5) + '</span> <strong>' + entry[1].toFixed(1) + 'h</strong></div>';
+    const fechas = Object.keys(dias).sort();
+    if (!fechas.length) throw new Error('No se detectaron días en el archivo — ¿es el formato Control Diario?');
+    const ultima = fechas[fechas.length - 1];
+
+    ctrlDias = fechas.map(function(fecha) {
+      const d = dias[fecha];
+      const soloInventario = (fecha === ultima);
+      const invRows = [], notasExtra = [];
+      const dp = {};
+      let kgIni = 0, kgFin = 0;
+
+      d.basement.forEach(function(item) {
+        const row = item.row, prod = item.prod;
+        const cierre  = ctrlNum(row[1]) || 0;
+        const pedidos = ctrlNum(row[2]) || 0;
+        let total = ctrlNum(row[3]);
+        if (total === null) total = Math.max(0, cierre - pedidos);
+        const stockInfo = getStockInfo(prod);
+        const um = ctrlNum(row[4]) || (stockInfo ? stockInfo.kg_bolsa : null);
+        let prodn = row.length > 7 ? ctrlNum(row[7]) : null;
+        if (soloInventario || prodn === null) prodn = 0;
+        for (let k = 8; k < row.length; k++) {
+          if (typeof row[k] === 'string' && row[k].trim() && row[k].trim() !== '`')
+            notasExtra.push(prod + ': ' + row[k].trim());
+        }
+        invRows.push({producto: CTRL_INV_NAME[prod] || prod, seccion: 'basement',
+          inv_cierre: cierre, pedidos: pedidos, inv_inicial: total,
+          producido: prodn, inv_final: total + prodn});
+        if (CTRL_CANON[prod] && um && !soloInventario) {
+          const ini = +(total * um).toFixed(2);
+          const fin = +(ini + prodn * um).toFixed(2);
+          const c = CTRL_CANON[prod];
+          if (dp[c]) { dp[c].kg_inicio += ini; dp[c].kg_fin += fin; }
+          else dp[c] = {producto: c, kg_inicio: ini, kg_fin: fin};
+          kgIni += ini; kgFin += fin;
+        }
       });
-      html += '</div>';
-      resumen.innerHTML = html;
-    }
-    swActualizarPreview();
+
+      d.upstairs.forEach(function(item) {
+        const row = item.row, prod = item.prod;
+        const cierre  = ctrlNum(row[1]) || 0;
+        const pedidos = ctrlNum(row[2]) || 0;
+        let total = ctrlNum(row[3]);
+        if (total === null) total = Math.max(0, cierre - pedidos);
+        let prodn = row.length > 4 ? ctrlNum(row[4]) : null;
+        if (soloInventario || prodn === null) prodn = 0;
+        invRows.push({producto: prod, seccion: 'upstairs',
+          inv_cierre: cierre, pedidos: pedidos, inv_inicial: total,
+          producido: prodn, inv_final: total + prodn});
+      });
+
+      const dpRows = Object.values(dp).map(function(r) {
+        return {producto: r.producto, kg_inicio: +r.kg_inicio.toFixed(2), kg_fin: +r.kg_fin.toFixed(2),
+          kg_prod: Math.max(0, +(r.kg_fin - r.kg_inicio).toFixed(2))};
+      });
+
+      return {fecha: fecha, soloInventario: soloInventario, invRows: invRows, dpRows: dpRows,
+        kgIni: +kgIni.toFixed(2), kgFin: +kgFin.toFixed(2), kgProd: +(kgFin - kgIni).toFixed(2),
+        notasExtra: notasExtra};
+    });
+
+    iconEl.textContent = '✅';
+    labelEl.textContent = fechas.length + ' días detectados: ' + fechas[0] + ' → ' + ultima +
+      ' (el último solo inventario)';
+    ctrlActualizarPreview();
   } catch(e) {
-    iconEl.textContent = 'error'; labelEl.textContent = 'Error: ' + e.message;
+    iconEl.textContent = '❌'; labelEl.textContent = 'Error: ' + e.message;
+    ctrlDias = [];
   }
 }
 
-function swActualizarPreview() {
-  if (!swDiasPDF.length) return;
-  document.getElementById('sw-paso4').style.display = 'block';
-
-  if (!swSemanaId) {
-    const fecha = swDiasPDF.find(d => d.fecha) && swDiasPDF.find(d => d.fecha).fecha;
-    if (fecha) {
-      const sem = semanas.find(s => fecha >= s.fecha_inicio && fecha <= s.fecha_fin);
-      if (sem) {
-        swSemanaId = sem.id;
-        const sel = document.getElementById('sw-semana-sel');
-        if (sel) { sel.value = sem.id; if(sel.onchange) sel.onchange(); }
-      }
-    }
-  }
-
-  const manualTotal = window._swHorasManualTotal || 0;
-  if (manualTotal > 0 && Object.keys(swHorasPorDia).length === 0) {
-    const porDia = +(manualTotal / swDiasPDF.length).toFixed(2);
-    swDiasPDF.forEach(function(d) { if (d.fecha) swHorasPorDia[d.fecha] = porDia; });
-  }
-
-  const dias_nombres = ['Dom','Lun','Mar','Mie','Jue','Vie','Sab'];
+function ctrlActualizarPreview() {
+  if (!ctrlDias.length) return;
+  document.getElementById('ctrl-paso3').style.display = 'block';
+  const diasNom = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
   let totalKg = 0, totalH = 0;
 
-  const rows = swDiasPDF.map(function(d, i) {
-    const horas = d.fecha ? (swHorasPorDia[d.fecha] || 0) : 0;
-    const kgh = horas > 0 ? (d.kgProd / horas).toFixed(1) : '-';
-    const diaNom = d.fecha ? dias_nombres[new Date(d.fecha + 'T12:00:00').getDay()] : '-';
+  const rows = ctrlDias.map(function(d, i) {
+    const horas = ctrlHorasPorDia[d.fecha] || 0;
+    const diaNom = diasNom[new Date(d.fecha + 'T12:00:00').getDay()];
+    if (d.soloInventario) {
+      return '<tr><td style="font-family:var(--mono);font-size:12px">' + d.fecha + '</td>' +
+        '<td style="color:var(--texto-3);font-size:12px">' + diaNom + '</td>' +
+        '<td colspan="5" style="font-size:12px;color:var(--texto-3)">📦 Solo inventario — la producción entra con el corte del día siguiente</td>' +
+        '<td></td><td class="td-center"><span id="ctrl-status-' + i + '">…</span></td></tr>';
+    }
+    const kgh = horas > 0 ? (d.kgProd / horas).toFixed(1) : '—';
     const metaOk = d.kgProd >= META_KG_DIA;
     totalKg += d.kgProd; totalH += horas;
     return '<tr>' +
-      '<td><input type="date" value="' + (d.fecha||'') + '" onchange="swFechaChanged(' + i + ',this.value)" style="border:1px solid var(--borde);border-radius:6px;padding:4px 8px;font-size:12px;font-family:inherit"></td>' +
+      '<td style="font-family:var(--mono);font-size:12px">' + d.fecha + '</td>' +
       '<td style="color:var(--texto-3);font-size:12px">' + diaNom + '</td>' +
-      '<td class="td-num" style="font-family:var(--mono);font-size:12px">' + d.kgInicio.toFixed(1) + '</td>' +
+      '<td class="td-num" style="font-family:var(--mono);font-size:12px">' + d.kgIni.toFixed(1) + '</td>' +
       '<td class="td-num" style="font-family:var(--mono);font-size:12px">' + d.kgFin.toFixed(1) + '</td>' +
       '<td class="td-num" style="font-family:var(--mono);font-weight:700;color:' + (metaOk?'var(--verde-2)':'var(--rojo-2)') + '">' + d.kgProd.toFixed(1) + '</td>' +
-      '<td class="td-num" style="font-family:var(--mono);font-size:12px">' + (horas>0?horas.toFixed(2):'-') + '</td>' +
+      '<td class="td-num" style="font-family:var(--mono);font-size:12px">' + (horas>0?horas.toFixed(2):'—') + '</td>' +
       '<td class="td-num" style="font-size:12px">' + kgh + '</td>' +
-      '<td class="td-center"><span id="sw-status-' + i + '">...</span></td></tr>';
+      '<td style="font-size:11px;color:var(--texto-3);max-width:200px">' + escapeHtml(d.notasExtra.join('; ')) + '</td>' +
+      '<td class="td-center"><span id="ctrl-status-' + i + '">…</span></td></tr>';
   });
 
-  const eficTotal = totalH > 0 ? (totalKg/totalH).toFixed(2) : '-';
-  document.getElementById('sw-tabla-body').innerHTML = rows.join('');
-  document.getElementById('sw-tabla-foot').innerHTML =
+  const eficTotal = totalH > 0 ? (totalKg/totalH).toFixed(2) : '—';
+  document.getElementById('ctrl-tabla-body').innerHTML = rows.join('');
+  document.getElementById('ctrl-tabla-foot').innerHTML =
     '<tr style="background:var(--gris-50);font-weight:600">' +
-    '<td colspan="4" style="padding:10px 14px;font-size:12px">TOTAL SEMANA</td>' +
+    '<td colspan="4" style="padding:10px 14px;font-size:12px">TOTAL</td>' +
     '<td class="td-num" style="font-family:var(--mono);color:var(--verde-2)">' + fmt(totalKg) + ' kg</td>' +
-    '<td class="td-num" style="font-family:var(--mono)">' + (totalH>0?fmt(totalH)+' h':'-') + '</td>' +
-    '<td class="td-num" style="font-size:12px">' + eficTotal + ' kg/h</td><td></td></tr>';
+    '<td class="td-num" style="font-family:var(--mono)">' + (totalH>0?fmt(totalH)+' h':'—') + '</td>' +
+    '<td class="td-num" style="font-size:12px">' + eficTotal + ' kg/h</td><td></td><td></td></tr>';
 }
 
-function swFechaChanged(i, nuevaFecha) {
-  if (swDiasPDF[i]) swDiasPDF[i].fecha = nuevaFecha;
-  swActualizarPreview();
+async function ctrlGuardarTodo() {
+  const btn = document.getElementById('ctrl-btn-guardar');
+  const status = document.getElementById('ctrl-save-status');
+  if (!ctrlDias.length) { if (status) status.textContent = '⚠️ No hay días para guardar'; return; }
+  btn.disabled = true; btn.textContent = 'Guardando…';
+  let guardados = 0, errores = 0;
+
+  // horas ya registradas (para no borrarlas al re-importar sin archivo de horas)
+  const fechasImport = ctrlDias.map(d => d.fecha);
+  const {data: diasPrevios} = await db.from('dias').select('fecha,horas')
+    .gte('fecha', fechasImport[0]).lte('fecha', fechasImport[fechasImport.length-1]);
+  const horasPrevias = {};
+  (diasPrevios || []).forEach(r => { if (r.horas != null) horasPrevias[r.fecha] = r.horas; });
+
+  for (let i = 0; i < ctrlDias.length; i++) {
+    const d = ctrlDias[i];
+    const statusEl = document.getElementById('ctrl-status-' + i);
+    const semRes = await obtenerOCrearSemana(d.fecha);
+    if (semRes.error) { if (statusEl) statusEl.textContent = '❌'; errores++; continue; }
+    const semana_id = semRes.id;
+
+    const invRows = d.invRows.map(r => Object.assign({fecha: d.fecha}, r));
+    const invRes = await replaceRowsPorFecha('inventario_diario', d.fecha, invRows);
+    if (invRes.error) { if (statusEl) statusEl.textContent = '❌'; errores++; continue; }
+
+    if (d.soloInventario) { if (statusEl) statusEl.textContent = '📦'; guardados++; continue; }
+
+    const horas = ctrlHorasPorDia[d.fecha] || horasPrevias[d.fecha] || null;
+    let notas = 'Inv: ' + d.kgIni.toFixed(2) + ' → ' + d.kgFin.toFixed(2) + ' · Import Excel';
+    if (d.notasExtra.length) notas += ' · ' + d.notasExtra.join('; ');
+    const diaRes = await db.from('dias').upsert(
+      {fecha: d.fecha, semana_id: semana_id, prod: d.kgProd, horas: horas,
+       start_kg: d.kgIni, end_kg: d.kgFin, notas: notas},
+      {onConflict: 'fecha'});
+    if (diaRes.error) { if (statusEl) statusEl.textContent = '❌'; errores++; continue; }
+
+    const dpRows = d.dpRows.map(r => Object.assign({fecha: d.fecha, semana_id: semana_id}, r));
+    const dpRes = await replaceRowsPorFecha('dias_productos', d.fecha, dpRows);
+    if (dpRes.error) { if (statusEl) statusEl.textContent = '⚠️'; errores++; continue; }
+
+    if (statusEl) statusEl.textContent = '✅';
+    guardados++;
+  }
+
+  btn.disabled = false; btn.textContent = '💾 Guardar todos los días';
+  if (status) status.textContent = guardados + ' día(s) guardado(s)' + (errores ? ' · ' + errores + ' error(es)' : '');
+  toast('Import completado: ' + guardados + ' días ✓', errores ? 'err' : 'ok');
+  if (guardados > 0) await refreshAll();
 }
 
+// ── Horas: CSV 7shifts o Excel/CSV genérico con columnas fecha + horas ──
+async function ctrlProcesarHoras(file) {
+  const iconEl  = document.getElementById('ctrl-horas-icon');
+  const labelEl = document.getElementById('ctrl-horas-label');
+  const resumen = document.getElementById('ctrl-horas-resumen');
+  iconEl.textContent = '⏳'; labelEl.textContent = 'Procesando horas…';
+  try {
+    let text;
+    const ext = file.name.split('.').pop().toLowerCase();
+    if (ext === 'xlsx' || ext === 'xls') {
+      if (!(await cargarXLSXLib())) throw new Error('No se pudo cargar el lector de Excel');
+      const ab = await file.arrayBuffer();
+      const wb = XLSX.read(ab, {type:'array'});
+      text = XLSX.utils.sheet_to_csv(wb.Sheets[wb.SheetNames[0]]);
+    } else {
+      text = await file.text();
+    }
+    const porDia = ctrlLeerCSVHoras(text);
+    const fechas = Object.keys(porDia);
+    if (!fechas.length) throw new Error('No se encontraron horas por fecha (se esperan columnas de fecha y horas)');
+    ctrlHorasPorDia = porDia;
+    const total = Object.values(porDia).reduce((a,b) => a+b, 0);
+    iconEl.textContent = '✅';
+    labelEl.textContent = fechas.length + ' días · ' + total.toFixed(2) + ' h total';
+    let html = '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px">';
+    fechas.sort().forEach(function(f) {
+      html += '<div style="background:var(--glass);border-radius:6px;padding:4px 10px;font-size:12px"><span style="color:var(--texto-3)">' + f.slice(5) + '</span> <strong>' + porDia[f].toFixed(1) + 'h</strong></div>';
+    });
+    resumen.innerHTML = html + '</div>';
 
-async function swLeerCSV(file) {
-  let text = await file.text();
-  text = text.replace(/^\uFEFF/, '');
-  const rawLines = text.split(/\r?\n/);
-  const lines = rawLines.filter(l => l.trim());
+    if (ctrlDias.length) {
+      ctrlActualizarPreview();
+    } else {
+      // sin excel cargado: aplicar a días ya guardados en la base
+      if (confirm('No hay días cargados del paso 1.\n¿Aplicar estas horas a los ' + fechas.length + ' días ya guardados en la base?')) {
+        let ok = 0;
+        for (const f of fechas.sort()) {
+          const {error} = await db.from('dias').update({horas: +porDia[f].toFixed(2)}).eq('fecha', f);
+          if (!error) ok++;
+        }
+        toast('Horas aplicadas a ' + ok + ' día(s) ✓', 'ok');
+        await refreshAll();
+      }
+    }
+  } catch(e) {
+    iconEl.textContent = '❌'; labelEl.textContent = 'Error: ' + e.message;
+  }
+}
+
+function ctrlLeerCSVHoras(text) {
+  text = text.replace(/^﻿/, '');
+  const lines = text.split(/\r?\n/).filter(l => l.trim());
+  if (!lines.length) return {};
   const header = parseCSVRow(lines[0]).map(h => h.toLowerCase().replace(/['"]/g,'').trim());
 
-  // Detect column indices for 7shifts format
-  const iDate    = header.findIndex(h => h === 'local_date' || h === 'date');
+  const iDate    = header.findIndex(h => h === 'local_date' || h === 'date' || h === 'fecha');
   const iFname   = header.findIndex(h => h === 'fname' || h === 'first name');
   const iLname   = header.findIndex(h => h === 'lname' || h === 'last name');
-  const iName    = header.findIndex(h => h === 'name');
-  const iHours   = header.findIndex(h => h === 'hours' || h === 'reg hours' || h === 'regular hours');
+  const iName    = header.findIndex(h => h === 'name' || h === 'nombre');
+  const iHours   = header.findIndex(h => h === 'hours' || h === 'reg hours' || h === 'regular hours' || h === 'horas');
   const iJobcode = header.findIndex(h => h.includes('jobcode') || h === 'job');
-
   const porDia = {};
 
   for (const line of lines.slice(1)) {
     const cols = parseCSVRow(line);
     if (!cols.length) continue;
 
-    // Get name
     let name = '';
-    if (iName >= 0) {
-      name = String(cols[iName] || '').trim().toUpperCase();
-    } else if (iFname >= 0 && iLname >= 0) {
+    if (iName >= 0) name = String(cols[iName] || '').trim().toUpperCase();
+    else if (iFname >= 0 && iLname >= 0)
       name = (String(cols[iFname]||'').trim() + ' ' + String(cols[iLname]||'').trim()).trim().toUpperCase();
-    }
-    if (!name || name.includes('TOTAL') || name.includes('SUBTOTAL')) continue;
-
-    // Excluir Mario Alberto
+    if (name && (name.includes('TOTAL') || name.includes('SUBTOTAL'))) continue;
     if (name.includes('MARIO') && name.includes('HERNANDEZ')) continue;
+    if (iJobcode >= 0 && String(cols[iJobcode] || '').trim().toLowerCase() === 'break') continue;
 
-    // Excluir Break
-    if (iJobcode >= 0) {
-      const job = String(cols[iJobcode] || '').trim().toLowerCase();
-      if (job === 'break') continue;
-    }
-
-    var horasRaw = String(cols[iHours] || '0').trim().replace(',','.');
-    var horas = 0;
+    const horasRaw = String(cols[iHours] || '0').trim().replace(',', '.');
+    let horas = 0;
     if (horasRaw.indexOf(':') >= 0) {
-      var hp = horasRaw.split(':');
+      const hp = horasRaw.split(':');
       horas = (parseInt(hp[0], 10) || 0) + (parseInt(hp[1], 10) || 0) / 60;
     } else {
       horas = parseFloat(horasRaw) || 0;
     }
     if (horas <= 0) continue;
 
-    // Agrupar por fecha
-    let fecha = '';
-    if (iDate >= 0) {
-      fecha = String(cols[iDate] || '').trim().replace(/['"]/g,'').slice(0,10);
+    let fecha = iDate >= 0 ? String(cols[iDate] || '').trim().replace(/['"]/g,'') : '';
+    // aceptar DD/MM/YYYY o MM/DD/YYYY con año al final → normalizar solo ISO
+    if (fecha && !fecha.match(/^\d{4}-\d{2}-\d{2}/)) {
+      const dm = fecha.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/);
+      if (dm) fecha = dm[3] + '-' + String(dm[2]).padStart(2,'0') + '-' + String(dm[1]).padStart(2,'0');
     }
-
-    if (fecha && fecha.match(/^\d{4}-\d{2}-\d{2}$/)) {
-      porDia[fecha] = (porDia[fecha] || 0) + horas;
-    } else {
-      // Sin fecha — acumular total
-      window._swHorasManualTotal = (window._swHorasManualTotal || 0) + horas;
-    }
+    fecha = fecha.slice(0, 10);
+    if (fecha.match(/^\d{4}-\d{2}-\d{2}$/)) porDia[fecha] = (porDia[fecha] || 0) + horas;
   }
-
-  // Si tenemos por día, usarlo directamente
-  if (Object.keys(porDia).length > 0) {
-    Object.assign(swHorasPorDia, porDia);
-    const total = Object.values(porDia).reduce((a,b) => a+b, 0);
-    window._swHorasManualTotal = total;
-  }
-
   return porDia;
-}
-
-
-// =====================================================================
-// =====================================================================
-// GUARDAR SEMANA COMPLETA
-// =====================================================================
-async function swGuardarTodo() {
-  const btn = document.getElementById('sw-btn-guardar');
-  const status = document.getElementById('sw-save-status');
-  if (!swDiasPDF.length) { if(status) status.textContent = '⚠️ No hay días para guardar'; return; }
-  btn.disabled = true; btn.textContent = 'Guardando...';
-  let guardados = 0, errores = 0;
-
-  for (let i = 0; i < swDiasPDF.length; i++) {
-    const statusEl = document.getElementById('sw-status-' + i);
-    const d = swDiasPDF[i];
-    if (!d.fecha) { if(statusEl) statusEl.textContent = '⚠️'; errores++; continue; }
-
-    let semana_id = swSemanaId;
-    if (!semana_id) {
-      const sem = semanas.find(s => d.fecha >= s.fecha_inicio && d.fecha <= s.fecha_fin);
-      if (sem) { semana_id = sem.id; swSemanaId = sem.id; }
-    }
-    const horas = swHorasPorDia[d.fecha] || null;
-    const horasVal = horas > 0 ? +horas.toFixed(2) : null;
-    const notas = 'Inv: ' + d.kgInicio + ' -> ' + d.kgFin;
-
-    const {error} = await db.from('dias').upsert(
-      {fecha: d.fecha, semana_id, prod: d.kgProd, notas, horas: horasVal},
-      {onConflict: 'fecha'}
-    );
-    if (error) { if(statusEl) statusEl.textContent = '❌'; errores++; continue; }
-    if (d.productos && d.productos.length > 0) {
-      const dpRows = d.productos.map(p => ({fecha: d.fecha, semana_id, producto: p.producto,
-        kg_inicio: p.kg_inicio, kg_fin: p.kg_fin, kg_prod: p.kg_prod}));
-      const dpRes = await replaceRowsPorFecha('dias_productos', d.fecha, dpRows);
-      if (dpRes.error) { if(statusEl) statusEl.textContent = '⚠️'; errores++; continue; }
-    }
-    if(statusEl) statusEl.textContent = '✅'; guardados++;
-  }
-
-  if (swSemanaId) {
-    const totalH = window._swHorasManualTotal || Object.values(swHorasPorDia).reduce((a,b)=>a+b,0);
-    if (totalH > 0) await db.from('semanas').update({horas: +totalH.toFixed(2)}).eq('id', swSemanaId);
-    window._swHorasManualTotal = 0;
-  }
-
-  btn.disabled = false; btn.textContent = '💾 Guardar semana completa';
-  if (status) status.textContent = guardados + ' día(s) guardado(s)' + (errores ? ' · ' + errores + ' error(es)' : '');
-  toast('Semana guardada: ' + guardados + ' días ✓', errores ? 'err' : 'ok');
-  if (guardados > 0) await refreshAll();
-}
-
-// TAB: CALENDARIO
-// =====================================================================
-async function renderCalendario(){
-  const container=document.getElementById('cal-content');
-  const mesSel=document.getElementById('cal-mes-sel').value;
-  container.innerHTML='<div class="loading"><div class="spinner"></div></div>';
-  const {desde,hasta}=getAllDateRange();
-  const allRows=await fetchDiasByRange(desde,hasta);
-  const byFecha={};
-  for (const r of allRows) byFecha[r.fecha]=r;
-  const mesesDisponibles=[...new Set(allRows.map(r=>r.fecha.slice(0,7)))].sort();
-  const mesesAMostrar=mesSel==='all'?mesesDisponibles:[mesSel];
-  const diasSem=['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'];
-  const mesesNom=['','Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
-  let html='';
-  for (const mes of mesesAMostrar){
-    const [y,m]=mes.split('-').map(Number);
-    const primerDia=new Date(y,m-1,1);
-    const ultimoDia=new Date(y,m,0);
-    const totalDias=ultimoDia.getDate();
-    let startDow=primerDia.getDay();
-    startDow=startDow===0?6:startDow-1;
-    const rowsMes=allRows.filter(r=>r.fecha.slice(0,7)===mes);
-    const totalKg=rowsMes.reduce((a,r)=>a+(r.kg_producidos||0),0);
-    const diasOk=rowsMes.filter(r=>r.kg_producidos>=META_KG_DIA).length;
-    html+=`<div class="card" style="margin-bottom:20px">
-      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:16px">
-        <div class="cal-month-title">${mesesNom[m]} ${y}</div>
-        <div style="display:flex;gap:16px;font-size:12px">
-          <span><strong style="font-family:'DM Mono',monospace">${fmt(totalKg)}</strong> kg totales</span>
-          <span><strong style="color:var(--verde-vivo)">${diasOk}</strong> días sobre meta</span>
-          <span><strong>${rowsMes.length}</strong> días registrados</span>
-        </div>
-      </div>
-      <div class="cal-grid">
-        ${diasSem.map(d=>`<div class="cal-header">${d}</div>`).join('')}
-        ${Array(startDow).fill('<div></div>').join('')}
-        ${Array.from({length:totalDias},(_,i)=>{
-          const d=i+1;
-          const iso=`${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
-          const r=byFecha[iso];
-          const dow=new Date(iso+'T12:00:00').getDay();
-          const esFinSemana=dow===0||dow===6;
-          if (!r){const cls=esFinSemana?'other-month':'feriado';return `<div class="cal-day ${cls}">${d}</div>`;}
-          const kg=r.kg_producidos||0;
-          const pct=kg/META_KG_DIA;
-          const cls=pct>=1?'ok':pct>=0.85?'warn':'bad';
-          return `<div class="cal-day ${cls}" title="${fmtDate(iso)}: ${fmt(kg)} kg">${d}<div class="cal-kg">${fmt(kg,0)}</div></div>`;
-        }).join('')}
-      </div>
-      <div style="display:flex;gap:12px;margin-top:12px;flex-wrap:wrap">
-        <div style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--gris-500)"><div style="width:12px;height:12px;border-radius:3px;background:#dcfce7"></div>≥600 kg</div>
-        <div style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--gris-500)"><div style="width:12px;height:12px;border-radius:3px;background:#fef3c7"></div>85–99%</div>
-        <div style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--gris-500)"><div style="width:12px;height:12px;border-radius:3px;background:#fee2e2"></div>Bajo meta</div>
-        <div style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--gris-500)"><div style="width:12px;height:12px;border-radius:3px;background:#f1f5f9;border:1px dashed #cbd5e1"></div>Sin registro</div>
-      </div>
-    </div>`;
-  }
-  const sorted=[...allRows].filter(r=>r.kg_producidos>0).sort((a,b)=>b.kg_producidos-a.kg_producidos);
-  const top5=sorted.slice(0,5);
-  const low5=sorted.slice(-5).reverse();
-  html+=`<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px">
-    <div class="card"><h2 style="margin-bottom:12px">🏆 Top 5 días más productivos</h2>
-      <div class="top-dias">
-        ${top5.map((r,i)=>`<div class="top-dia-card"><div class="top-dia-rank">#${i+1}</div>
-          <div class="top-dia-kg">${fmt(r.kg_producidos,0)} <span style="font-size:12px;font-weight:400;color:var(--gris-500)">kg</span></div>
-          <div class="top-dia-fecha">${fmtDate(r.fecha)} · ${r.dia_nombre||''}</div></div>`).join('')}
-      </div>
-    </div>
-    <div class="card"><h2 style="margin-bottom:12px">📉 5 días con menor producción</h2>
-      <div class="top-dias">
-        ${low5.map((r,i)=>`<div class="top-dia-card bad"><div class="top-dia-rank">#${i+1}</div>
-          <div class="top-dia-kg">${fmt(r.kg_producidos,0)} <span style="font-size:12px;font-weight:400;color:var(--gris-500)">kg</span></div>
-          <div class="top-dia-fecha">${fmtDate(r.fecha)} · ${r.dia_nombre||''}</div></div>`).join('')}
-      </div>
-    </div>
-  </div>`;
-  container.innerHTML=html;
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -4475,7 +3677,62 @@ async function invGuardarConteo(){
   }
   statusEl.textContent='✅ '+rows.length+' productos guardados — '+fecha;
   toast('Conteo del '+fecha+' guardado ✓','ok');
+  await invDerivarProduccionAyer(fecha, rows);
   await invCargarHistorial();
+}
+
+// Con el conteo de hoy se deriva la producción de AYER (misma lógica que el
+// Excel Control Diario): producido(ayer) = inv_cierre(hoy) − inv_inicial(ayer),
+// y el inv_final de ayer se corrige al conteo real de hoy.
+async function invDerivarProduccionAyer(fecha, rowsHoy){
+  const d = new Date(fecha+'T12:00:00'); d.setDate(d.getDate()-1);
+  const ayerStr = d.toISOString().split('T')[0];
+  const {data: ayerRows, error} = await db.from('inventario_diario').select('*').eq('fecha', ayerStr);
+  if (error || !ayerRows || !ayerRows.length) return; // sin conteo de ayer, nada que derivar
+
+  const hoyMap = {};
+  rowsHoy.forEach(r => { hoyMap[r.producto] = r; });
+
+  let kgIni = 0, kgFin = 0;
+  const dp = {};
+  for (const ar of ayerRows){
+    const hr = hoyMap[ar.producto];
+    if (!hr) continue;
+    const inv_final = hr.inv_cierre || 0;
+    const producido = +(inv_final - (ar.inv_inicial||0)).toFixed(2);
+    if (producido !== (ar.producido||0) || inv_final !== (ar.inv_final||0)){
+      await db.from('inventario_diario').update({producido, inv_final}).eq('id', ar.id);
+    }
+    if ((ar.seccion||'basement') !== 'basement') continue;
+    const canon = CTRL_CANON[(ar.producto||'').toUpperCase().trim()];
+    const info  = getStockInfo(ar.producto);
+    if (!canon || !info || !info.kg_bolsa) continue;
+    const ini = +(((ar.inv_inicial||0)) * info.kg_bolsa).toFixed(2);
+    const fin = +(inv_final * info.kg_bolsa).toFixed(2);
+    if (dp[canon]) { dp[canon].kg_inicio += ini; dp[canon].kg_fin += fin; }
+    else dp[canon] = {producto: canon, kg_inicio: ini, kg_fin: fin};
+    kgIni += ini; kgFin += fin;
+  }
+
+  const dpRows = Object.values(dp).map(r => ({producto: r.producto,
+    kg_inicio: +r.kg_inicio.toFixed(2), kg_fin: +r.kg_fin.toFixed(2),
+    kg_prod: Math.max(0, +(r.kg_fin - r.kg_inicio).toFixed(2))}));
+  if (!dpRows.length) return;
+
+  const semRes = await obtenerOCrearSemana(ayerStr);
+  if (semRes.error) return;
+  const {data: diaEx} = await db.from('dias').select('horas').eq('fecha', ayerStr).maybeSingle();
+  const kgProd = +(kgFin - kgIni).toFixed(2);
+  const notas  = 'Inv: '+kgIni.toFixed(2)+' → '+kgFin.toFixed(2)+' · Derivado del conteo del '+fecha;
+  const upRes = await db.from('dias').upsert(
+    {fecha: ayerStr, semana_id: semRes.id, prod: kgProd,
+     horas: diaEx ? diaEx.horas : null, start_kg: +kgIni.toFixed(2), end_kg: +kgFin.toFixed(2), notas},
+    {onConflict: 'fecha'});
+  if (upRes.error) { dbError('derivar producción', upRes.error); return; }
+  await replaceRowsPorFecha('dias_productos', ayerStr,
+    dpRows.map(r => Object.assign({fecha: ayerStr, semana_id: semRes.id}, r)));
+  toast('Producción del '+ayerStr+' derivada del conteo: '+fmt(kgProd)+' kg ✓','ok');
+  await refreshAll();
 }
 
 async function invDescargarExcel(){
@@ -4617,7 +3874,6 @@ async function navTo(tabId){
   if (tabId==='inventario')    invRenderDefault();
   if (tabId==='semana-import') { /* upload tab, no render needed */ }
   if (tabId==='captura')       { await renderRecientes(); }
-  if (tabId==='calendario')    await renderCalendario();
   if (tabId==='graficas')      await renderGraficas();
   if (tabId==='datos')         await renderDatos();
   if (tabId==='reporte')       { repIniciarMeses(); await repGenerar(); }
