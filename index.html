@@ -3009,8 +3009,11 @@ async function ctrlProcesarExcel(file) {
       }
     }
 
-    const fechas = Object.keys(dias).sort();
-    if (!fechas.length) throw new Error('No se detectaron días en el archivo — ¿es el formato Control Diario?');
+    // bloques sin ningún conteo capturado (plantilla vacía) se saltan
+    const todasFechas = Object.keys(dias).sort();
+    const fechas = todasFechas.filter(f => dias[f].basement.some(it => ctrlNum(it.row[1]) !== null));
+    const vacios = todasFechas.length - fechas.length;
+    if (!fechas.length) throw new Error('No se detectaron días con datos en el archivo — ¿es el formato Control Diario?');
     const ultima = fechas[fechas.length - 1];
 
     ctrlDias = fechas.map(function(fecha) {
@@ -3072,7 +3075,7 @@ async function ctrlProcesarExcel(file) {
 
     iconEl.textContent = '✅';
     labelEl.textContent = fechas.length + ' días detectados: ' + fechas[0] + ' → ' + ultima +
-      ' (el último solo inventario)';
+      ' (el último solo inventario)' + (vacios > 0 ? ' · ' + vacios + ' día(s) sin datos omitidos' : '');
     ctrlActualizarPreview();
   } catch(e) {
     iconEl.textContent = '❌'; labelEl.textContent = 'Error: ' + e.message;
