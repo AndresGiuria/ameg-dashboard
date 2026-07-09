@@ -563,6 +563,23 @@
 </head>
 <body>
 
+<!-- LOGIN -->
+<div id="login-overlay" style="position:fixed;inset:0;z-index:1000;background:rgba(244,245,242,0.98);align-items:center;justify-content:center;display:none">
+  <form id="login-form" onsubmit="loginSubmit(event)" style="background:#fff;border:1px solid rgba(0,0,0,0.08);border-radius:16px;box-shadow:0 20px 60px rgba(0,0,0,0.12);padding:36px 32px;width:340px;max-width:90vw">
+    <div style="text-align:center;margin-bottom:20px">
+      <div style="font-size:34px;margin-bottom:8px">🌮</div>
+      <div style="font-size:17px;font-weight:700">AMEG Dashboard</div>
+      <div style="font-size:12px;color:#888;margin-top:2px">Inicia sesión para continuar</div>
+    </div>
+    <label style="font-size:11px;font-weight:600;color:#555;display:block;margin-bottom:4px">Correo</label>
+    <input type="email" id="login-email" required autocomplete="username" style="width:100%;border:1px solid #ddd;border-radius:8px;padding:9px 12px;font-size:14px;margin-bottom:12px;font-family:inherit">
+    <label style="font-size:11px;font-weight:600;color:#555;display:block;margin-bottom:4px">Contraseña</label>
+    <input type="password" id="login-pass" required autocomplete="current-password" style="width:100%;border:1px solid #ddd;border-radius:8px;padding:9px 12px;font-size:14px;font-family:inherit">
+    <div id="login-error" style="font-size:12px;color:#c0190f;min-height:16px;margin:6px 0 10px"></div>
+    <button type="submit" id="login-btn" class="btn btn-primary" style="width:100%;justify-content:center;padding:11px">Entrar</button>
+  </form>
+</div>
+
 <header>
   <div class="brand">
     <div class="brand-icon">🌮</div>
@@ -576,6 +593,7 @@
       <div class="conn-dot" id="db-dot"></div>
       <span id="db-status">Conectando…</span>
     </div>
+    <button id="btn-logout" onclick="cerrarSesion()" title="Cerrar sesión" style="display:none;background:transparent;border:1px solid rgba(0,0,0,0.12);border-radius:8px;padding:5px 12px;font-size:12px;cursor:pointer;color:var(--texto-3)">Salir</button>
   </div>
 </header>
 
@@ -589,13 +607,13 @@
   <span class="nav-spacer"></span>
   <button class="nav-action" data-tab="semana-import">⚡ Semana nueva</button>
   <button class="nav-action" data-tab="captura">➕ Agregar día</button>
+  <button class="nav-action" data-tab="config">⚙️ Config</button>
 </nav>
 
 <main>
 
 <!-- TABLERO -->
 <div class="tab-pane active" id="tab-tablero">
-  <div id="db-diag-panel" style="display:none;background:var(--glass);border-radius:var(--radio-lg);padding:16px 20px;margin-bottom:16px;font-size:12px;font-family:var(--mono)"></div>
   <div id="status-bar-row" class="status-bar"></div>
   <div id="mes-top3-row" style="display:grid;grid-template-columns:1fr 2fr;gap:14px;margin-bottom:20px"></div>
   <div class="hero-grid" id="kpi-row">
@@ -652,7 +670,7 @@
 <!-- CAPTURA SEMANAL -->
 <div class="tab-pane" id="tab-semana-import">
   <div style="background:var(--glass);border-radius:var(--radio-lg);padding:12px 16px;margin-bottom:16px;font-size:13px;color:var(--texto-3);border-left:3px solid var(--verde-2)">
-    <strong style="color:var(--texto)">⚡ Flujo semanal</strong> — Usa esto cada semana. Sube los PDFs de bitácora y el CSV de horas de 7shifts. Claude lee todo automáticamente.
+    <strong style="color:var(--texto)">⚡ Flujo semanal</strong> — Usa esto cada semana. Sube los PDFs de bitácora y el CSV de horas de 7shifts. El OCR prellena los datos y tú los confirmas.
   </div>
   <!-- PASO 1: Semana -->
   <div class="card" style="margin-bottom:12px">
@@ -681,13 +699,13 @@
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
       <div style="width:26px;height:26px;border-radius:50%;background:var(--verde-2);color:#fff;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center">2</div>
       <h2 style="margin:0">Sube los PDFs de bitácora</h2>
-      <span style="font-size:12px;color:var(--texto-3);margin-left:4px">Claude lee cada página automáticamente</span>
+      <span style="font-size:12px;color:var(--texto-3);margin-left:4px">El botón 🔍 OCR prellena los números de cada página</span>
     </div>
     <div class="upload-zone" id="sw-pdf-zone">
       <input type="file" id="sw-pdf-input" accept=".pdf" multiple>
       <div class="uz-icon" id="sw-pdf-icon">📄</div>
       <p id="sw-pdf-label">Arrastra los PDFs aquí (1 PDF por día o un PDF con varias páginas)</p>
-      <small>Claude extrae fecha, kg inicio, kg fin y kg producido por producto</small>
+      <small>Usa 🔍 OCR para prellenar inicio/fin por producto y revisa contra la imagen</small>
     </div>
     <div id="sw-pdf-progress" style="display:none;margin-top:12px"></div>
     <div id="sw-dias-preview" style="margin-top:12px"></div>
@@ -1006,6 +1024,48 @@
   <div id="rep-content"><div class="loading"><div class="spinner"></div></div></div>
 </div>
 
+<!-- CONFIGURACIÓN -->
+<div class="tab-pane" id="tab-config">
+  <div style="background:var(--glass);border-radius:var(--radio-lg);padding:12px 16px;margin-bottom:16px;font-size:13px;color:var(--texto-3);border-left:3px solid var(--verde-2)">
+    <strong style="color:var(--texto)">⚙️ Configuración</strong> — Metas y stock por producto. Los cambios se guardan en la base de datos y aplican a todo el dashboard sin tocar código.
+  </div>
+  <div id="config-aviso" style="display:none;margin-bottom:16px"></div>
+
+  <div class="card" style="margin-bottom:16px">
+    <h2>🎯 Metas de producción</h2>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;margin-top:12px">
+      <div class="form-group">
+        <label>Meta diaria (kg)</label>
+        <input type="number" id="cfg-meta-dia" min="1" step="10">
+      </div>
+      <div class="form-group">
+        <label>Meta eficiencia (kg/h)</label>
+        <input type="number" id="cfg-meta-kgh" min="1" step="0.5">
+      </div>
+      <div class="form-group">
+        <label>Meta semanal vigente (kg)</label>
+        <input type="number" id="cfg-meta-sem" min="1" step="50">
+      </div>
+    </div>
+    <p style="font-size:11px;color:var(--texto-3);margin-top:8px">La meta semanal vigente aplica a las semanas desde el corte actual; las semanas históricas conservan su meta anterior.</p>
+  </div>
+
+  <div class="card" style="margin-bottom:16px">
+    <h2>📦 Stock por producto (bolsas)</h2>
+    <div class="table-wrap" style="margin-top:12px">
+      <table>
+        <thead><tr><th>Producto</th><th class="td-num">Kg / bolsa</th><th class="td-num">Mínimo</th><th class="td-num">Máximo</th></tr></thead>
+        <tbody id="cfg-stock-body"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+    <button class="btn btn-primary" id="cfg-btn-guardar" onclick="guardarConfigUI()">💾 Guardar configuración</button>
+    <span id="cfg-save-status" style="font-size:12px;color:var(--texto-3)"></span>
+  </div>
+</div>
+
 </main>
 <div id="toast"></div>
 
@@ -1015,15 +1075,38 @@
 // =====================================================================
 const SUPABASE_URL = 'https://vcsclfosmtrgfcgaqiqu.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZjc2NsZm9zbXRyZ2ZjZ2FxaXF1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUxNTQ0ODUsImV4cCI6MjA5MDczMDQ4NX0.9hE7rjud8KzszmO_-nA903wL7lxpsuLcWCFFYdUx2SY';
-const META_KG_DIA  = 600;
-const META_KG_H    = 12;
+let META_KG_DIA  = 600;   // editable en Supabase → app_config
+let META_KG_H    = 12;
 const EXCLUIDO_RH  = 'Mario Alberto Hernández';
 const EXCLUIDO_CSV = 'HERNANDEZ ALCALA, MARIO ALBERTO';
 
 // Meta semanal: sube de 3,600 a 3,900 kg a partir de esta fecha de inicio de semana
-const META_SEM_CUTOFF = '2026-05-01';
-const META_SEM_ANTES  = 3600;
-const META_SEM_DESDE  = 3900;
+let META_SEM_CUTOFF = '2026-05-01';
+let META_SEM_ANTES  = 3600;
+let META_SEM_DESDE  = 3900;
+
+// Sobreescribe las metas con la tabla app_config si existe (ver supabase_seguridad.sql).
+// Si la tabla no existe todavía, la app sigue con los valores de arriba.
+async function cargarConfig() {
+  const {data, error} = await db.from('app_config').select('clave,valor');
+  if (error || !data) return;
+  const map = {};
+  data.forEach(r => { map[r.clave] = r.valor; });
+  if (typeof map.meta_kg_dia === 'number' && map.meta_kg_dia > 0) META_KG_DIA = map.meta_kg_dia;
+  if (typeof map.meta_kg_h   === 'number' && map.meta_kg_h   > 0) META_KG_H   = map.meta_kg_h;
+  if (map.meta_semanal && typeof map.meta_semanal === 'object') {
+    if (map.meta_semanal.cutoff) META_SEM_CUTOFF = map.meta_semanal.cutoff;
+    if (map.meta_semanal.antes)  META_SEM_ANTES  = map.meta_semanal.antes;
+    if (map.meta_semanal.desde)  META_SEM_DESDE  = map.meta_semanal.desde;
+  }
+  if (map.inv_stock && typeof map.inv_stock === 'object') {
+    Object.keys(map.inv_stock).forEach(k => {
+      const v = map.inv_stock[k];
+      if (v && typeof v === 'object') INV_STOCK[k] = {kg_bolsa:+v.kg_bolsa||0, min:+v.min||0, max:+v.max||0};
+    });
+    recalcStockKeys();
+  }
+}
 function metaSemana(fechaInicio) { return fechaInicio >= META_SEM_CUTOFF ? META_SEM_DESDE : META_SEM_ANTES; }
 
 // "Hoy" siempre en hora de Toronto, sin importar la zona horaria del navegador
@@ -1204,11 +1287,8 @@ if (window.Chart) {
   Chart.defaults.color = '#6e7480';
   Chart.defaults.borderColor = 'rgba(0,0,0,0.06)';
   Chart.defaults.backgroundColor = 'rgba(10,110,53,0.07)';
-  Chart.defaults.font.family = "'Syne', system-ui, sans-serif";
+  Chart.defaults.font.family = "'Inter', system-ui, sans-serif";
 }
-
-// Sin SEED — todos los datos vienen de Supabase
-let localSeedDias = [];
 
 // =====================================================================
 // STATE
@@ -1224,6 +1304,19 @@ function toast(msg, type='ok') {
   el.textContent = msg; el.className = 'show ' + type;
   clearTimeout(el._t);
   el._t = setTimeout(() => el.className = '', 3200);
+}
+let _lastDbErrToast = 0;
+// Loguea y avisa (throttled) errores de Supabase en vez de silenciarlos:
+// sin esto, un fallo de red se ve como "sin datos" y el operador no se entera.
+function dbError(contexto, error) {
+  if (!error) return false;
+  console.error(contexto + ':', error.message || error);
+  const ahora = Date.now();
+  if (ahora - _lastDbErrToast > 8000) {
+    _lastDbErrToast = ahora;
+    toast('Error de conexión (' + contexto + '): ' + String(error.message || error).slice(0, 60), 'err');
+  }
+  return true;
 }
 function openModalAnimated(id) {
   requestAnimationFrame(() => { const m = document.getElementById(id); if (m) m.classList.add('show'); });
@@ -1350,7 +1443,7 @@ function normalizeDiaRow(r) {
 
 async function fetchDiasByRange(desde, hasta) {
   const {data,error} = await db.from('dias').select('*').gte('fecha',desde).lte('fecha',hasta).order('fecha');
-  if (error) console.error('fetchDias:', error.message);
+  if (error) dbError('cargar días', error);
   const dbRows  = (data||[]).map(r => normalizeDiaRow(r));
   const allRows = [...dbRows].sort((a,b) => a.fecha.localeCompare(b.fecha));
 
@@ -1371,6 +1464,29 @@ async function fetchDiasByRange(desde, hasta) {
   });
 }
 
+// Reemplaza las filas de una tabla para una fecha SIN riesgo de pérdida:
+// respalda lo existente antes de borrar; si el insert nuevo falla,
+// restaura el respaldo para que el dato previo no desaparezca.
+async function replaceRowsPorFecha(tabla, fecha, rows) {
+  const {data: previas, error: errSel} = await db.from(tabla).select('*').eq('fecha', fecha);
+  if (errSel) return {error: errSel};
+  const {error: errDel} = await db.from(tabla).delete().eq('fecha', fecha);
+  if (errDel) return {error: errDel};
+  if (!rows || !rows.length) return {error: null};
+  const {error: errIns} = await db.from(tabla).insert(rows);
+  if (!errIns) return {error: null};
+  let restaurado = false;
+  if (previas && previas.length) {
+    let {error: errRest} = await db.from(tabla).insert(previas);
+    if (errRest) {
+      const sinId = previas.map(({id, ...r}) => r);
+      ({error: errRest} = await db.from(tabla).insert(sinId));
+    }
+    restaurado = !errRest;
+  }
+  return {error: errIns, restaurado};
+}
+
 // =====================================================================
 // MONTH UTILITIES
 // =====================================================================
@@ -1386,7 +1502,7 @@ function getAvailableMonths() {
 function populateMonthSelects() {
   const months = getAvailableMonths();
   const currentMonth = hoyISO().slice(0,7);
-  ['captura-mes-sel','semanal-mes-sel','mes-mes-sel','hist-mes-sel','graf-mes-sel','cal-mes-sel','inv-mes-sel'].forEach(id => {
+  ['captura-mes-sel','semanal-mes-sel','mes-mes-sel','hist-mes-sel','graf-mes-sel','cal-mes-sel'].forEach(id => {
     const el = document.getElementById(id);
     if (!el) return;
     const prev = el.value;
@@ -1429,87 +1545,34 @@ function populateSelects() {
 }
 
 // =====================================================================
-// NUEVA SEMANA
+// SEMANAS — helper compartido por todos los flujos de guardado
+// La tabla semanas exige id explícito ('s1','s2'…): se calcula del máximo.
 // =====================================================================
-function toggleNuevaSemana() {
-  const toggle = document.getElementById('nueva-semana-toggle');
-  const body   = document.getElementById('nueva-semana-body');
-  const open   = body.classList.toggle('open');
-  toggle.classList.toggle('open', open);
-}
-
-function autoFillWeekLabel() {
-  const start   = document.getElementById('ns-start').value;
-  const end     = document.getElementById('ns-end').value;
-  const labelEl = document.getElementById('ns-label');
-  if (!start || !end) return;
-  const months  = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
-  const [,sm,sd] = start.split('-');
-  const [,em,ed] = end.split('-');
-  const lastNum  = semanas.length ? Math.max(...semanas.map(s => s.numero_semana||0)) : 0;
-  const nextNum  = lastNum + 1;
-  const label    = sm === em
-    ? `Sem ${nextNum} (${parseInt(sd)}–${parseInt(ed)} ${months[parseInt(sm)-1]})`
-    : `Sem ${nextNum} (${parseInt(sd)} ${months[parseInt(sm)-1]} – ${parseInt(ed)} ${months[parseInt(em)-1]})`;
-  labelEl.placeholder = label;
-  if (!labelEl._userEdited) labelEl.value = label;
-}
-
-// ns-label/start/end listeners moved to DOMContentLoaded (elements may not exist yet)
-
-function sugerirSiguienteSemana() {
-  const body   = document.getElementById('nueva-semana-body');
-  const toggle = document.getElementById('nueva-semana-toggle');
-  if (!body.classList.contains('open')) { body.classList.add('open'); toggle.classList.add('open'); }
-  let nextStart;
-  if (semanas.length) {
-    const lastEnd = new Date(semanas[semanas.length-1].fecha_fin + 'T12:00:00');
-    nextStart = new Date(lastEnd);
-    nextStart.setDate(nextStart.getDate() + 1);
-  } else {
-    nextStart = new Date();
-  }
-  const nextEnd = new Date(nextStart);
-  nextEnd.setDate(nextEnd.getDate() + 6);
-  const toISO = d => d.toISOString().split('T')[0];
-  document.getElementById('ns-start').value = toISO(nextStart);
-  document.getElementById('ns-end').value   = toISO(nextEnd);
-  document.getElementById('ns-label')._userEdited = false;
-  autoFillWeekLabel();
-  document.getElementById('ns-label').focus();
-}
-
-async function handleNuevaSemanaSubmit(e) {
-  e.preventDefault();
-  const btn   = document.getElementById('btn-crear-semana');
-  const label = document.getElementById('ns-label').value.trim();
-  const start = document.getElementById('ns-start').value;
-  const end   = document.getElementById('ns-end').value;
-  const horas = parseFloat(document.getElementById('ns-horas').value) || null;
-  const notas = document.getElementById('ns-notas').value.trim() || null;
-  if (!label || !start || !end) { toast('Completa los campos obligatorios', 'err'); return; }
-  if (start > end) { toast('La fecha inicio debe ser antes de la fecha fin', 'err'); return; }
-  const overlap = semanas.find(s => start <= s.fecha_fin && end >= s.fecha_inicio);
-  if (overlap) { toast('Las fechas se superponen con: ' + weekLabel(overlap), 'err'); return; }
-  btn.disabled = true; btn.textContent = 'Guardando…';
-  const {data:ins, error} = await db.from('semanas').insert({
-    label, start_date:start, end_date:end, horas, notas,
-  }).select().single();
-  btn.disabled = false; btn.textContent = '➕ Crear Semana';
-  if (error) { toast('Error: ' + error.message, 'err'); return; }
-  const lastNum = semanas.length ? Math.max(...semanas.map(s => s.numero_semana||0)) : 0;
-  semanas.push({
-    ...ins, fecha_inicio:ins.start_date, fecha_fin:ins.end_date,
-    numero_semana:lastNum+1, _local:false,
+async function obtenerOCrearSemana(fecha) {
+  const semEx = semanas.find(s => fecha >= s.fecha_inicio && fecha <= s.fecha_fin);
+  if (semEx) return {id: semEx.id};
+  const d   = new Date(fecha + 'T12:00:00');
+  const dow = d.getDay();
+  const lun = new Date(d);   lun.setDate(d.getDate() + (dow === 0 ? -6 : 1 - dow));
+  const dom = new Date(lun); dom.setDate(lun.getDate() + 6);
+  const toISO = x => x.toISOString().split('T')[0];
+  const {data: existentes, error: errIds} = await db.from('semanas').select('id');
+  if (errIds) return {error: errIds};
+  let maxNum = 0;
+  (existentes || []).forEach(r => {
+    const n = parseInt((r.id || '').replace(/\D/g, ''), 10);
+    if (!isNaN(n) && n > maxNum) maxNum = n;
   });
-  semanas.sort((a,b) => a.fecha_inicio.localeCompare(b.fecha_inicio));
-  populateSelects();
-  populateMonthSelects();
-  toast('Semana "' + label + '" creada ✓', 'ok');
-  document.getElementById('form-nueva-semana').reset();
-  document.getElementById('ns-label')._userEdited = false;
-  toggleNuevaSemana();
-  await renderSemanal();
+  const newId = 's' + (maxNum + 1);
+  const label = rangoSemanaLabel(maxNum + 1, lun, dom);
+  const {data: ns, error} = await db.from('semanas')
+    .insert({id: newId, label, start_date: toISO(lun), end_date: toISO(dom)})
+    .select().single();
+  if (error) return {error};
+  semanas.push({...ns, fecha_inicio: ns.start_date, fecha_fin: ns.end_date, numero_semana: maxNum + 1, _local: false});
+  semanas.sort((a, b) => a.fecha_inicio.localeCompare(b.fecha_inicio));
+  populateSelects(); populateMonthSelects();
+  return {id: ns.id, label, creada: true};
 }
 
 // =====================================================================
@@ -1547,30 +1610,11 @@ async function handleFormDiaSubmit(e) {
   if (kg > 1500) { toast('El valor de ' + kg + ' kg parece muy alto — verifica antes de guardar', 'err'); btn.disabled=false; btn.textContent='💾 Guardar Registro'; return; }
 
   if (!semana_id || semana_id === '') {
-    const semExistente = semanas.find(s => fecha >= s.fecha_inicio && fecha <= s.fecha_fin);
-    if (semExistente) {
-      semana_id = semExistente.id;
-    } else {
-      const d = new Date(fecha + 'T12:00:00');
-      const dow = d.getDay();
-      const diffLun = dow === 0 ? -6 : 1 - dow;
-      const lun = new Date(d); lun.setDate(d.getDate() + diffLun);
-      const dom = new Date(lun); dom.setDate(lun.getDate() + 6);
-      const toISO = x => x.toISOString().split('T')[0];
-      const numSem = semanas.length + 1;
-      const autoLabel = rangoSemanaLabel(numSem, lun, dom);
-      btn.textContent = 'Creando semana…';
-      const {data:newSem, error:errSem} = await db.from('semanas')
-        .insert({label:autoLabel, start_date:toISO(lun), end_date:toISO(dom)})
-        .select().single();
-      if (errSem) { btn.disabled=false; btn.textContent='💾 Guardar Registro'; toast('Error creando semana: '+errSem.message,'err'); return; }
-      semana_id = newSem.id;
-      toast(`Semana "${autoLabel}" creada automáticamente ✓`, 'ok');
-      // reload semanas from DB
-      semanas.push({...newSem, fecha_inicio:newSem.start_date, fecha_fin:newSem.end_date, numero_semana:semanas.length+1, _local:false});
-      semanas.sort((a,b)=>a.fecha_inicio.localeCompare(b.fecha_inicio));
-      populateSelects(); populateMonthSelects();
-    }
+    btn.textContent = 'Creando semana…';
+    const sem = await obtenerOCrearSemana(fecha);
+    if (sem.error) { btn.disabled=false; btn.textContent='💾 Guardar Registro'; toast('Error creando semana: '+sem.error.message,'err'); return; }
+    semana_id = sem.id;
+    if (sem.creada) toast(`Semana "${sem.label}" creada automáticamente ✓`, 'ok');
   }
 
   btn.textContent = 'Guardando…';
@@ -1601,8 +1645,7 @@ async function renderRecientes() {
   const rows = (await fetchDiasByRange(desde, hasta))
     .sort((a,b) => b.fecha.localeCompare(a.fecha)).slice(0, 60);
   if (!rows.length) {
-    const recent = [...localSeedDias].sort((a,b) => b.fecha.localeCompare(a.fecha)).slice(0,10);
-    container.innerHTML = recent.length ? buildDiasTable(recent) : '<div class="empty"><div class="icon">📭</div><p>Sin registros</p></div>';
+    container.innerHTML = '<div class="empty"><div class="icon">📭</div><p>Sin registros</p></div>';
     return;
   }
   container.innerHTML = buildDiasTable(rows);
@@ -1613,8 +1656,8 @@ function buildDiasTable(rows) {
     <thead><tr>
       <th>Fecha</th><th>Día</th><th>Semana</th>
       <th class="td-num">Kg Producidos</th><th>Meta Kg</th>
-      <th class="td-num">Horas RH</th><th class="td-num">kg/h</th><th>Efic.</th>
-      <th>Turno</th><th>Notas</th><th>Acciones</th>
+      <th class="td-num">Horas RH</th><th class="td-num">kg/h</th><th>Estado</th>
+      <th class="td-num">Operadores</th><th>Turno</th><th>Notas</th><th>Acciones</th>
     </tr></thead>
     <tbody>
     ${rows.map(r => {
@@ -1837,7 +1880,7 @@ async function renderSemanal() {
       const badgeKg   = totalKg < 3700 ? '<span style="font-size:11px;background:rgba(220,38,38,0.1);color:#c0190f;border:1px solid rgba(220,38,38,0.25);padding:2px 8px;border-radius:20px;font-weight:600">⚠ Kg bajo</span>' : '';
       const badgeEf   = (efic > 0 && efic < 11.5) ? '<span style="font-size:11px;background:rgba(220,38,38,0.1);color:#c0190f;border:1px solid rgba(220,38,38,0.25);padding:2px 8px;border-radius:20px;font-weight:600">⚠ Efic. baja</span>' : '';
       const alertaHtml = esMala ? '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">' + badgeKg + badgeEf + '</div>' : '';
-      const notasHtml  = s.notas ? '<div style="margin-bottom:10px;padding:8px 12px;background:rgba(154,96,0,0.07);border-left:3px solid rgba(154,96,0,0.4);border-radius:0 6px 6px 0;font-size:12px;color:var(--dorado)">📝 ' + s.notas + '</div>' : '';
+      const notasHtml  = s.notas ? '<div style="margin-bottom:10px;padding:8px 12px;background:rgba(154,96,0,0.07);border-left:3px solid rgba(154,96,0,0.4);border-radius:0 6px 6px 0;font-size:12px;color:var(--dorado)">📝 ' + escapeHtml(s.notas) + '</div>' : '';
       html += `<div class="semana-card" style="${cardStyle}">
         <div class="semana-header">
           <div><h3>${weekLabel(s)}</h3><div class="dates">${fmtDate(s.fecha_inicio)} — ${fmtDate(s.fecha_fin)}</div></div>
@@ -2576,30 +2619,14 @@ async function guardarBitacoraData(numPages) {
     }
     if (!productos.length) { errores++; continue; }
     var kgProd = +(totFin - totIni).toFixed(2);
-    var semana_id = null;
-    var semEx = semanas.find(function(s){ return fecha >= s.fecha_inicio && fecha <= s.fecha_fin; });
-    if (semEx) {
-      semana_id = semEx.id;
-    } else {
-      var dObj = new Date(fecha+'T12:00:00'), dow = dObj.getDay();
-      var lun = new Date(dObj); lun.setDate(dObj.getDate()+(dow===0?-6:1-dow));
-      var dom = new Date(lun); dom.setDate(lun.getDate()+6);
-      var toISO = function(x){ return x.toISOString().split('T')[0]; };
-      var lbl = rangoSemanaLabel(semanas.length+1, lun, dom);
-      var nsRes = await db.from('semanas').insert({label:lbl,start_date:toISO(lun),end_date:toISO(dom)}).select().single();
-      if (nsRes.error) { errores++; continue; }
-      semana_id = nsRes.data.id;
-      semanas.push({...nsRes.data,fecha_inicio:nsRes.data.start_date,fecha_fin:nsRes.data.end_date,numero_semana:semanas.length+1,_local:false});
-      semanas.sort(function(a,b){ return a.fecha_inicio.localeCompare(b.fecha_inicio); });
-      populateSelects(); populateMonthSelects();
-    }
+    var semRes = await obtenerOCrearSemana(fecha);
+    if (semRes.error) { errores++; continue; }
+    var semana_id = semRes.id;
     var notas = 'Inv: '+totIni.toFixed(2)+' → '+totFin.toFixed(2);
     var diasRes = await db.from('dias').upsert({fecha,semana_id,prod:kgProd,notas,horas:null},{onConflict:'fecha'});
     if (diasRes.error) { errores++; continue; }
-    var delRes = await db.from('dias_productos').delete().eq('fecha', fecha);
-    if (delRes.error) { errores++; continue; }
     var dpRows = productos.map(function(pp){ return {fecha,semana_id,producto:pp.producto,kg_inicio:pp.kg_inicio,kg_fin:pp.kg_fin,kg_prod:pp.kg_prod}; });
-    var dpRes = await db.from('dias_productos').insert(dpRows);
+    var dpRes = await replaceRowsPorFecha('dias_productos', fecha, dpRows);
     if (dpRes.error) { errores++; continue; }
     guardados++;
   }
@@ -2607,130 +2634,6 @@ async function guardarBitacoraData(numPages) {
   closeModalAnimated('bitacora-modal');
   toast(guardados+' día(s) guardado(s) con desglose por producto'+(errores?' · '+errores+' error(es)':''), errores&&!guardados?'err':'ok');
   if (guardados > 0) await refreshAll();
-}
-
-// ── Fallback manual (solo TOTAL) — se mantiene para uso directo ──────
-function showScannedPDFModal(pageImages, numPages) {
-  const existing = document.getElementById('scanned-modal');
-  if (existing) existing.remove();
-
-  function suggestDate(i) {
-    const d = new Date();
-    d.setDate(d.getDate() - (numPages - 1 - i));
-    return d.toISOString().split('T')[0];
-  }
-
-  const pagesHTML = pageImages.map((img, i) => `
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:24px;padding-bottom:24px;border-bottom:1px solid var(--borde)">
-      <div>
-        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--gris-500);margin-bottom:8px">Página ${i+1} de ${numPages}</div>
-        <img src="${img}" style="width:100%;border-radius:8px;border:1px solid var(--borde);box-shadow:var(--sombra-sm)">
-      </div>
-      <div style="display:flex;flex-direction:column;gap:12px;justify-content:center">
-        <div style="background:var(--gris-50);border-radius:10px;padding:16px;border:1px solid var(--borde)">
-          <div style="font-size:13px;font-weight:700;color:var(--gris-700);margin-bottom:12px">📋 Fila TOTAL — Día ${i+1}</div>
-          <div style="display:flex;flex-direction:column;gap:10px">
-            <div>
-              <label style="font-size:11px;font-weight:600;color:var(--gris-600);display:block;margin-bottom:4px">Fecha</label>
-              <input type="date" id="scan-fecha-${i}" value="${suggestDate(i)}"
-                style="width:100%;border:1px solid var(--borde);border-radius:7px;padding:8px 10px;font-size:13px;font-family:inherit">
-            </div>
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
-              <div>
-                <label style="font-size:11px;font-weight:600;color:var(--gris-600);display:block;margin-bottom:4px">Kg Inicio (TOTAL)</label>
-                <input type="number" id="scan-inicio-${i}" step="0.01" placeholder="Ej. 1070"
-                  style="width:100%;border:1px solid var(--borde);border-radius:7px;padding:8px 10px;font-size:14px;font-family:inherit"
-                  oninput="calcScannedProd(${i})">
-              </div>
-              <div>
-                <label style="font-size:11px;font-weight:600;color:var(--gris-600);display:block;margin-bottom:4px">Kg Fin (TOTAL)</label>
-                <input type="number" id="scan-fin-${i}" step="0.01" placeholder="Ej. 1821.95"
-                  style="width:100%;border:1px solid var(--borde);border-radius:7px;padding:8px 10px;font-size:14px;font-family:inherit"
-                  oninput="calcScannedProd(${i})">
-              </div>
-            </div>
-            <div style="background:white;border-radius:7px;padding:10px 12px;border:1px solid var(--borde);text-align:center">
-              <div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;color:var(--gris-500);margin-bottom:4px">Kg Producidos</div>
-              <div id="scan-prod-${i}" style="font-size:26px;font-weight:700;font-family:'DM Mono',monospace;color:var(--gris-400)">—</div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>`).join('');
-
-  const modal = document.createElement('div');
-  modal.id = 'scanned-modal';
-  modal.className = 'modal-overlay';
-  modal.innerHTML = `
-    <div class="modal-card" style="max-width:920px">
-      <div class="modal-header">
-        <div>
-          <div style="font-size:15px;font-weight:700">📷 PDF Escaneado — Ingresa los totales</div>
-          <div style="font-size:12px;opacity:0.55;margin-top:2px">Mira la fila TOTAL de cada página y escribe los dos números</div>
-        </div>
-        <button onclick="closeModalAnimated('scanned-modal')"
-          style="background:rgba(255,255,255,0.1);border:none;color:white;width:32px;height:32px;border-radius:6px;font-size:18px;cursor:pointer">✕</button>
-      </div>
-      <div style="padding:24px">
-        ${pagesHTML}
-        <div style="display:flex;gap:12px;align-items:center;padding-top:4px">
-          <button onclick="guardarScannedDias(${numPages})" class="btn btn-primary" style="flex:1;justify-content:center;padding:13px;font-size:14px">
-            💾 Guardar ${numPages} día(s) en Supabase
-          </button>
-          <button onclick="closeModalAnimated('scanned-modal')" class="btn btn-secondary">Cancelar</button>
-        </div>
-      </div>
-    </div>`;
-  document.body.appendChild(modal);
-  openModalAnimated('scanned-modal');
-}
-
-function calcScannedProd(i) {
-  const inicio = parseFloat(document.getElementById('scan-inicio-'+i)?.value)||0;
-  const fin    = parseFloat(document.getElementById('scan-fin-'+i)?.value)||0;
-  const prod   = +(fin - inicio).toFixed(2);
-  const el = document.getElementById('scan-prod-'+i);
-  if (!el) return;
-  el.textContent = prod > 0 ? prod.toFixed(2) : '—';
-  el.style.color = prod >= 600 ? 'var(--verde)' : prod > 0 ? 'var(--rojo)' : 'var(--gris-400)';
-}
-
-async function guardarScannedDias(numPages) {
-  const btn = document.querySelector('#scanned-modal .btn-primary');
-  if (btn) { btn.disabled=true; btn.textContent='Guardando…'; }
-  let guardados=0, errores=0;
-  for (let i=0; i<numPages; i++) {
-    const fecha  = document.getElementById('scan-fecha-'+i)?.value;
-    const inicio = parseFloat(document.getElementById('scan-inicio-'+i)?.value)||0;
-    const fin    = parseFloat(document.getElementById('scan-fin-'+i)?.value)||0;
-    const prod   = +(fin - inicio).toFixed(2);
-    if (!fecha || prod <= 0) { errores++; continue; }
-    let semana_id = null;
-    const semEx = semanas.find(s => fecha >= s.fecha_inicio && fecha <= s.fecha_fin);
-    if (semEx) {
-      semana_id = semEx.id;
-    } else {
-      const dObj = new Date(fecha+'T12:00:00');
-      const dow = dObj.getDay();
-      const lun = new Date(dObj); lun.setDate(dObj.getDate()+(dow===0?-6:1-dow));
-      const dom = new Date(lun); dom.setDate(lun.getDate()+6);
-      const toISO = x=>x.toISOString().split('T')[0];
-      const label = rangoSemanaLabel(semanas.length+1, lun, dom);
-      const {data:ns,error:es}=await db.from('semanas').insert({label,start_date:toISO(lun),end_date:toISO(dom)}).select().single();
-      if (es){errores++;continue;}
-      semana_id=ns.id;
-      semanas.push({...ns,fecha_inicio:ns.start_date,fecha_fin:ns.end_date,numero_semana:semanas.length+1,_local:false});
-      semanas.sort((a,b)=>a.fecha_inicio.localeCompare(b.fecha_inicio));
-      populateSelects(); populateMonthSelects();
-    }
-    const notas=`Inv: ${inicio} → ${fin}`;
-    const {error}=await db.from('dias').upsert({fecha,semana_id,prod,notas,horas:null},{onConflict:'fecha'});
-    if (error) errores++; else guardados++;
-  }
-  if (btn){btn.disabled=false;btn.textContent=`💾 Guardar ${numPages} día(s) en Supabase`;}
-  closeModalAnimated('scanned-modal');
-  toast(`${guardados} día(s) guardado(s)${errores?` · ${errores} sin datos`:''}`,errores&&!guardados?'err':'ok');
-  if (guardados>0) await refreshAll();
 }
 
 // Fallback para PDFs de un solo día sin encabezado "Fecha:"
@@ -2845,25 +2748,9 @@ async function guardarTodosPDF(datos) {
     const fecha = fechaEl?.value;
     if (!fecha) { statusEl.textContent='⚠️ Sin fecha'; errores++; continue; }
     const d = datos[i];
-    let semana_id = null;
-    const semExistente = semanas.find(s => fecha >= s.fecha_inicio && fecha <= s.fecha_fin);
-    if (semExistente) {
-      semana_id = semExistente.id;
-    } else {
-      const dObj = new Date(fecha+'T12:00:00');
-      const dow = dObj.getDay();
-      const diffLun = dow===0?-6:1-dow;
-      const lun = new Date(dObj); lun.setDate(dObj.getDate()+diffLun);
-      const dom = new Date(lun); dom.setDate(lun.getDate()+6);
-      const toISO = x => x.toISOString().split('T')[0];
-      const numSem = semanas.length+1;
-      const autoLabel = rangoSemanaLabel(numSem, lun, dom);
-      const {data:newSem, error:errSem} = await db.from('semanas')
-        .insert({label:autoLabel, start_date:toISO(lun), end_date:toISO(dom)})
-        .select().single();
-      if (errSem) { statusEl.textContent='❌'; errores++; continue; }
-      semana_id = newSem.id;
-    }
+    const semRes = await obtenerOCrearSemana(fecha);
+    if (semRes.error) { statusEl.textContent='❌'; errores++; continue; }
+    const semana_id = semRes.id;
     const notas = `Inv: ${d.kgInicio} → ${d.kgFin}`;
     const {error} = await db.from('dias').upsert(
       {fecha, semana_id, prod:d.kgProd, notas, horas:null},
@@ -2871,11 +2758,10 @@ async function guardarTodosPDF(datos) {
     );
     if (error) { statusEl.textContent='❌'; errores++; continue; }
     if (d.productos && d.productos.length > 0) {
-      const delRes = await db.from('dias_productos').delete().eq('fecha', fecha);
       const dpRows = d.productos.map(p => ({fecha, semana_id, producto:p.producto,
         kg_inicio:p.kg_inicio, kg_fin:p.kg_fin, kg_prod:p.kg_prod}));
-      const dpRes = await db.from('dias_productos').insert(dpRows);
-      if (delRes.error || dpRes.error) { statusEl.textContent='⚠️'; errores++; continue; }
+      const dpRes = await replaceRowsPorFecha('dias_productos', fecha, dpRows);
+      if (dpRes.error) { statusEl.textContent='⚠️'; errores++; continue; }
     }
     statusEl.textContent='✅'; guardados++;
   }
@@ -3076,52 +2962,6 @@ async function refreshAll() {
 }
 
 // =====================================================================
-// DIAGNÓSTICO — busca tablas con datos de productos
-// =====================================================================
-async function diagTablas() {
-  const panel = document.getElementById('db-diag-panel');
-  panel.style.display = 'block';
-  panel.innerHTML = '⏳ Consultando Supabase...';
-
-  const tablasProbar = [
-    'dias_productos','produccion_productos','productos_dia','produccion_diaria',
-    'produccion','registros_produccion','kg_productos','carnes','inventario',
-    'inventario_diario','dias','semanas','production','products'
-  ];
-
-  const resultados = [];
-  for (const tabla of tablasProbar) {
-    try {
-      const {data, error} = await db.from(tabla).select('*').limit(3);
-      if (!error && data && data.length > 0) {
-        const cols = Object.keys(data[0]).join(', ');
-        resultados.push({tabla, cols, filas: data.length, muestra: data});
-      } else if (!error && data && data.length === 0) {
-        resultados.push({tabla, cols: '(vacía)', filas: 0, muestra: []});
-      }
-    } catch(e) {}
-  }
-
-  if (!resultados.length) {
-    panel.innerHTML = '❌ No se encontraron tablas accesibles.';
-    return;
-  }
-
-  let html = '<strong>Tablas encontradas:</strong><br><br>';
-  for (const r of resultados) {
-    const color = r.filas > 0 ? 'var(--verde-2)' : 'var(--texto-3)';
-    html += `<div style="margin-bottom:10px;padding:8px;background:rgba(0,0,0,0.04);border-radius:6px">`;
-    html += `<span style="color:${color};font-weight:700">${r.tabla}</span> — ${r.filas} filas<br>`;
-    html += `<span style="color:var(--texto-3)">Columnas: ${r.cols}</span>`;
-    if (r.filas > 0) {
-      html += `<br><span style="color:var(--texto-3)">Muestra: ${JSON.stringify(r.muestra[0]).slice(0,120)}...</span>`;
-    }
-    html += `</div>`;
-  }
-  panel.innerHTML = html;
-}
-
-// =====================================================================
 // TABLERO
 // =====================================================================
 async function renderTablero() {
@@ -3168,9 +3008,11 @@ async function renderStatusBar() {
   var totalKgInv   = 0;
   try {
     const invFecRsp = await db.from('inventario_diario').select('fecha').order('fecha',{ascending:false}).limit(1);
+    dbError('inventario', invFecRsp.error);
     lastInvFecha = (invFecRsp.data && invFecRsp.data[0]) ? invFecRsp.data[0].fecha : null;
     if (lastInvFecha) {
       const invRsp = await db.from('inventario_diario').select('producto,inv_final').eq('fecha',lastInvFecha);
+      dbError('inventario', invRsp.error);
       if (invRsp.data) {
         invRsp.data.forEach(function(r){
           const s = getStockInfo(r.producto);
@@ -3178,7 +3020,7 @@ async function renderStatusBar() {
         });
       }
     }
-  } catch(e) {}
+  } catch(e) { dbError('inventario', e); }
   const diasCob  = totalKgInv > 0 ? Math.round(totalKgInv/META_KG_DIA) : null;
   const colorInv = diasCob==null ? 'var(--texto-3)' : diasCob>4 ? '#d97706' : diasCob>0 ? 'var(--verde)' : 'var(--rojo)';
   const bgInv    = diasCob==null ? 'var(--glass)' : diasCob>4 ? 'rgba(217,119,6,0.08)' : diasCob>0 ? 'rgba(10,110,53,0.08)' : 'rgba(192,25,15,0.08)';
@@ -3257,11 +3099,12 @@ async function renderKgMesYTop3() {
   // Top 3 del año completo desde dias_productos
   const anoInicio = `${now.getFullYear()}-01-01`;
   const anoFin    = `${now.getFullYear()}-12-31`;
-  const {data: prods} = await db
+  const {data: prods, error: prodsErr} = await db
     .from('dias_productos')
     .select('producto, kg_prod')
     .gte('fecha', anoInicio)
     .lte('fecha', anoFin);
+  dbError('top productos', prodsErr);
 
   let top3 = [];
   if (prods && prods.length > 0) {
@@ -3276,7 +3119,7 @@ async function renderKgMesYTop3() {
       .map(([prod,kg]) => ({prod, kg}));
   }
 
-  const metaMes = 3900 * 4; // aprox 4 semanas
+  const metaMes = metaSemana(mesInicio) * 4; // aprox 4 semanas
   const pctMes  = Math.min(totalKgMes/metaMes*100, 100);
   const clsMes  = pctMes >= 80 ? 'ok' : pctMes >= 60 ? 'warn' : 'bad';
 
@@ -3428,10 +3271,12 @@ async function renderStockDias() {
 
   // Última fecha de inventario
   const fecRsp = await db.from('inventario_diario').select('fecha').order('fecha',{ascending:false}).limit(1);
+  dbError('días de stock', fecRsp.error);
   const lastFecha = (fecRsp.data && fecRsp.data[0]) ? fecRsp.data[0].fecha : null;
   if (!lastFecha) { container.innerHTML = ''; return; }
 
-  const invRsp = await db.from('inventario_diario').select('producto,inv_final').eq('fecha', lastFecha);
+  const invRsp = await db.from('inventario_diario').select('producto,inv_final,seccion').eq('fecha', lastFecha);
+  dbError('días de stock', invRsp.error);
   const invRows = invRsp.data || [];
   if (!invRows.length) { container.innerHTML = ''; return; }
 
@@ -3449,6 +3294,7 @@ async function renderStockDias() {
   const hoy    = hoyISO();
   const hace28 = isoAddDays(hoyISO(), -28);
   const prodRsp = await db.from('dias_productos').select('producto,kg_prod').gte('fecha',hace28).lte('fecha',hoy);
+  dbError('días de stock', prodRsp.error);
   const kgByKey = {};
   if (prodRsp.data) {
     prodRsp.data.forEach(function(r) {
@@ -3459,12 +3305,13 @@ async function renderStockDias() {
     });
   }
 
-  // Construir tarjetas
+  // Construir tarjetas — productos de basement sin config quedan listados abajo
   const cards = [];
+  const sinConfig = [];
   invRows.forEach(function(r) {
     const up  = (r.producto||'').toUpperCase();
     const key = getStockKey(up);
-    if (!key) return;
+    if (!key) { if ((r.seccion||'basement') === 'basement') sinConfig.push(r.producto); return; }
     const s       = INV_STOCK[key];
     const kgStock = (r.inv_final||0) * s.kg_bolsa;
     const kg28    = kgByKey[key] || 0;
@@ -3503,7 +3350,11 @@ async function renderStockDias() {
       + '<div style="font-size:9px;color:var(--texto-3);margin-top:2px;opacity:0.7">' + rateLabel + '</div>'
       + '</div>';
   });
-  html += '</div></div>';
+  html += '</div>';
+  if (sinConfig.length) {
+    html += '<div style="font-size:10px;color:var(--texto-3);margin-top:8px">Sin config de stock (no se calculan días): ' + sinConfig.join(', ') + '</div>';
+  }
+  html += '</div>';
   container.innerHTML = html;
 }
 
@@ -3564,7 +3415,7 @@ async function renderChartDiarioMain() {
         {label:'Kg producidos',data:rows.map(r=>r.kg_producidos),
           backgroundColor:rows.map(r=>r.kg_producidos>=META_KG_DIA?'rgba(34,197,94,0.85)':'rgba(220,38,38,0.75)'),
           borderRadius:5,borderSkipped:false},
-        {label:'Meta 600 kg',data:rows.map(()=>META_KG_DIA),type:'line',
+        {label:'Meta '+META_KG_DIA+' kg',data:rows.map(()=>META_KG_DIA),type:'line',
           borderColor:'rgba(0,0,0,0.12)',borderWidth:1.5,borderDash:[4,4],pointRadius:0,fill:false}
       ]
     },
@@ -3592,7 +3443,7 @@ async function renderChartEficMain() {
           backgroundColor:'rgba(30,148,72,0.08)',borderWidth:2,pointRadius:3,
           pointBackgroundColor:rows.map(r=>r.kg_hora>=META_KG_H?'#22c55e':'#dc2626'),
           fill:true,tension:0.3},
-        {label:'Meta 12 kg/h',data:rows.map(()=>META_KG_H),borderColor:'rgba(0,0,0,0.12)',
+        {label:'Meta '+META_KG_H+' kg/h',data:rows.map(()=>META_KG_H),borderColor:'rgba(0,0,0,0.12)',
           borderWidth:1.5,borderDash:[4,4],pointRadius:0,fill:false}
       ]
     },
@@ -3691,7 +3542,7 @@ function fmtDateShort(iso){
 
 // =====================================================================
 // =====================================================================
-// CAPTURA SEMANAL — Nuevo flujo con Claude Vision
+// CAPTURA SEMANAL — flujo guiado con OCR (Tesseract)
 // =====================================================================
 let swDiasPDF = [];
 let swHorasPorDia = {};
@@ -3918,10 +3769,6 @@ async function swOcrPage(pageIdx) {
   btn.disabled = false;
 }
 
-function swManualChange(i) {
-  swManualFechaChange(i);
-}
-
 async function swProcesarHoras(file) {
   const iconEl  = document.getElementById('sw-csv-icon');
   const labelEl = document.getElementById('sw-csv-label');
@@ -4116,8 +3963,14 @@ async function swGuardarTodo() {
       {fecha: d.fecha, semana_id, prod: d.kgProd, notas, horas: horasVal},
       {onConflict: 'fecha'}
     );
-    if (error) { if(statusEl) statusEl.textContent = '❌'; errores++; }
-    else { if(statusEl) statusEl.textContent = '✅'; guardados++; }
+    if (error) { if(statusEl) statusEl.textContent = '❌'; errores++; continue; }
+    if (d.productos && d.productos.length > 0) {
+      const dpRows = d.productos.map(p => ({fecha: d.fecha, semana_id, producto: p.producto,
+        kg_inicio: p.kg_inicio, kg_fin: p.kg_fin, kg_prod: p.kg_prod}));
+      const dpRes = await replaceRowsPorFecha('dias_productos', d.fecha, dpRows);
+      if (dpRes.error) { if(statusEl) statusEl.textContent = '⚠️'; errores++; continue; }
+    }
+    if(statusEl) statusEl.textContent = '✅'; guardados++;
   }
 
   if (swSemanaId) {
@@ -4212,42 +4065,6 @@ async function renderCalendario(){
   container.innerHTML=html;
 }
 
-// =====================================================================
-// INVENTARIO
-// =====================================================================
-let invData={};
-const CONSUMO_PROMEDIO={
-  'ASADA':155,'BARBACOA':51,'BIRRIA':65,'CARNITAS':83,'CHICKEN':82,
-  'RAW PASTOR':82,'FISH BASSA':145,'BB JUICE':21,'BIRRIA CONSOME':37,
-  'CONSOME BBQ':17,'BEANS':75,'PASTOR MARINATE':10,'SONORA WHITE':30,
-};
-const CONSUMO_POR_MES={
-  '2026-03':{'ASADA':149,'BARBACOA':48,'BIRRIA':65,'CARNITAS':76,'CHICKEN':73,'RAW PASTOR':82,'FISH BASSA':113,'BB JUICE':21,'BIRRIA CONSOME':38,'CONSOME BBQ':15,'BEANS':75,'PASTOR MARINATE':10},
-  '2026-04':{'ASADA':173,'BARBACOA':61,'BIRRIA':65,'CARNITAS':92,'CHICKEN':101,'RAW PASTOR':86,'FISH BASSA':233,'BB JUICE':22,'BIRRIA CONSOME':35,'CONSOME BBQ':23,'BEANS':77,'PASTOR MARINATE':10},
-};
-const BOLSA_KG={
-  'ASADA':{kg:3,unidad:'kg'},'BIRRIA':{kg:3,unidad:'kg'},'FISH BASSA':{kg:3,unidad:'kg'},'CHICKEN':{kg:3,unidad:'kg'},
-  'BARBACOA':{kg:2,unidad:'kg'},'CARNITAS':{kg:2,unidad:'kg'},'BIRRIA CONSOME':{kg:2,unidad:'kg'},
-  'RAW PASTOR':{kg:4,unidad:'kg'},'BB JUICE':{kg:1,unidad:'L'},'CONSOME BBQ':{kg:0.75,unidad:'kg'},
-  'BEANS':{kg:2.2,unidad:'kg'},'PASTOR MARINATE':{kg:0.45,unidad:'kg'},
-};
-
-(function initInvUpload(){
-  const zone=document.getElementById('inv-xlsx-zone');
-  const input=document.getElementById('inv-xlsx-input');
-  if (!zone||!input) return;
-  zone.addEventListener('click',()=>input.click());
-  zone.addEventListener('dragover',e=>{e.preventDefault();zone.classList.add('drag');});
-  zone.addEventListener('dragleave',()=>zone.classList.remove('drag'));
-  zone.addEventListener('drop',e=>{e.preventDefault();zone.classList.remove('drag');const f=e.dataTransfer.files[0];if(f)invLeerXLSX(f);});
-  input.addEventListener('change',e=>{if(e.target.files[0])invLeerXLSX(e.target.files[0]);});
-  const fechaEl=document.getElementById('inv-fecha');
-  if (fechaEl) fechaEl.value=hoyISO();
-})();
-
-
-// Show all products with zeros when no Excel uploaded yet
-
 // ═══════════════════════════════════════════════════════════════
 // MÓDULO INVENTARIO
 // Flujo: Inv Cierre − Pedidos = Inv Inicial Día + Producido = Inv Final
@@ -4275,13 +4092,13 @@ const INV_BASEMENT = ['ASADA','BARBACOA','BIRRIA','CARNITAS','CHICKEN','BBJ',
 const INV_UPSTAIRS = ['MILD','MEDIUM','HOT','HOT JALAPEÑO','HOT JARS','MACHA',
   'MAYO','FISH FLOUR','ONION','MUSHROOMS','LETTUCE','CILANTRO','PORTUGUESE BUNS','MOZZARELLA'];
 
+// Orden por longitud descendente: evita que "BIRRIA" gane el match antes que "BIRRIA CONSO"
+let INV_STOCK_KEYS = Object.keys(INV_STOCK).sort((a,b) => b.length - a.length);
+function recalcStockKeys(){ INV_STOCK_KEYS = Object.keys(INV_STOCK).sort((a,b) => b.length - a.length); }
 function getStockKey(prod){
   const up = (prod||'').toUpperCase().trim();
   if (INV_STOCK[up]) return up;
-  // Ordenar por longitud descendente: evita que "BIRRIA" gane el match antes que "BIRRIA CONSO"
-  return Object.keys(INV_STOCK)
-    .sort((a,b) => b.length - a.length)
-    .find(k => up.includes(k)) || null;
+  return INV_STOCK_KEYS.find(k => up.includes(k)) || null;
 }
 function getStockInfo(prod){
   const key = getStockKey(prod);
@@ -4651,10 +4468,11 @@ async function invGuardarConteo(){
     rows.push({fecha,producto:prod,seccion:getSeccion(prod),inv_cierre,pedidos,inv_inicial,producido,inv_final});
   }
 
-  const {error:delError} = await db.from('inventario_diario').delete().eq('fecha',fecha);
-  if (delError){ statusEl.textContent='❌ Error: '+delError.message; toast('Error al guardar','err'); return; }
-  const {error}=await db.from('inventario_diario').insert(rows);
-  if (error){ statusEl.textContent='❌ Error: '+error.message+' — el conteo anterior de este día se borró, vuelve a intentar guardar'; toast('Error al guardar — reintenta','err'); return; }
+  const {error, restaurado} = await replaceRowsPorFecha('inventario_diario', fecha, rows);
+  if (error){
+    statusEl.textContent = '❌ Error: '+error.message+(restaurado ? ' — el conteo anterior se restauró, reintenta' : ' — vuelve a intentar guardar');
+    toast('Error al guardar — reintenta','err'); return;
+  }
   statusEl.textContent='✅ '+rows.length+' productos guardados — '+fecha;
   toast('Conteo del '+fecha+' guardado ✓','ok');
   await invCargarHistorial();
@@ -4689,7 +4507,8 @@ async function invCargarHistorial(){
   const el=document.getElementById('inv-historial');
   if (!el) return;
   const {data,error}=await db.from('inventario_diario').select('fecha,producto,inv_final,seccion').order('fecha',{ascending:false});
-  if (error||!data||data.length===0){ el.innerHTML='<p style="color:var(--texto-3);font-size:13px">Sin historial guardado aún</p>'; return; }
+  if (error){ dbError('historial inventario', error); el.innerHTML='<p style="color:var(--rojo);font-size:13px">Error cargando historial — revisa la conexión</p>'; return; }
+  if (!data||data.length===0){ el.innerHTML='<p style="color:var(--texto-3);font-size:13px">Sin historial guardado aún</p>'; return; }
   const byDate={};
   for (const r of data){ if (!byDate[r.fecha]) byDate[r.fecha]=[]; byDate[r.fecha].push(r); }
   const dates=Object.keys(byDate).sort((a,b)=>b.localeCompare(a)).slice(0,10);
@@ -4714,6 +4533,77 @@ async function invCargarHistorial(){
 
 
 // =====================================================================
+// TAB: CONFIGURACIÓN
+// =====================================================================
+function renderConfig() {
+  document.getElementById('cfg-meta-dia').value = META_KG_DIA;
+  document.getElementById('cfg-meta-kgh').value = META_KG_H;
+  document.getElementById('cfg-meta-sem').value = META_SEM_DESDE;
+  const inp = 'style="width:90px;font-size:13px;font-family:var(--mono);text-align:right;border:1px solid var(--borde-2);border-radius:6px;padding:5px 8px"';
+  document.getElementById('cfg-stock-body').innerHTML = Object.keys(INV_STOCK).map(k => {
+    const s = INV_STOCK[k], sk = k.replace(/[^A-Z0-9]/gi,'_');
+    return '<tr>'
+      + '<td style="font-size:12px;font-weight:600">' + k + '</td>'
+      + '<td class="td-num"><input type="number" min="0" step="0.05" id="cfg-kg-'  + sk + '" value="' + s.kg_bolsa + '" ' + inp + '></td>'
+      + '<td class="td-num"><input type="number" min="0" step="1" id="cfg-min-' + sk + '" value="' + s.min + '" ' + inp + '></td>'
+      + '<td class="td-num"><input type="number" min="0" step="1" id="cfg-max-' + sk + '" value="' + s.max + '" ' + inp + '></td>'
+      + '</tr>';
+  }).join('');
+}
+
+async function guardarConfigUI() {
+  const btn = document.getElementById('cfg-btn-guardar');
+  const st  = document.getElementById('cfg-save-status');
+  const metaDia = parseFloat(document.getElementById('cfg-meta-dia').value);
+  const metaKgh = parseFloat(document.getElementById('cfg-meta-kgh').value);
+  const metaSem = parseFloat(document.getElementById('cfg-meta-sem').value);
+  if (!(metaDia > 0) || !(metaKgh > 0) || !(metaSem > 0)) { toast('Las metas deben ser mayores a 0', 'err'); return; }
+
+  const nuevoStock = {};
+  let stockOk = true;
+  Object.keys(INV_STOCK).forEach(k => {
+    const sk = k.replace(/[^A-Z0-9]/gi,'_');
+    const kg  = parseFloat(document.getElementById('cfg-kg-'  + sk)?.value);
+    const min = parseFloat(document.getElementById('cfg-min-' + sk)?.value);
+    const max = parseFloat(document.getElementById('cfg-max-' + sk)?.value);
+    if (!(kg > 0) || isNaN(min) || isNaN(max) || max < min) { stockOk = false; return; }
+    nuevoStock[k] = {kg_bolsa: kg, min, max};
+  });
+  if (!stockOk) { toast('Revisa el stock: kg/bolsa > 0 y máximo ≥ mínimo', 'err'); return; }
+
+  btn.disabled = true; btn.textContent = 'Guardando…'; st.textContent = '';
+  const ahora = new Date().toISOString();
+  const filas = [
+    {clave: 'meta_kg_dia',  valor: metaDia, updated_at: ahora},
+    {clave: 'meta_kg_h',    valor: metaKgh, updated_at: ahora},
+    {clave: 'meta_semanal', valor: {cutoff: META_SEM_CUTOFF, antes: META_SEM_ANTES, desde: metaSem}, updated_at: ahora},
+    {clave: 'inv_stock',    valor: nuevoStock, updated_at: ahora},
+  ];
+  const {error} = await db.from('app_config').upsert(filas, {onConflict: 'clave'});
+  btn.disabled = false; btn.textContent = '💾 Guardar configuración';
+  if (error) {
+    const tablaFalta = /app_config/.test(error.message) && /(not exist|not find|schema cache)/i.test(error.message);
+    const aviso = document.getElementById('config-aviso');
+    if (tablaFalta && aviso) {
+      aviso.style.display = 'block';
+      aviso.innerHTML = '<div class="inv-alerta warn">⚠️ Falta crear la tabla <strong>app_config</strong> en Supabase (una sola vez): abre Supabase → SQL Editor y ejecuta el archivo <strong>supabase_config.sql</strong> del repositorio. Luego vuelve a guardar aquí.</div>';
+    }
+    st.textContent = '❌ ' + error.message.slice(0, 80);
+    toast('No se pudo guardar la configuración', 'err');
+    return;
+  }
+  // Aplicar en vivo
+  META_KG_DIA = metaDia; META_KG_H = metaKgh; META_SEM_DESDE = metaSem;
+  Object.keys(nuevoStock).forEach(k => { INV_STOCK[k] = nuevoStock[k]; });
+  recalcStockKeys();
+  const aviso = document.getElementById('config-aviso');
+  if (aviso) { aviso.style.display = 'none'; aviso.innerHTML = ''; }
+  st.textContent = '✅ Guardado — aplica en todo el dashboard';
+  toast('Configuración guardada ✓', 'ok');
+  await refreshAll();
+}
+
+// =====================================================================
 // NAVEGACIÓN
 // =====================================================================
 async function navTo(tabId){
@@ -4731,6 +4621,7 @@ async function navTo(tabId){
   if (tabId==='graficas')      await renderGraficas();
   if (tabId==='datos')         await renderDatos();
   if (tabId==='reporte')       { repIniciarMeses(); await repGenerar(); }
+  if (tabId==='config')        renderConfig();
 }
 
 document.querySelectorAll('#main-nav button[data-tab]').forEach(btn=>{
@@ -4738,28 +4629,75 @@ document.querySelectorAll('#main-nav button[data-tab]').forEach(btn=>{
 });
 
 // =====================================================================
+// AUTENTICACIÓN — Supabase Auth (DORMIDA por ahora)
+// Para activarla: 1) crear usuario en Supabase (Authentication → Users),
+// 2) cambiar AUTH_REQUERIDA a true y desplegar, 3) probar el login,
+// 4) ejecutar supabase_seguridad.sql (activa RLS).
+// =====================================================================
+const AUTH_REQUERIDA = false;   // ← cambiar a true cuando toque activar login
+let appIniciada = false;
+
+async function iniciarApp(session) {
+  if (appIniciada) return;
+  appIniciada = true;
+  const ov = document.getElementById('login-overlay');
+  if (ov) ov.style.display = 'none';
+  const lb = document.getElementById('btn-logout');
+  if (lb) lb.style.display = session ? '' : 'none';
+  await cargarConfig();
+  await initSemanas();
+  await refreshAll();
+}
+
+function mostrarLogin() {
+  const ov = document.getElementById('login-overlay');
+  if (ov) ov.style.display = 'flex';
+  setStatus('Sesión requerida', false);
+}
+
+async function loginSubmit(e) {
+  e.preventDefault();
+  const btn   = document.getElementById('login-btn');
+  const errEl = document.getElementById('login-error');
+  const email = document.getElementById('login-email').value.trim();
+  const password = document.getElementById('login-pass').value;
+  btn.disabled = true; btn.textContent = 'Entrando…'; errEl.textContent = '';
+  const {error} = await db.auth.signInWithPassword({email, password});
+  btn.disabled = false; btn.textContent = 'Entrar';
+  if (error) {
+    errEl.textContent = /invalid login credentials/i.test(error.message)
+      ? 'Correo o contraseña incorrectos'
+      : 'Error: ' + error.message;
+    return;
+  }
+  await iniciarApp(true);
+}
+
+async function cerrarSesion() {
+  await db.auth.signOut();
+  location.reload();
+}
+
+// =====================================================================
 // ARRANQUE
 // =====================================================================
 document.addEventListener('DOMContentLoaded', async ()=>{
   // Attach form listeners safely after DOM is ready
-  const nsLabel = document.getElementById('ns-label');
-  const nsStart = document.getElementById('ns-start');
-  const nsEnd   = document.getElementById('ns-end');
   const fFecha  = document.getElementById('f-fecha');
   const formDia = document.getElementById('form-dia');
   const btnLimpiar = document.getElementById('btn-limpiar');
-  const formNuevaSem = document.getElementById('form-nueva-semana');
 
-  if (nsLabel) nsLabel.addEventListener('input', function() { this._userEdited = !!this.value; });
-  if (nsStart) nsStart.addEventListener('change', autoFillWeekLabel);
-  if (nsEnd)   nsEnd.addEventListener('change', autoFillWeekLabel);
   if (fFecha)  fFecha.addEventListener('change', e => autoSelectSemana(e.target.value));
   if (formDia) formDia.addEventListener('submit', handleFormDiaSubmit);
   if (btnLimpiar) btnLimpiar.addEventListener('click', () => { document.getElementById('form-dia').reset(); setTodayDate(); });
-  if (formNuevaSem) formNuevaSem.addEventListener('submit', handleNuevaSemanaSubmit);
 
-  await initSemanas();
-  await refreshAll();
+  const {data:{session}} = await db.auth.getSession();
+  if (!AUTH_REQUERIDA || session) await iniciarApp(session);
+  else mostrarLogin();
+
+  db.auth.onAuthStateChange((event) => {
+    if (AUTH_REQUERIDA && event === 'SIGNED_OUT') { appIniciada = false; mostrarLogin(); }
+  });
 });
 
 // =====================================================================
@@ -4833,7 +4771,8 @@ async function repGenerar() {
   const diasData = allRows.filter(r => (r.kg_producidos||0) > 0);
 
   // Consultar dias_productos
-  const {data: prods} = await db.from('dias_productos').select('*').gte('fecha',fechaIni).lte('fecha',fechaFin);
+  const {data: prods, error: prodsErr} = await db.from('dias_productos').select('*').gte('fecha',fechaIni).lte('fecha',fechaFin);
+  dbError('reporte productos', prodsErr);
   const prodsData = prods || [];
 
   // KPIs
@@ -4842,7 +4781,8 @@ async function repGenerar() {
   const diasTrab = diasData.length;
   const efic = totalHoras>0 ? (totalKg/totalHoras) : 0;
   const promDia = diasTrab>0 ? (totalKg/diasTrab) : 0;
-  const meta = periodo==='mes' ? 600*diasTrab : (periodo==='semana'||periodo==='ant') ? 3900 : 3900;
+  const esSemana = (periodo==='semana' || periodo==='ant');
+  const meta = esSemana ? metaSemana(fechaIni) : META_KG_DIA * diasTrab;
   const pct = meta>0 ? Math.min((totalKg/meta)*100,100) : 0;
 
   // Top productos
@@ -4865,7 +4805,7 @@ async function repGenerar() {
   html += '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:20px">';
   const kpis = [
     ['Kg Totales', fmt(totalKg) + ' kg', totalKg >= meta ? 'var(--verde-2)' : 'var(--rojo-2)'],
-    ['Eficiencia', fmt(efic,1) + ' kg/h', efic >= 12 ? 'var(--verde-2)' : '#d97706'],
+    ['Eficiencia', fmt(efic,1) + ' kg/h', efic >= META_KG_H ? 'var(--verde-2)' : '#d97706'],
     ['Horas RH', fmt(totalHoras,1) + ' h', 'var(--texto)'],
     ['Días trabajados', diasTrab + ' días', 'var(--texto)'],
   ];
@@ -4918,12 +4858,12 @@ async function repGenerar() {
     const kg = d.kg_producidos || 0;
     const h = d.horas_rh || 0;
     const ef = h > 0 ? (kg/h) : 0;
-    const ok = kg >= 600;
+    const ok = kg >= META_KG_DIA;
     html += '<tr style="border-bottom:0.5px solid var(--borde)">';
     html += '<td style="padding:7px 8px;color:var(--texto)">' + d.fecha + '</td>';
     html += '<td style="padding:7px 8px;text-align:right;font-weight:600;color:var(--texto)">' + fmt(kg) + '</td>';
     html += '<td style="padding:7px 8px;text-align:right;color:var(--texto-3)">' + (h>0?fmt(h,1):'-') + '</td>';
-    html += '<td style="padding:7px 8px;text-align:right;color:' + (ef>=12?'var(--verde-2)':'#d97706') + '">' + (ef>0?fmt(ef,1):'-') + '</td>';
+    html += '<td style="padding:7px 8px;text-align:right;color:' + (ef>=META_KG_H?'var(--verde-2)':'#d97706') + '">' + (ef>0?fmt(ef,1):'-') + '</td>';
     html += '<td style="padding:7px 8px;text-align:center">' + (ok ? '✅' : '❌') + '</td>';
     html += '</tr>';
   });
