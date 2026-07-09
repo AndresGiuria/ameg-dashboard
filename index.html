@@ -854,7 +854,8 @@
       </div>
       <div style="display:flex;gap:10px;flex-wrap:wrap">
         <button class="btn btn-primary btn-sm" onclick="invGuardarConteo()">💾 Guardar conteo</button>
-        <button class="btn btn-secondary btn-sm" onclick="invDescargarExcel()">⬇️ Descargar Excel</button>
+        <button class="btn btn-secondary btn-sm" onclick="invDescargarExcel()">⬇️ Excel del día</button>
+        <button class="btn btn-secondary btn-sm" onclick="invDescargarHistorial()">⬇️ Historial completo</button>
       </div>
     </div>
     <div id="inv-save-status" style="margin-top:10px;font-size:12px;color:var(--texto-3)"></div>
@@ -3761,6 +3762,45 @@ async function invDescargarExcel(){
   XLSX.utils.book_append_sheet(wb,ws,'Inventario');
   XLSX.writeFile(wb,'inventario_'+fecha+'.xlsx');
   toast('Excel descargado ✓','ok');
+}
+
+// Exporta TODO el historial de inventario_diario:
+// hoja "Detalle" (una fila por fecha×producto) + hoja "Matriz bolsas finales" (producto × fecha)
+async function invDescargarHistorial(){
+  if (!(await cargarXLSXLib())){ toast('No se pudo cargar el generador de Excel','err'); return; }
+  const {data,error}=await db.from('inventario_diario')
+    .select('fecha,producto,seccion,inv_cierre,pedidos,inv_inicial,producido,inv_final')
+    .order('fecha').order('seccion').order('producto');
+  if (error){ dbError('exportar historial', error); return; }
+  if (!data||!data.length){ toast('No hay inventarios guardados aún','err'); return; }
+
+  const det=[['Fecha','Sección','Producto','Inv Cierre','Pedidos','Inv Inicial Día','Producido','Inv Final','Kg Final']];
+  for (const r of data){
+    const s=getStockInfo(r.producto);
+    det.push([r.fecha,r.seccion||'',r.producto,r.inv_cierre??'',r.pedidos??'',
+      r.inv_inicial??'',r.producido??'',r.inv_final??'',
+      s?+(((r.inv_final||0)*s.kg_bolsa).toFixed(1)):'']);
+  }
+
+  const fechas=[...new Set(data.map(r=>r.fecha))].sort();
+  const prods=[...new Set(data.map(r=>r.producto))];
+  prods.sort((a,b)=>{
+    const sa=getSeccion(a), sb=getSeccion(b);
+    if (sa!==sb) return sa==='basement'?-1:1;
+    return a.localeCompare(b);
+  });
+  const finales={};
+  for (const r of data) finales[r.producto+'|'+r.fecha]=r.inv_final;
+  const mat=[['Producto','Sección',...fechas]];
+  for (const p of prods){
+    mat.push([p,getSeccion(p),...fechas.map(f=>{const v=finales[p+'|'+f];return v==null?'':v;})]);
+  }
+
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(det),'Detalle');
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(mat),'Matriz bolsas finales');
+  XLSX.writeFile(wb,'inventario_historial_'+fechas[0]+'_a_'+fechas[fechas.length-1]+'.xlsx');
+  toast('Historial exportado: '+fechas.length+' días ✓','ok');
 }
 
 async function invCargarHistorial(){
