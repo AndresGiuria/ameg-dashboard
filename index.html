@@ -282,9 +282,9 @@
   }
   textarea { resize:vertical; min-height:72px; }
 
-  /* ── INVENTARIO: foco visible en captura (cierre/pedidos/producido) ── */
-  input[data-inv-field] { transition: border-color 150ms var(--ease), box-shadow 150ms var(--ease); }
-  input[data-inv-field]:focus {
+  /* ── INVENTARIO: foco visible en captura (cierre/pedidos/producido, selector de fecha) ── */
+  input[data-inv-field], #inv-fecha-sel { transition: border-color 150ms var(--ease), box-shadow 150ms var(--ease); }
+  input[data-inv-field]:focus, #inv-fecha-sel:focus {
     outline: none;
     border-color: var(--verde) !important;
     box-shadow: 0 0 0 3px rgba(10,110,53,0.15);
@@ -1001,7 +1001,7 @@
 </div>
 
 </main>
-<div id="toast"></div>
+<div id="toast" role="status" aria-live="polite"></div>
 
 <script>
 // =====================================================================
@@ -3453,14 +3453,14 @@ function invRenderGrid(basement, upstairs){
         <div>
           <div style="font-size:9px;color:var(--texto-3);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:3px">Cierre</div>
           <input type="number" value="${inv_cierre}" min="0" step="1"
-            data-inv-prod="${prod}" data-inv-field="cierre"
+            data-inv-prod="${prod}" data-inv-field="cierre" aria-label="Cierre ${prod}"
             style="width:100%;font-size:14px;font-weight:600;font-family:var(--mono);text-align:center;border:0.5px solid var(--borde-2);border-radius:6px;padding:5px 2px;background:rgba(255,255,255,0.7);outline:none;color:var(--texto)"
             oninput="invRecalcular('${p2}')">
         </div>
         <div>
           <div style="font-size:9px;color:var(--rojo);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:3px">Pedidos</div>
           <input type="number" value="${pedidos}" min="0" step="1"
-            data-inv-prod="${prod}" data-inv-field="pedidos"
+            data-inv-prod="${prod}" data-inv-field="pedidos" aria-label="Pedidos ${prod}"
             style="width:100%;font-size:14px;font-weight:600;font-family:var(--mono);text-align:center;border:0.5px solid rgba(192,25,15,0.2);border-radius:6px;padding:5px 2px;background:rgba(255,240,240,0.6);outline:none;color:var(--rojo)"
             oninput="invRecalcular('${p2}')">
         </div>
@@ -3474,7 +3474,7 @@ function invRenderGrid(basement, upstairs){
         <div>
           <div style="font-size:9px;color:var(--verde);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:3px">Producido</div>
           <input type="number" value="${producido}" min="0" step="1"
-            data-inv-prod="${prod}" data-inv-field="producido"
+            data-inv-prod="${prod}" data-inv-field="producido" aria-label="Producido ${prod}"
             style="width:100%;font-size:14px;font-weight:600;font-family:var(--mono);text-align:center;border:0.5px solid rgba(10,110,53,0.2);border-radius:6px;padding:5px 2px;background:rgba(234,243,222,0.6);outline:none;color:var(--verde)"
             oninput="invRecalcular('${p2}')">
         </div>
@@ -3506,14 +3506,14 @@ function invRenderGrid(basement, upstairs){
         <div>
           <div style="font-size:8px;color:var(--texto-3);text-transform:uppercase;margin-bottom:2px">Cierre</div>
           <input type="number" value="${inv_cierre}" min="0" step="1"
-            data-inv-prod="${prod}" data-inv-field="cierre"
+            data-inv-prod="${prod}" data-inv-field="cierre" aria-label="Cierre ${prod}"
             style="width:100%;font-size:12px;font-weight:600;font-family:var(--mono);text-align:center;border:0.5px solid var(--borde-2);border-radius:4px;padding:3px 2px;background:rgba(255,255,255,0.7);outline:none;color:var(--texto)"
             oninput="invRecalcular('${p2}')">
         </div>
         <div>
           <div style="font-size:8px;color:var(--rojo);text-transform:uppercase;margin-bottom:2px">Pedidos</div>
           <input type="number" value="${pedidos}" min="0" step="1"
-            data-inv-prod="${prod}" data-inv-field="pedidos"
+            data-inv-prod="${prod}" data-inv-field="pedidos" aria-label="Pedidos ${prod}"
             style="width:100%;font-size:12px;font-weight:600;font-family:var(--mono);text-align:center;border:0.5px solid rgba(192,25,15,0.2);border-radius:4px;padding:3px 2px;background:rgba(255,240,240,0.6);outline:none;color:var(--rojo)"
             oninput="invRecalcular('${p2}')">
         </div>
@@ -3527,7 +3527,7 @@ function invRenderGrid(basement, upstairs){
         <div>
           <div style="font-size:8px;color:var(--verde);text-transform:uppercase;margin-bottom:2px">Producido</div>
           <input type="number" value="${producido}" min="0" step="1"
-            data-inv-prod="${prod}" data-inv-field="producido"
+            data-inv-prod="${prod}" data-inv-field="producido" aria-label="Producido ${prod}"
             style="width:100%;font-size:12px;font-weight:600;font-family:var(--mono);text-align:center;border:0.5px solid rgba(10,110,53,0.2);border-radius:4px;padding:3px 2px;background:rgba(234,243,222,0.6);outline:none;color:var(--verde)"
             oninput="invRecalcular('${p2}')">
         </div>
