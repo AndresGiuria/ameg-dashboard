@@ -3685,8 +3685,49 @@ async function invGuardarConteo(){
   }
   statusEl.textContent='✅ '+rows.length+' productos guardados — '+fecha;
   toast('Conteo del '+fecha+' guardado ✓','ok');
+  await invActualizarProduccionHoy(fecha, rows);
   await invDerivarProduccionAyer(fecha, rows);
   await invCargarHistorial();
+}
+
+// Si el staff ya tecleó "Producido" para HOY al guardar el conteo, refleja esa
+// producción de inmediato en el Tablero (dias.prod) en vez de esperar al
+// conteo de mañana. Si todo quedó en 0, no toca dias — se deja para la
+// derivación automática de mañana (que además autocorrige si el número quedó incompleto).
+async function invActualizarProduccionHoy(fecha, rowsHoy){
+  if (!rowsHoy.some(r => (r.producido||0) > 0)) return;
+
+  let kgIni = 0, kgFin = 0;
+  const dp = {};
+  for (const r of rowsHoy){
+    if ((r.seccion||'basement') !== 'basement') continue;
+    const canon = CTRL_CANON[(r.producto||'').toUpperCase().trim()];
+    const info  = getStockInfo(r.producto);
+    if (!canon || !info || !info.kg_bolsa) continue;
+    const ini = +((r.inv_inicial||0) * info.kg_bolsa).toFixed(2);
+    const fin = +((r.inv_final||0)   * info.kg_bolsa).toFixed(2);
+    if (dp[canon]) { dp[canon].kg_inicio += ini; dp[canon].kg_fin += fin; }
+    else dp[canon] = {producto: canon, kg_inicio: ini, kg_fin: fin};
+    kgIni += ini; kgFin += fin;
+  }
+  const dpRows = Object.values(dp).map(r => ({producto: r.producto,
+    kg_inicio: +r.kg_inicio.toFixed(2), kg_fin: +r.kg_fin.toFixed(2),
+    kg_prod: Math.max(0, +(r.kg_fin - r.kg_inicio).toFixed(2))}));
+  if (!dpRows.length) return;
+
+  const semRes = await obtenerOCrearSemana(fecha);
+  if (semRes.error) return;
+  const {data: diaEx} = await db.from('dias').select('horas').eq('fecha', fecha).maybeSingle();
+  const kgProd = +(kgFin - kgIni).toFixed(2);
+  const notas  = 'Inv: '+kgIni.toFixed(2)+' → '+kgFin.toFixed(2)+' · Capturado en Inventario';
+  const upRes = await db.from('dias').upsert(
+    {fecha: fecha, semana_id: semRes.id, prod: kgProd,
+     horas: diaEx ? diaEx.horas : null, start_kg: +kgIni.toFixed(2), end_kg: +kgFin.toFixed(2), notas},
+    {onConflict: 'fecha'});
+  if (upRes.error) { dbError('producción de hoy', upRes.error); return; }
+  await replaceRowsPorFecha('dias_productos', fecha,
+    dpRows.map(r => Object.assign({fecha: fecha, semana_id: semRes.id}, r)));
+  toast('Producción de hoy capturada: '+fmt(kgProd)+' kg ✓','ok');
 }
 
 // Con el conteo de hoy se deriva la producción de AYER (misma lógica que el
