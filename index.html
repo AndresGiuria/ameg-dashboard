@@ -139,8 +139,10 @@
     margin: auto 3px;
     font-weight: 600 !important;
     font-size: 11.5px !important;
+    transition: transform 120ms var(--ease), background var(--t) var(--ease), color var(--t) var(--ease);
   }
   .nav-action:hover { background: rgba(46,204,113,0.2) !important; color: #fff !important; }
+  .nav-action:active { transform: scale(0.95); }
   .nav-action.active { background: var(--verde-2) !important; color: #fff !important; border-color: var(--verde-2) !important; }
 
   /* ── LAYOUT ── */
@@ -279,6 +281,14 @@
     box-shadow:0 0 0 3px rgba(10,110,53,0.1);
   }
   textarea { resize:vertical; min-height:72px; }
+
+  /* ── INVENTARIO: foco visible en captura (cierre/pedidos/producido) ── */
+  input[data-inv-field] { transition: border-color 150ms var(--ease), box-shadow 150ms var(--ease); }
+  input[data-inv-field]:focus {
+    outline: none;
+    border-color: var(--verde) !important;
+    box-shadow: 0 0 0 3px rgba(10,110,53,0.15);
+  }
   .form-actions { display:flex; gap:10px; margin-top:14px; flex-wrap:wrap; }
 
   /* ── BUTTONS ── */
