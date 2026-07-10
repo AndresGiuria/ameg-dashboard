@@ -24,8 +24,12 @@
     --rojo:        #c0190f;
     --rojo-2:      #e01e12;
     --rojo-claro:  rgba(192,25,15,0.09);
+    --rojo-texto:  #c0392b;
     --dorado:      #9a6000;
+    --dorado-2:    #d97706;
     --dorado-claro:rgba(154,96,0,0.09);
+    --dorado-texto:#92400e;
+    --azul:        #185FA5;
     --texto:       #0b0c0d;
     --texto-2:     #3a3d42;
     --texto-3:     #6e7480;
@@ -176,7 +180,7 @@
     content:''; position:absolute; top:0; left:0; right:0; height:2px;
     background: linear-gradient(90deg, var(--verde), var(--verde-3));
   }
-  .kpi-hero.warn::before { background: linear-gradient(90deg, var(--dorado), #d97706); }
+  .kpi-hero.warn::before { background: linear-gradient(90deg, var(--dorado), var(--dorado-2)); }
   .kpi-hero.bad::before  { background: linear-gradient(90deg, var(--rojo), var(--rojo-2)); }
   .kpi-hero:hover { box-shadow: 0 16px 48px rgba(0,0,0,0.12), 0 1px 0 rgba(255,255,255,0.9) inset; }
   .kh-icon { position:absolute; right:18px; top:18px; font-size:22px; opacity:0.05; }
@@ -255,7 +259,7 @@
   /* ── PROGRESS BAR ── */
   .progress-bar  { background:rgba(0,0,0,0.07); border-radius:2px; height:4px; overflow:hidden; min-width:60px; }
   .progress-fill { height:100%; width:100%; border-radius:2px; transform-origin:left; transition:transform 0.6s var(--ease); background:var(--verde-3); }
-  .progress-fill.warn   { background:#d97706; }
+  .progress-fill.warn   { background:var(--dorado-2); }
   .progress-fill.bad    { background:var(--rojo-2); }
   .progress-fill.danger { background:var(--rojo-2); }
 
@@ -707,7 +711,7 @@
 
 <!-- CAPTURA DÍA SUELTO -->
 <div class="tab-pane" id="tab-captura">
-  <div style="background:var(--glass);border-radius:var(--radio-lg);padding:12px 16px;margin-bottom:16px;font-size:13px;color:var(--texto-3);border-left:3px solid #d97706">
+  <div style="background:var(--glass);border-radius:var(--radio-lg);padding:12px 16px;margin-bottom:16px;font-size:13px;color:var(--texto-3);border-left:3px solid var(--dorado-2)">
     <strong style="color:var(--texto)">➕ Agregar día</strong> — ¿Faltó un día o necesitas corregir uno? Agrégalo aquí manualmente sin afectar el resto de la semana.
   </div>
   <div class="filter-bar">
@@ -2201,14 +2205,14 @@ async function handleXLSXFile(file) {
     const wb=XLSX.read(ab,{type:'array'});
     const ws=wb.Sheets[wb.SheetNames[0]];
     const rows=XLSX.utils.sheet_to_json(ws,{defval:''});
-    if (!rows.length){result.innerHTML='<div style="color:#c0392b;font-size:13px;margin-top:10px">Excel vacío.</div>';return;}
+    if (!rows.length){result.innerHTML='<div style="color:var(--rojo-texto);font-size:13px;margin-top:10px">Excel vacío.</div>';return;}
     const allKeys=Object.keys(rows[0]);
     const fnameKey=allKeys.find(k=>k.toLowerCase()==='fname');
     const lnameKey=allKeys.find(k=>k.toLowerCase()==='lname');
     const hoursKey=allKeys.find(k=>k.toLowerCase()==='hours');
     const jobKey=allKeys.find(k=>k.toLowerCase().includes('jobcode')||k.toLowerCase().includes('job'));
     if (!fnameKey||!lnameKey){
-      result.innerHTML=`<div style="color:#c0392b;font-size:13px;margin-top:10px">⚠️ Columnas no reconocidas. Detectadas: ${escapeHtml(allKeys.join(', '))}</div>`;
+      result.innerHTML=`<div style="color:var(--rojo-texto);font-size:13px;margin-top:10px">⚠️ Columnas no reconocidas. Detectadas: ${escapeHtml(allKeys.join(', '))}</div>`;
       return;
     }
     const empMap={};
@@ -2228,10 +2232,10 @@ async function handleXLSXFile(file) {
     const employees=Object.values(empMap);
     const totalIncluido=employees.filter(e=>!e.excluido).reduce((a,e)=>a+e.total,0);
     const totalExcluido=employees.filter(e=>e.excluido).reduce((a,e)=>a+e.total,0);
-    if (!employees.length){result.innerHTML='<div style="color:#c0392b;font-size:13px;margin-top:10px">No se encontraron empleados.</div>';return;}
+    if (!employees.length){result.innerHTML='<div style="color:var(--rojo-texto);font-size:13px;margin-top:10px">No se encontraron empleados.</div>';return;}
     renderCSVResult(employees,totalIncluido,totalExcluido);
   } catch(err) {
-    if (result) result.innerHTML=`<div style="color:#c0392b;font-size:13px;margin-top:10px">Error: ${err.message}</div>`;
+    if (result) result.innerHTML=`<div style="color:var(--rojo-texto);font-size:13px;margin-top:10px">Error: ${err.message}</div>`;
   }
 }
 
@@ -2243,7 +2247,7 @@ async function handleCSVFile(file) {
     let text=await file.text();
     text=text.replace(/^\uFEFF/,'');
     const lines=text.split(/\r?\n/).filter(l=>l.trim());
-    if (lines.length<2){result.innerHTML='<div style="color:#c0392b;font-size:13px;margin-top:10px">CSV vacío.</div>';return;}
+    if (lines.length<2){result.innerHTML='<div style="color:var(--rojo-texto);font-size:13px;margin-top:10px">CSV vacío.</div>';return;}
     const header=parseCSVRow(lines[0]);
     const idx={};
     header.forEach((h,i)=>{
@@ -2256,7 +2260,7 @@ async function handleCSVFile(file) {
     // ot can be multiple columns — sum them
     const otCols = Array.isArray(idx.ot) ? idx.ot : (idx.ot!=null?[idx.ot]:[]);
     if (idx.name==null||idx.reg==null){
-      result.innerHTML=`<div style="color:#c0392b;font-size:13px;margin-top:10px">⚠️ Columnas no encontradas. Detectadas: ${escapeHtml(header.join(', '))}</div>`;
+      result.innerHTML=`<div style="color:var(--rojo-texto);font-size:13px;margin-top:10px">⚠️ Columnas no encontradas. Detectadas: ${escapeHtml(header.join(', '))}</div>`;
       return;
     }
     const employees=[];let totalIncluido=0,totalExcluido=0;
@@ -2275,10 +2279,10 @@ async function handleCSVFile(file) {
       employees.push({name:rawName,group,reg,ot,total,excluido});
       if(excluido)totalExcluido+=total; else totalIncluido+=total;
     }
-    if (!employees.length){result.innerHTML='<div style="color:#c0392b;font-size:13px;margin-top:10px">No se encontraron empleados.</div>';return;}
+    if (!employees.length){result.innerHTML='<div style="color:var(--rojo-texto);font-size:13px;margin-top:10px">No se encontraron empleados.</div>';return;}
     renderCSVResult(employees,totalIncluido,totalExcluido);
   } catch(err) {
-    if (result) result.innerHTML=`<div style="color:#c0392b;font-size:13px;margin-top:10px">Error: ${err.message}</div>`;
+    if (result) result.innerHTML=`<div style="color:var(--rojo-texto);font-size:13px;margin-top:10px">Error: ${err.message}</div>`;
   }
 }
 
@@ -2301,7 +2305,7 @@ function renderCSVResult(employees,totalIncluido,totalExcluido) {
           <div style="font-size:12px;color:#555;margin-top:2px">Total RH (sin Mario A.H.)</div>
         </div>
         ${totalExcluido>0?`<div style="background:#fde8e8;border-radius:8px;padding:12px 20px;text-align:center">
-          <div style="font-size:18px;font-weight:700;color:#c0392b">${fmt(totalExcluido)} h</div>
+          <div style="font-size:18px;font-weight:700;color:var(--rojo)">${fmt(totalExcluido)} h</div>
           <div style="font-size:12px;color:#555;margin-top:2px">Excluidas (Mario A.H.)</div>
         </div>`:''}
       </div>
@@ -2368,7 +2372,7 @@ async function renderStatusBar() {
   const ultimoDia = diasOrd[0] || null;
   const kgUlt  = ultimoDia ? (ultimoDia.kg_producidos||0) : 0;
   const pctDia = META_KG_DIA>0 ? kgUlt/META_KG_DIA*100 : 0;
-  const colorDia = pctDia>=100 ? 'var(--verde)'  : pctDia>=85 ? '#d97706' : 'var(--rojo)';
+  const colorDia = pctDia>=100 ? 'var(--verde)'  : pctDia>=85 ? 'var(--dorado-2)' : 'var(--rojo)';
   const bgDia    = pctDia>=100 ? 'rgba(10,110,53,0.08)' : pctDia>=85 ? 'rgba(217,119,6,0.08)' : 'rgba(192,25,15,0.08)';
   const diasNom  = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
   const dtUlt    = ultimoDia ? new Date(ultimoDia.fecha+'T12:00:00') : null;
@@ -2394,7 +2398,7 @@ async function renderStatusBar() {
     }
   } catch(e) { dbError('inventario', e); }
   const diasCob  = totalKgInv > 0 ? Math.round(totalKgInv/META_KG_DIA) : null;
-  const colorInv = diasCob==null ? 'var(--texto-3)' : diasCob>4 ? '#d97706' : diasCob>0 ? 'var(--verde)' : 'var(--rojo)';
+  const colorInv = diasCob==null ? 'var(--texto-3)' : diasCob>4 ? 'var(--dorado-2)' : diasCob>0 ? 'var(--verde)' : 'var(--rojo)';
   const bgInv    = diasCob==null ? 'var(--glass)' : diasCob>4 ? 'rgba(217,119,6,0.08)' : diasCob>0 ? 'rgba(10,110,53,0.08)' : 'rgba(192,25,15,0.08)';
   const invLabel = lastInvFecha ? fmtDate(lastInvFecha) : 'sin datos';
 
@@ -2415,7 +2419,7 @@ async function renderStatusBar() {
   }
   const diffEf  = efAct - efAnt;
   const upEf    = diffEf >= 0;
-  const colorEf = efAct>=META_KG_H ? 'var(--verde)' : efAct>=META_KG_H*0.9 ? '#d97706' : (efAct>0 ? 'var(--rojo)' : 'var(--texto-3)');
+  const colorEf = efAct>=META_KG_H ? 'var(--verde)' : efAct>=META_KG_H*0.9 ? 'var(--dorado-2)' : (efAct>0 ? 'var(--rojo)' : 'var(--texto-3)');
   const bgEf    = efAct>=META_KG_H ? 'rgba(10,110,53,0.08)' : efAct>=META_KG_H*0.9 ? 'rgba(217,119,6,0.08)' : (efAct>0 ? 'rgba(192,25,15,0.08)' : 'var(--glass)');
 
   container.innerHTML =
@@ -2501,7 +2505,7 @@ async function renderKgMesYTop3() {
       <div class="kh-label">${mesNombre} ${now.getFullYear()} — Producción</div>
       <div class="kh-value" style="font-size:42px;letter-spacing:-2px;margin:10px 0">${fmt(totalKgMes)}<span>kg</span></div>
       <div style="background:rgba(0,0,0,0.07);border-radius:3px;height:5px;overflow:hidden;margin-bottom:10px">
-        <div style="height:100%;width:100%;border-radius:3px;transform-origin:left;transform:scaleX(${pctMes/100});background:${clsMes==='ok'?'var(--verde-3)':clsMes==='warn'?'#d97706':'var(--rojo-2)'};transition:transform 1s var(--ease)"></div>
+        <div style="height:100%;width:100%;border-radius:3px;transform-origin:left;transform:scaleX(${pctMes/100});background:${clsMes==='ok'?'var(--verde-3)':clsMes==='warn'?'var(--dorado-2)':'var(--rojo-2)'};transition:transform 1s var(--ease)"></div>
       </div>
       <div class="kh-meta">${diasTrabajados} días trabajados · ${fmt(totalKgMes/Math.max(diasTrabajados,1),1)} kg/día prom</div>
     </div>
@@ -2575,7 +2579,7 @@ async function renderSemComparativo() {
         </span>` : ''}
       </div>
       <div style="background:rgba(0,0,0,0.07);border-radius:3px;height:5px;overflow:hidden;margin-bottom:8px">
-        <div style="height:100%;width:100%;border-radius:3px;transform-origin:left;transform:scaleX(${pctAct/100});background:${pctAct>=100?'var(--verde-3)':pctAct>=80?'#d97706':'var(--rojo-2)'};transition:transform 1s var(--ease)"></div>
+        <div style="height:100%;width:100%;border-radius:3px;transform-origin:left;transform:scaleX(${pctAct/100});background:${pctAct>=100?'var(--verde-3)':pctAct>=80?'var(--dorado-2)':'var(--rojo-2)'};transition:transform 1s var(--ease)"></div>
       </div>
       <div class="kh-meta">${pctAct.toFixed(0)}% de meta ${fmt(metaAct,0)} kg · ${diasAct.filter(d=>d.kg_producidos>0).length} días</div>
     </div>
@@ -2711,7 +2715,7 @@ async function renderStockDias() {
     + '<div style="display:flex;gap:8px;overflow-x:auto;padding-bottom:4px">';
   cards.forEach(function(c) {
     var d   = c.dias;
-    var clr = d===null ? 'var(--texto-3)' : d<2 ? 'var(--rojo)' : d<5 ? '#d97706' : 'var(--verde)';
+    var clr = d===null ? 'var(--texto-3)' : d<2 ? 'var(--rojo)' : d<5 ? 'var(--dorado-2)' : 'var(--verde)';
     var bg  = d===null ? 'rgba(0,0,0,0.04)' : d<2 ? 'rgba(192,25,15,0.08)' : d<5 ? 'rgba(217,119,6,0.08)' : 'rgba(10,110,53,0.08)';
     var rateLabel = c.avgDay >= 0.5 ? Math.round(c.avgDay) + ' kg/d · ' + c.fuente : '';
     html += '<div style="min-width:100px;flex-shrink:0;background:' + bg + ';border-radius:10px;padding:10px 10px;text-align:center">'
@@ -3402,8 +3406,8 @@ function invRenderGrid(basement, upstairs){
     if (stock){
       if (inv_final<=0)                { barColor='var(--rojo-2)'; statusTxt='🚨 Sin stock';    priority=0; }
       else if (inv_final<stock.min*0.6){ barColor='var(--rojo-2)'; statusTxt='🚨 Crítico';      priority=0; }
-      else if (inv_final<stock.min)    { barColor='#d97706';       statusTxt='⚡ Bajo mínimo';  priority=1; }
-      else if (inv_final>stock.max)    { barColor='#d97706';       statusTxt='📈 Sobre máximo'; priority=2; }
+      else if (inv_final<stock.min)    { barColor='var(--dorado-2)';       statusTxt='⚡ Bajo mínimo';  priority=1; }
+      else if (inv_final>stock.max)    { barColor='var(--dorado-2)';       statusTxt='📈 Sobre máximo'; priority=2; }
     }
     return {barColor, statusTxt, priority};
   }
@@ -3413,8 +3417,8 @@ function invRenderGrid(basement, upstairs){
     prods.forEach(p=>{ cnt[calcStatus(p,dataMap[p]||{}).priority]++; });
     let h = '<div style="display:flex;gap:6px;flex-wrap:wrap">';
     if (cnt[0]) h+=`<span style="font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;background:rgba(192,25,15,0.1);color:var(--rojo)">🚨 ${cnt[0]} crítico${cnt[0]>1?'s':''}</span>`;
-    if (cnt[1]) h+=`<span style="font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;background:rgba(217,119,6,0.1);color:#92400e">⚡ ${cnt[1]} bajo mínimo</span>`;
-    if (cnt[2]) h+=`<span style="font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;background:rgba(217,119,6,0.08);color:#92400e">📈 ${cnt[2]} sobre máx</span>`;
+    if (cnt[1]) h+=`<span style="font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;background:rgba(217,119,6,0.1);color:var(--dorado-texto)">⚡ ${cnt[1]} bajo mínimo</span>`;
+    if (cnt[2]) h+=`<span style="font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;background:rgba(217,119,6,0.08);color:var(--dorado-texto)">📈 ${cnt[2]} sobre máx</span>`;
     if (cnt[3]) h+=`<span style="font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;background:rgba(10,110,53,0.08);color:var(--verde)">✓ ${cnt[3]} OK</span>`;
     return h+'</div>';
   }
@@ -3435,9 +3439,9 @@ function invRenderGrid(basement, upstairs){
     const safeId   = prod.replace(/[\s/]/g,'-');
     const kgFinal  = stock ? (inv_final*stock.kg_bolsa).toFixed(1)+' kg' : '—';
     const p2       = prod.replace(/'/g,"\\'");
-    const badgeBg  = barColor==='var(--verde-3)'?'rgba(10,110,53,0.08)':barColor==='#d97706'?'rgba(217,119,6,0.1)':'rgba(192,25,15,0.09)';
-    const badgeClr = barColor==='var(--verde-3)'?'var(--verde)':barColor==='#d97706'?'#92400e':'var(--rojo)';
-    const bigClr   = barColor==='var(--rojo-2)'?'var(--rojo)':barColor==='#d97706'?'#d97706':'var(--texto)';
+    const badgeBg  = barColor==='var(--verde-3)'?'rgba(10,110,53,0.08)':barColor==='var(--dorado-2)'?'rgba(217,119,6,0.1)':'rgba(192,25,15,0.09)';
+    const badgeClr = barColor==='var(--verde-3)'?'var(--verde)':barColor==='var(--dorado-2)'?'var(--dorado-texto)':'var(--rojo)';
+    const bigClr   = barColor==='var(--rojo-2)'?'var(--rojo)':barColor==='var(--dorado-2)'?'var(--dorado-2)':'var(--texto)';
 
     return `<div style="background:rgba(255,255,255,0.55);backdrop-filter:blur(12px);border:0.5px solid var(--glass-borde);border-radius:12px;padding:14px;border-top:3px solid ${barColor}" id="inv-card-${safeId}">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
@@ -3465,9 +3469,9 @@ function invRenderGrid(basement, upstairs){
             oninput="invRecalcular('${p2}')">
         </div>
         <div>
-          <div style="font-size:9px;color:#185FA5;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:3px">Ini día</div>
+          <div style="font-size:9px;color:var(--azul);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:3px">Ini día</div>
           <div id="inv-ini-${safeId}"
-            style="width:100%;font-size:14px;font-weight:600;font-family:var(--mono);text-align:center;border:0.5px solid rgba(24,95,165,0.2);border-radius:6px;padding:5px 2px;background:rgba(230,241,251,0.6);color:#185FA5">
+            style="width:100%;font-size:14px;font-weight:600;font-family:var(--mono);text-align:center;border:0.5px solid rgba(24,95,165,0.2);border-radius:6px;padding:5px 2px;background:rgba(230,241,251,0.6);color:var(--azul)">
             ${inv_inicial}
           </div>
         </div>
@@ -3485,7 +3489,7 @@ function invRenderGrid(basement, upstairs){
       </div>
       ${stock?`<div style="font-size:10px;color:var(--texto-4);margin-bottom:5px">Mín:${stock.min} · Máx:${stock.max} bolsas</div>
       <div style="display:flex;gap:4px;flex-wrap:wrap" id="inv-recom-${safeId}">
-        ${paraMin>0?`<span style="font-size:10px;background:rgba(217,119,6,0.1);color:#92400e;padding:1px 7px;border-radius:20px;font-weight:600">+${paraMin} para mínimo</span>`:''}
+        ${paraMin>0?`<span style="font-size:10px;background:rgba(217,119,6,0.1);color:var(--dorado-texto);padding:1px 7px;border-radius:20px;font-weight:600">+${paraMin} para mínimo</span>`:''}
         ${paraMax>0?`<span style="font-size:10px;background:rgba(10,110,53,0.08);color:var(--verde);padding:1px 7px;border-radius:20px;font-weight:600">+${paraMax} para máximo</span>`:''}
       </div>`:''}
     </div>`;
@@ -3518,9 +3522,9 @@ function invRenderGrid(basement, upstairs){
             oninput="invRecalcular('${p2}')">
         </div>
         <div>
-          <div style="font-size:8px;color:#185FA5;text-transform:uppercase;margin-bottom:2px">Ini día</div>
+          <div style="font-size:8px;color:var(--azul);text-transform:uppercase;margin-bottom:2px">Ini día</div>
           <div id="inv-ini-${safeId}"
-            style="width:100%;font-size:12px;font-weight:600;font-family:var(--mono);text-align:center;border:0.5px solid rgba(24,95,165,0.2);border-radius:4px;padding:3px 2px;background:rgba(230,241,251,0.6);color:#185FA5">
+            style="width:100%;font-size:12px;font-weight:600;font-family:var(--mono);text-align:center;border:0.5px solid rgba(24,95,165,0.2);border-radius:4px;padding:3px 2px;background:rgba(230,241,251,0.6);color:var(--azul)">
             ${inv_inicial}
           </div>
         </div>
@@ -3578,9 +3582,9 @@ function invRecalcular(prod){
     let bc = 'var(--verde-3)';
     if (final_v<=0)                 bc='var(--rojo-2)';
     else if (final_v<stock.min*0.6) bc='var(--rojo-2)';
-    else if (final_v<stock.min)     bc='#d97706';
-    else if (final_v>stock.max)     bc='#d97706';
-    const bigClr = bc==='var(--rojo-2)'?'var(--rojo)':bc==='#d97706'?'#d97706':'var(--texto)';
+    else if (final_v<stock.min)     bc='var(--dorado-2)';
+    else if (final_v>stock.max)     bc='var(--dorado-2)';
+    const bigClr = bc==='var(--rojo-2)'?'var(--rojo)':bc==='var(--dorado-2)'?'var(--dorado-2)':'var(--texto)';
     if (barEl){ barEl.style.transform='scaleX('+(pct/100)+')'; barEl.style.background=bc; }
     if (bigEl)  bigEl.style.color  = bigClr;
     if (finalEl) finalEl.style.color = bigClr;
@@ -3588,7 +3592,7 @@ function invRecalcular(prod){
     if (recomEl){
       const pm=Math.max(0,stock.min-final_v), px=Math.max(0,stock.max-final_v);
       recomEl.innerHTML=
-        (pm>0?'<span style="font-size:10px;background:rgba(217,119,6,0.1);color:#92400e;padding:1px 7px;border-radius:20px;font-weight:600">+'+pm+' para mínimo</span>':'')+
+        (pm>0?'<span style="font-size:10px;background:rgba(217,119,6,0.1);color:var(--dorado-texto);padding:1px 7px;border-radius:20px;font-weight:600">+'+pm+' para mínimo</span>':'')+
         (px>0?'<span style="font-size:10px;background:rgba(10,110,53,0.08);color:var(--verde);padding:1px 7px;border-radius:20px;font-weight:600">+'+px+' para máximo</span>':'');
     }
   }
@@ -3862,7 +3866,7 @@ async function invCargarHistorial(){
   const el=document.getElementById('inv-historial');
   if (!el) return;
   const {data,error}=await db.from('inventario_diario').select('fecha,producto,inv_final,seccion').order('fecha',{ascending:false});
-  if (error){ dbError('historial inventario', error); el.innerHTML='<p style="color:var(--rojo);font-size:13px">Error cargando historial — revisa la conexión</p>'; return; }
+  if (error){ dbError('historial inventario', error); el.innerHTML='<p style="color:var(--rojo-texto);font-size:13px">Error cargando historial — revisa la conexión</p>'; return; }
   if (!data||data.length===0){ el.innerHTML='<p style="color:var(--texto-3);font-size:13px">Sin historial guardado aún</p>'; return; }
   const byDate={};
   for (const r of data){ if (!byDate[r.fecha]) byDate[r.fecha]=[]; byDate[r.fecha].push(r); }
@@ -4159,7 +4163,7 @@ async function repGenerar() {
   html += '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:20px">';
   const kpis = [
     ['Kg Totales', fmt(totalKg) + ' kg', totalKg >= meta ? 'var(--verde-2)' : 'var(--rojo-2)'],
-    ['Eficiencia', fmt(efic,1) + ' kg/h', efic >= META_KG_H ? 'var(--verde-2)' : '#d97706'],
+    ['Eficiencia', fmt(efic,1) + ' kg/h', efic >= META_KG_H ? 'var(--verde-2)' : 'var(--dorado-2)'],
     ['Horas RH', fmt(totalHoras,1) + ' h', 'var(--texto)'],
     ['Días trabajados', diasTrab + ' días', 'var(--texto)'],
   ];
@@ -4176,7 +4180,7 @@ async function repGenerar() {
   html += '<div style="display:flex;justify-content:space-between;font-size:12px;color:var(--texto-3);margin-bottom:8px">';
   html += '<span>Avance vs meta</span><span>' + pct.toFixed(1) + '%</span></div>';
   html += '<div style="background:rgba(0,0,0,0.07);border-radius:4px;height:8px;overflow:hidden">';
-  const barColor = pct>=100 ? 'var(--verde-2)' : pct>=80 ? '#d97706' : 'var(--rojo-2)';
+  const barColor = pct>=100 ? 'var(--verde-2)' : pct>=80 ? 'var(--dorado-2)' : 'var(--rojo-2)';
   html += '<div style="width:100%;height:100%;transform-origin:left;transform:scaleX(' + (pct/100) + ');background:' + barColor + ';border-radius:4px;transition:transform 1s"></div>';
   html += '</div></div>';
 
@@ -4217,7 +4221,7 @@ async function repGenerar() {
     html += '<td style="padding:7px 8px;color:var(--texto)">' + d.fecha + '</td>';
     html += '<td style="padding:7px 8px;text-align:right;font-weight:600;color:var(--texto)">' + fmt(kg) + '</td>';
     html += '<td style="padding:7px 8px;text-align:right;color:var(--texto-3)">' + (h>0?fmt(h,1):'-') + '</td>';
-    html += '<td style="padding:7px 8px;text-align:right;color:' + (ef>=META_KG_H?'var(--verde-2)':'#d97706') + '">' + (ef>0?fmt(ef,1):'-') + '</td>';
+    html += '<td style="padding:7px 8px;text-align:right;color:' + (ef>=META_KG_H?'var(--verde-2)':'var(--dorado-2)') + '">' + (ef>0?fmt(ef,1):'-') + '</td>';
     html += '<td style="padding:7px 8px;text-align:center">' + (ok ? '✅' : '❌') + '</td>';
     html += '</tr>';
   });
@@ -4240,7 +4244,7 @@ function renderCOGSSection(ano) {
 
   var fc       = (d.cogs / d.ventas * 100).toFixed(1);
   var fcNum    = parseFloat(fc);
-  var fcColor  = fcNum > 82 ? 'var(--rojo-2)' : fcNum > 72 ? '#d97706' : 'var(--verde-2)';
+  var fcColor  = fcNum > 82 ? 'var(--rojo-2)' : fcNum > 72 ? 'var(--dorado-2)' : 'var(--verde-2)';
   var cogsDia  = Math.round(d.cogs / d.dias);
   var maxCat   = Math.max.apply(null, d.categorias.map(function(c){ return c.cogs; }));
   var maxItem  = d.topItems[0].cogs;
@@ -4311,7 +4315,7 @@ function renderCOGSSection(ano) {
     if (item.lbs) parts.push((item.lbs >= 1000 ? (item.lbs/1000).toFixed(1)+'k' : item.lbs)+' lbs');
     if (item.kg)  parts.push((item.kg  >= 1000 ? (item.kg /1000).toFixed(1)+'k' : item.kg) +' kg');
     var qtyLabel = parts.join(' · ');
-    var barColor = indent ? 'rgba(217,119,6,0.45)' : '#d97706';
+    var barColor = indent ? 'rgba(217,119,6,0.45)' : 'var(--dorado-2)';
     var barH     = indent ? '4px' : '6px';
     var mb       = indent ? '4px' : '7px';
     var ml       = indent ? '16px' : '0';
