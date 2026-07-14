@@ -187,6 +187,45 @@
   .trend-down { background:rgba(192,25,15,0.09); color:var(--rojo); }
   .trend-flat { background:rgba(0,0,0,0.06); color:var(--texto-3); }
 
+  /* ── MOTION: number ticker, border beam, shine sweep, stock pulse ── */
+  .sb-number, .num-tick { font-variant-numeric: tabular-nums; }
+
+  .beam-card { position:relative; overflow:hidden; }
+  .beam-card::before {
+    content:''; position:absolute; inset:0; border-radius:inherit; padding:1.5px;
+    background: conic-gradient(from 0deg, transparent 0 72%, var(--beam-c, var(--verde-3)) 82%, transparent 92%);
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor; mask-composite: exclude;
+    animation: beam-spin 5.5s linear infinite;
+    pointer-events: none; opacity:0.8;
+  }
+  .kpi-hero::after {
+    content:''; position:absolute; inset:0; border-radius:inherit; padding:1.5px;
+    background: conic-gradient(from 0deg, transparent 0 72%, var(--verde-3) 82%, transparent 92%);
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor; mask-composite: exclude;
+    animation: beam-spin 5.5s linear infinite;
+    pointer-events: none; opacity:0.75;
+  }
+  .kpi-hero.warn::after { background: conic-gradient(from 0deg, transparent 0 72%, var(--dorado-2) 82%, transparent 92%); }
+  .kpi-hero.bad::after  { background: conic-gradient(from 0deg, transparent 0 72%, var(--rojo-2) 82%, transparent 92%); }
+  @keyframes beam-spin { to { transform: rotate(360deg); } }
+
+  .shine-card { position:relative; overflow:hidden; }
+  .shine-card::after {
+    content:''; position:absolute; top:0; left:-60%; width:55%; height:100%;
+    background: linear-gradient(100deg, transparent, rgba(217,119,6,0.18), transparent);
+    animation: shine-sweep 3.4s ease-in-out infinite;
+    pointer-events: none;
+  }
+  @keyframes shine-sweep { 0%{left:-60%} 55%,100%{left:130%} }
+
+  .stock-pulse { animation: stock-pulse-glow 2.1s var(--ease) infinite; }
+  @keyframes stock-pulse-glow {
+    0%,100% { box-shadow: 0 0 0 0 rgba(192,25,15,0.32); }
+    50%     { box-shadow: 0 0 0 6px rgba(192,25,15,0); }
+  }
+
   /* ── CHART CARDS ── */
   .charts-main { display:grid; grid-template-columns:2fr 1fr; gap:12px; margin-bottom:20px; }
   .chart-card {
@@ -1246,6 +1285,44 @@ function fmtDate(d) {
   const [y,m,day] = d.split('-');
   return `${day}/${m}/${y}`;
 }
+
+// ── Motion helpers: number ticker + animated fill bars (Magic UI-style, vanilla) ──
+function numTicker(target, dec) {
+  dec = dec == null ? 1 : dec;
+  if (target == null || isNaN(target)) return '—';
+  return '<span class="num-tick" data-target="' + target + '" data-dec="' + dec + '">' + fmt(0, dec) + '</span>';
+}
+function runNumTickers(root) {
+  const els = (root||document).querySelectorAll('.num-tick:not([data-ticked])');
+  if (!els.length) return;
+  const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  els.forEach(function(el){
+    el.setAttribute('data-ticked','1');
+    const target = parseFloat(el.getAttribute('data-target'));
+    const dec = parseInt(el.getAttribute('data-dec'),10);
+    if (reduced || !isFinite(target)) { el.textContent = fmt(target, dec); return; }
+    const dur = 700;
+    let start = null;
+    function step(ts){
+      if (start === null) start = ts;
+      const p = Math.min((ts-start)/dur, 1);
+      const eased = 1 - Math.pow(1-p, 3);
+      el.textContent = fmt(target*eased, dec);
+      if (p < 1) requestAnimationFrame(step);
+    }
+    requestAnimationFrame(step);
+  });
+}
+function animateFillBars(root) {
+  const bars = (root||document).querySelectorAll('[data-fill]:not([data-filled])');
+  bars.forEach(function(el){
+    el.setAttribute('data-filled','1');
+    const target = el.getAttribute('data-fill');
+    requestAnimationFrame(function(){
+      requestAnimationFrame(function(){ el.style.transform = 'scaleX(' + target + ')'; });
+    });
+  });
+}
 function monthLabel(ym) {
   const s = new Date(ym + '-15T12:00:00').toLocaleDateString('es-MX', {month:'long',year:'numeric'});
   return s.charAt(0).toUpperCase() + s.slice(1);
@@ -1663,7 +1740,7 @@ function setKPI(cardId, value, meta, label, sublabel, unit, avg4w) {
   card.innerHTML = `
     <div class="kh-icon">${cardId.includes('efic')?'⚡':cardId.includes('semana')?'📦':cardId.includes('promedio')?'📈':'🥩'}</div>
     <div class="kh-label">${label}</div>
-    <div class="kh-value" style="color:var(--texto)">${value!=null?fmt(value):'—'}<span>${unit}</span></div>
+    <div class="kh-value" style="color:var(--texto)">${value!=null?numTicker(value,1):'—'}<span>${unit}</span></div>
     <div class="kh-meta">${sublabel}
       ${value!=null?(pct>=100
         ? '<span class="kh-trend trend-up">✓ Meta</span>'
@@ -1671,6 +1748,7 @@ function setKPI(cardId, value, meta, label, sublabel, unit, avg4w) {
           ? '<span class="kh-trend trend-flat">↗ Cerca</span>'
           : '<span class="kh-trend trend-down">↓ Bajo</span>'):''}
     </div>` + deltaHtml;
+  runNumTickers(card);
 }
 
 // =====================================================================
@@ -2371,10 +2449,10 @@ async function renderStatusBar() {
   const bgEf    = efAct>=META_KG_H ? 'rgba(10,110,53,0.08)' : efAct>=META_KG_H*0.9 ? 'rgba(217,119,6,0.08)' : (efAct>0 ? 'rgba(192,25,15,0.08)' : 'var(--glass)');
 
   container.innerHTML =
-    '<div class="sb-card" style="background:' + bgDia + ';border-top-color:' + colorDia + '">'
+    '<div class="sb-card beam-card" style="background:' + bgDia + ';border-top-color:' + colorDia + ';--beam-c:' + colorDia + '">'
     + '<div class="sb-label">ÚLTIMO DÍA · ' + labelFecha + '</div>'
     + '<div class="sb-value">'
-    +   '<span class="sb-number" style="color:' + colorDia + '">' + (kgUlt||0) + '</span>'
+    +   '<span class="sb-number" style="color:' + colorDia + '">' + numTicker(kgUlt||0, 1) + '</span>'
     +   '<span class="sb-unit">kg</span>'
     + '</div>'
     + '<div class="sb-sub">'
@@ -2382,10 +2460,10 @@ async function renderStatusBar() {
     + '</div>'
     + '</div>'
 
-    + '<div class="sb-card" style="background:' + bgInv + ';border-top-color:' + colorInv + '">'
+    + '<div class="sb-card beam-card" style="background:' + bgInv + ';border-top-color:' + colorInv + ';--beam-c:' + colorInv + '">'
     + '<div class="sb-label">INVENTARIO EN FRÍO · ' + invLabel + '</div>'
     + '<div class="sb-value">'
-    +   '<span class="sb-number" style="color:' + colorInv + '">' + (diasCob!=null ? diasCob : '—') + '</span>'
+    +   '<span class="sb-number" style="color:' + colorInv + '">' + (diasCob!=null ? numTicker(diasCob, 0) : '—') + '</span>'
     +   '<span class="sb-unit">' + (diasCob!=null ? 'días' : '') + '</span>'
     + '</div>'
     + '<div class="sb-sub">'
@@ -2393,16 +2471,17 @@ async function renderStatusBar() {
     + '</div>'
     + '</div>'
 
-    + '<div class="sb-card" style="background:' + bgEf + ';border-top-color:' + colorEf + '">'
+    + '<div class="sb-card beam-card" style="background:' + bgEf + ';border-top-color:' + colorEf + ';--beam-c:' + colorEf + '">'
     + '<div class="sb-label">EFICIENCIA SEMANA ACTUAL</div>'
     + '<div class="sb-value">'
-    +   '<span class="sb-number" style="color:' + colorEf + '">' + (efAct>0 ? fmt(efAct,1) : '—') + '</span>'
+    +   '<span class="sb-number" style="color:' + colorEf + '">' + (efAct>0 ? numTicker(efAct,1) : '—') + '</span>'
     +   '<span class="sb-unit">' + (efAct>0 ? 'kg/h' : '') + '</span>'
     + '</div>'
     + '<div class="sb-sub">'
     + (semAnt && efAnt>0 ? (upEf?'↑':'↓') + ' ' + fmt(Math.abs(diffEf),2) + ' vs sem ant (' + fmt(efAnt,1) + ' kg/h)' : 'Meta: ' + META_KG_H + ' kg/h')
     + '</div>'
     + '</div>';
+  runNumTickers(container);
 }
 
 async function renderKgMesYTop3() {
@@ -2451,9 +2530,9 @@ async function renderKgMesYTop3() {
     <!-- Kg del mes -->
     <div class="glass" style="border-radius:var(--radio-lg);padding:22px 24px;position:relative;overflow:hidden">
       <div class="kh-label">${mesNombre} ${now.getFullYear()} — Producción</div>
-      <div class="kh-value" style="font-size:42px;letter-spacing:-2px;margin:10px 0">${fmt(totalKgMes)}<span>kg</span></div>
+      <div class="kh-value" style="font-size:42px;letter-spacing:-2px;margin:10px 0">${numTicker(totalKgMes,1)}<span>kg</span></div>
       <div style="background:rgba(0,0,0,0.07);border-radius:3px;height:5px;overflow:hidden;margin-bottom:10px">
-        <div style="height:100%;width:100%;border-radius:3px;transform-origin:left;transform:scaleX(${pctMes/100});background:${clsMes==='ok'?'var(--verde-3)':clsMes==='warn'?'var(--dorado-2)':'var(--rojo-2)'};transition:transform 1s var(--ease)"></div>
+        <div data-fill="${pctMes/100}" style="height:100%;width:100%;border-radius:3px;transform-origin:left;transform:scaleX(0);background:${clsMes==='ok'?'var(--verde-3)':clsMes==='warn'?'var(--dorado-2)':'var(--rojo-2)'};transition:transform 1s var(--ease)"></div>
       </div>
       <div class="kh-meta">${diasTrabajados} días trabajados · ${fmt(totalKgMes/Math.max(diasTrabajados,1),1)} kg/día prom</div>
     </div>
@@ -2470,10 +2549,10 @@ async function renderKgMesYTop3() {
             return `<div>
               <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px">
                 <span style="font-size:13px;font-weight:600">${icons[i]} ${p.prod}</span>
-                <span style="font-size:13px;font-weight:700;font-family:var(--mono)">${fmt(p.kg,1)} kg</span>
+                <span style="font-size:13px;font-weight:700;font-family:var(--mono)">${numTicker(p.kg,1)} kg</span>
               </div>
               <div style="background:rgba(0,0,0,0.07);border-radius:3px;height:5px;overflow:hidden">
-                <div style="height:100%;width:100%;border-radius:3px;transform-origin:left;transform:scaleX(${pct/100});background:var(--verde-3);transition:transform 1s var(--ease)"></div>
+                <div data-fill="${pct/100}" style="height:100%;width:100%;border-radius:3px;transform-origin:left;transform:scaleX(0);background:var(--verde-3);transition:transform 1s var(--ease)"></div>
               </div>
             </div>`;
           }).join('')}
@@ -2481,6 +2560,8 @@ async function renderKgMesYTop3() {
       ` : `<div style="margin-top:14px;color:var(--texto-3);font-size:13px">Sin datos de productos este año</div>`}
     </div>
   `;
+  runNumTickers(container);
+  animateFillBars(container);
 }
 
 
@@ -2521,20 +2602,20 @@ async function renderSemComparativo() {
     <div style="${cardStyle}">
       <div class="kh-label">Semana actual — ${weekLabel(semAct)}</div>
       <div style="display:flex;align-items:baseline;gap:12px;margin:10px 0 6px">
-        <div class="kh-value" style="font-size:32px">${fmt(kgAct)}<span>kg</span></div>
+        <div class="kh-value" style="font-size:32px">${numTicker(kgAct,1)}<span>kg</span></div>
         ${semAnt ? `<span style="font-size:12px;font-weight:600;padding:3px 8px;border-radius:20px;background:${upKg?'rgba(10,110,53,0.1)':'rgba(192,25,15,0.09)'};color:${upKg?'var(--verde)':'var(--rojo)'}">
           ${upKg?'↑':'↓'} ${fmt(Math.abs(diffKg),0)} kg vs sem anterior
         </span>` : ''}
       </div>
       <div style="background:rgba(0,0,0,0.07);border-radius:3px;height:5px;overflow:hidden;margin-bottom:8px">
-        <div style="height:100%;width:100%;border-radius:3px;transform-origin:left;transform:scaleX(${pctAct/100});background:${pctAct>=100?'var(--verde-3)':pctAct>=80?'var(--dorado-2)':'var(--rojo-2)'};transition:transform 1s var(--ease)"></div>
+        <div data-fill="${pctAct/100}" style="height:100%;width:100%;border-radius:3px;transform-origin:left;transform:scaleX(0);background:${pctAct>=100?'var(--verde-3)':pctAct>=80?'var(--dorado-2)':'var(--rojo-2)'};transition:transform 1s var(--ease)"></div>
       </div>
       <div class="kh-meta">${pctAct.toFixed(0)}% de meta ${fmt(metaAct,0)} kg · ${diasAct.filter(d=>d.kg_producidos>0).length} días</div>
     </div>
     <div style="${cardStyle}">
       <div class="kh-label">Eficiencia actual vs anterior</div>
       <div style="display:flex;align-items:baseline;gap:12px;margin:10px 0 6px">
-        <div class="kh-value" style="font-size:32px">${fmt(efAct,2)}<span>kg/h</span></div>
+        <div class="kh-value" style="font-size:32px">${numTicker(efAct,2)}<span>kg/h</span></div>
         ${semAnt ? `<span style="font-size:12px;font-weight:600;padding:3px 8px;border-radius:20px;background:${upEf?'rgba(10,110,53,0.1)':'rgba(192,25,15,0.09)'};color:${upEf?'var(--verde)':'var(--rojo)'}">
           ${upEf?'↑':'↓'} ${fmt(Math.abs(diffEf),2)} kg/h vs ${weekLabel(semAnt)}
         </span>` : ''}
@@ -2542,15 +2623,17 @@ async function renderSemComparativo() {
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px">
         <div style="background:rgba(0,0,0,0.04);border-radius:8px;padding:10px;text-align:center">
           <div style="font-size:10px;color:var(--texto-3);margin-bottom:4px;text-transform:uppercase;letter-spacing:0.06em">Esta semana</div>
-          <div style="font-size:18px;font-weight:700">${fmt(efAct,2)}</div>
+          <div style="font-size:18px;font-weight:700">${numTicker(efAct,2)}</div>
         </div>
         <div style="background:rgba(0,0,0,0.04);border-radius:8px;padding:10px;text-align:center">
           <div style="font-size:10px;color:var(--texto-3);margin-bottom:4px;text-transform:uppercase;letter-spacing:0.06em">Semana anterior</div>
-          <div style="font-size:18px;font-weight:700">${fmt(efAnt,2)}</div>
+          <div style="font-size:18px;font-weight:700">${numTicker(efAnt,2)}</div>
         </div>
       </div>
     </div>
   `;
+  runNumTickers(container);
+  animateFillBars(container);
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -2666,9 +2749,10 @@ async function renderStockDias() {
     var clr = d===null ? 'var(--texto-3)' : d<2 ? 'var(--rojo)' : d<5 ? 'var(--dorado-2)' : 'var(--verde)';
     var bg  = d===null ? 'rgba(0,0,0,0.04)' : d<2 ? 'rgba(192,25,15,0.08)' : d<5 ? 'rgba(217,119,6,0.08)' : 'rgba(10,110,53,0.08)';
     var rateLabel = c.avgDay >= 0.5 ? Math.round(c.avgDay) + ' kg/d · ' + c.fuente : '';
-    html += '<div style="min-width:100px;flex-shrink:0;background:' + bg + ';border-radius:10px;padding:10px 10px;text-align:center">'
+    var critico = d!==null && d<2;
+    html += '<div style="min-width:100px;flex-shrink:0;background:' + bg + ';border-radius:10px;padding:10px 10px;text-align:center"' + (critico ? ' class="stock-pulse"' : '') + '>'
       + '<div style="font-size:9px;font-weight:700;color:var(--texto-3);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + c.key + '</div>'
-      + '<div style="font-size:26px;font-weight:800;color:' + clr + ';line-height:1;margin-bottom:2px">' + (d!==null ? Math.round(d) : '—') + '</div>'
+      + '<div style="font-size:26px;font-weight:800;color:' + clr + ';line-height:1;margin-bottom:2px">' + (d!==null ? numTicker(Math.round(d),0) : '—') + '</div>'
       + '<div style="font-size:9px;color:var(--texto-3);margin-bottom:3px">' + (d!==null ? 'días' : 'sin datos') + '</div>'
       + '<div style="font-size:9px;color:var(--texto-3)">' + c.bolsas + ' bolsas · ' + Math.round(c.kgStock) + ' kg</div>'
       + '<div style="font-size:9px;color:var(--texto-3);margin-top:2px;opacity:0.7">' + rateLabel + '</div>'
@@ -2680,6 +2764,7 @@ async function renderStockDias() {
   }
   html += '</div>';
   container.innerHTML = html;
+  runNumTickers(container);
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -2716,12 +2801,13 @@ async function renderDiaDestacado() {
   };
 
   topRow.innerHTML = `
-    <div style="${cardStyle};border-top:2px solid var(--verde-3)">
+    <div class="shine-card" style="${cardStyle};border-top:2px solid var(--verde-3)">
       <div class="kh-label">🏆 Mejor día — últimos 30 días</div>
-      <div class="kh-value" style="font-size:28px;margin:8px 0">${fmt(mejor.kg_producidos)}<span>kg</span></div>
+      <div class="kh-value" style="font-size:28px;margin:8px 0">${numTicker(mejor.kg_producidos,1)}<span>kg</span></div>
       <div class="kh-meta">${fmtDia(mejor)} · ${fmt(mejor.kg_hora||0,2)} kg/h</div>
     </div>
   `;
+  runNumTickers(topRow);
 }
 
 async function renderChartDiarioMain() {
