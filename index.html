@@ -2083,8 +2083,8 @@ function renderTopDiasGraficas(rows) {
   if (!sorted.length) { cont.innerHTML = '<div class="empty"><p>Sin días con producción en el rango seleccionado</p></div>'; return; }
   const top5 = sorted.slice(0,5);
   const low5 = sorted.slice(-5).reverse();
-  const card = (r,i,bad) => `<div class="top-dia-card${bad?' bad':''}"><div class="top-dia-rank">#${i+1}</div>
-    <div class="top-dia-kg">${fmt(r.kg_producidos,0)} <span style="font-size:12px;font-weight:400;color:var(--gris-500)">kg</span></div>
+  const card = (r,i,bad) => `<div class="top-dia-card${bad?' bad':''}${i===0&&!bad?' shine-card':''}"><div class="top-dia-rank">${i===0&&!bad?'🏆 ':''}#${i+1}</div>
+    <div class="top-dia-kg">${numTicker(r.kg_producidos,0)} <span style="font-size:12px;font-weight:400;color:var(--gris-500)">kg</span></div>
     <div class="top-dia-fecha">${fmtDate(r.fecha)} · ${r.dia_nombre||''}</div></div>`;
   cont.innerHTML = `<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
     <div><h3 style="margin-bottom:10px">🏆 Top 5 días más productivos</h3>
@@ -2092,6 +2092,7 @@ function renderTopDiasGraficas(rows) {
     <div><h3 style="margin-bottom:10px">📉 5 días con menor producción</h3>
       <div class="top-dias">${low5.map((r,i)=>card(r,i,true)).join('')}</div></div>
   </div>`;
+  runNumTickers(cont);
 }
 
 async function renderChartDiaSemana(allRows) {
