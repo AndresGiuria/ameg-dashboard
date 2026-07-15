@@ -429,7 +429,7 @@
   .month-header-bar .mstat .v { font-size:18px; font-weight:700; }
   .month-header-bar .mstat .l { font-size:10px; opacity:0.45; text-transform:uppercase; letter-spacing:0.06em; }
 
-  /* ── MODAL OVERLAY (bitácora / PDF escaneado) ── */
+  /* ── MODAL OVERLAY (confirmDialog genérico) ── */
   .modal-overlay {
     position:fixed; inset:0; z-index:9998;
     background:rgba(0,0,0,0.65);
@@ -490,9 +490,6 @@
   .inv-alerta.critico { background:var(--rojo-claro); color:var(--rojo); border:1px solid rgba(192,25,15,0.15); }
   .inv-alerta.warn    { background:var(--dorado-claro); color:var(--dorado); border:1px solid rgba(154,96,0,0.15); }
   .inv-alerta.ok      { background:var(--verde-claro); color:var(--verde); border:1px solid rgba(10,110,53,0.15); }
-
-  tr.excluido-row td { color:var(--texto-4); text-decoration:line-through; }
-  tr.excluido-row td:last-child { text-decoration:none; }
 
   .mes-kpi-row { display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:12px; margin-bottom:20px; }
 
@@ -1009,8 +1006,6 @@ const SUPABASE_URL = 'https://vcsclfosmtrgfcgaqiqu.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZjc2NsZm9zbXRyZ2ZjZ2FxaXF1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUxNTQ0ODUsImV4cCI6MjA5MDczMDQ4NX0.9hE7rjud8KzszmO_-nA903wL7lxpsuLcWCFFYdUx2SY';
 let META_KG_DIA  = 600;   // editable en Supabase → app_config
 let META_KG_H    = 12;
-const EXCLUIDO_RH  = 'Mario Alberto Hernández';
-const EXCLUIDO_CSV = 'HERNANDEZ ALCALA, MARIO ALBERTO';
 
 // Meta semanal: sube de 3,600 a 3,900 kg a partir de esta fecha de inicio de semana
 let META_SEM_CUTOFF = '2026-05-01';
@@ -2185,19 +2180,6 @@ async function renderChartMixProductos(filteredSems) {
   });
 }
 
-// =====================================================================
-// CSV / XLSX IMPORT
-// =====================================================================
-(function initCSVUpload() {
-  const zone=document.getElementById('csv-zone'),input=document.getElementById('csv-input');
-  if (!zone || !input) return;
-  zone.addEventListener('click',()=>input.click());
-  zone.addEventListener('dragover',e=>{e.preventDefault();zone.classList.add('drag');});
-  zone.addEventListener('dragleave',()=>zone.classList.remove('drag'));
-  zone.addEventListener('drop',e=>{e.preventDefault();zone.classList.remove('drag');const f=e.dataTransfer.files[0];if(f)handlePayrollFile(f);});
-  input.addEventListener('change',e=>{if(e.target.files[0])handlePayrollFile(e.target.files[0]);});
-})();
-
 function parseCSVRow(row) {
   const cols=[];let cur='',inQ=false;
   for (let i=0;i<row.length;i++) {
@@ -2207,146 +2189,6 @@ function parseCSVRow(row) {
     else cur+=c;
   }
   cols.push(cur.trim());return cols;
-}
-
-async function handlePayrollFile(file) {
-  const ext = file.name.split('.').pop().toLowerCase();
-  if (ext==='xlsx'||ext==='xls') await handleXLSXFile(file);
-  else await handleCSVFile(file);
-}
-
-async function handleXLSXFile(file) {
-  const result=document.getElementById('csv-result');
-  if (!result) return;
-  result.innerHTML='<div class="loading"><div class="spinner"></div></div>';
-  try {
-    if (!window.XLSX) {
-      await new Promise((res,rej)=>{
-        const s=document.createElement('script');
-        s.src='https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
-        s.onload=res; s.onerror=()=>rej(new Error('No se pudo cargar SheetJS'));
-        document.head.appendChild(s);
-      });
-    }
-    const ab=await file.arrayBuffer();
-    const wb=XLSX.read(ab,{type:'array'});
-    const ws=wb.Sheets[wb.SheetNames[0]];
-    const rows=XLSX.utils.sheet_to_json(ws,{defval:''});
-    if (!rows.length){result.innerHTML='<div style="color:var(--rojo-texto);font-size:13px;margin-top:10px">Excel vacío.</div>';return;}
-    const allKeys=Object.keys(rows[0]);
-    const fnameKey=allKeys.find(k=>k.toLowerCase()==='fname');
-    const lnameKey=allKeys.find(k=>k.toLowerCase()==='lname');
-    const hoursKey=allKeys.find(k=>k.toLowerCase()==='hours');
-    const jobKey=allKeys.find(k=>k.toLowerCase().includes('jobcode')||k.toLowerCase().includes('job'));
-    if (!fnameKey||!lnameKey){
-      result.innerHTML=`<div style="color:var(--rojo-texto);font-size:13px;margin-top:10px">⚠️ Columnas no reconocidas. Detectadas: ${escapeHtml(allKeys.join(', '))}</div>`;
-      return;
-    }
-    const empMap={};
-    for (const row of rows) {
-      const fname=String(row[fnameKey]||'').trim();
-      const lname=String(row[lnameKey]||'').trim();
-      if (!fname||!lname) continue;
-      const fullName=`${fname} ${lname}`;
-      const nameUp=fullName.toUpperCase();
-      const jobcode=jobKey?String(row[jobKey]||'').trim().toLowerCase():'';
-      if (jobcode==='break') continue;
-      const hrs=parseFloat(String(row[hoursKey]||'0').replace(',','.'))||0;
-      const excluido=nameUp.includes('MARIO')&&nameUp.includes('HERNANDEZ');
-      if (!empMap[nameUp]) empMap[nameUp]={name:fullName,total:0,excluido};
-      empMap[nameUp].total+=hrs;
-    }
-    const employees=Object.values(empMap);
-    const totalIncluido=employees.filter(e=>!e.excluido).reduce((a,e)=>a+e.total,0);
-    const totalExcluido=employees.filter(e=>e.excluido).reduce((a,e)=>a+e.total,0);
-    if (!employees.length){result.innerHTML='<div style="color:var(--rojo-texto);font-size:13px;margin-top:10px">No se encontraron empleados.</div>';return;}
-    renderCSVResult(employees,totalIncluido,totalExcluido);
-  } catch(err) {
-    if (result) result.innerHTML=`<div style="color:var(--rojo-texto);font-size:13px;margin-top:10px">Error: ${err.message}</div>`;
-  }
-}
-
-async function handleCSVFile(file) {
-  const result=document.getElementById('csv-result');
-  if (!result) return;
-  result.innerHTML='<div class="loading"><div class="spinner"></div></div>';
-  try {
-    let text=await file.text();
-    text=text.replace(/^\uFEFF/,'');
-    const lines=text.split(/\r?\n/).filter(l=>l.trim());
-    if (lines.length<2){result.innerHTML='<div style="color:var(--rojo-texto);font-size:13px;margin-top:10px">CSV vacío.</div>';return;}
-    const header=parseCSVRow(lines[0]);
-    const idx={};
-    header.forEach((h,i)=>{
-      const k=h.toLowerCase().replace(/\s+/g,' ').trim().replace(/['"]/g,'');
-      if (k==='name')idx.name=i;
-      else if (k==='reg hours')idx.reg=i;
-      else if (k==='o/t hours'||k==='overtime hours'||k==='d/t hours')idx.ot=(idx.ot||[]).concat(i);
-      else if (k==='group')idx.group=i;
-    });
-    // ot can be multiple columns — sum them
-    const otCols = Array.isArray(idx.ot) ? idx.ot : (idx.ot!=null?[idx.ot]:[]);
-    if (idx.name==null||idx.reg==null){
-      result.innerHTML=`<div style="color:var(--rojo-texto);font-size:13px;margin-top:10px">⚠️ Columnas no encontradas. Detectadas: ${escapeHtml(header.join(', '))}</div>`;
-      return;
-    }
-    const employees=[];let totalIncluido=0,totalExcluido=0;
-    for (let i=1;i<lines.length;i++){
-      const cols=parseCSVRow(lines[i]);
-      if (!cols[idx.name]) continue;
-      const rawName=(cols[idx.name]||'').trim();
-      if (!rawName||rawName.toUpperCase().includes('TOTAL')||rawName.toUpperCase().includes('SUBTOTAL')) continue;
-      const nameUp=rawName.toUpperCase().replace(/\s+/g,' ');
-      const reg=parseFloat(cols[idx.reg])||0;
-      const ot=otCols.reduce((s,c)=>s+(parseFloat(cols[c])||0),0);
-      const total=reg+ot;
-      if (!total) continue;
-      const group=idx.group!=null?(cols[idx.group]||''):'';
-      const excluido=nameUp.includes('HERNANDEZ')&&nameUp.includes('MARIO');
-      employees.push({name:rawName,group,reg,ot,total,excluido});
-      if(excluido)totalExcluido+=total; else totalIncluido+=total;
-    }
-    if (!employees.length){result.innerHTML='<div style="color:var(--rojo-texto);font-size:13px;margin-top:10px">No se encontraron empleados.</div>';return;}
-    renderCSVResult(employees,totalIncluido,totalExcluido);
-  } catch(err) {
-    if (result) result.innerHTML=`<div style="color:var(--rojo-texto);font-size:13px;margin-top:10px">Error: ${err.message}</div>`;
-  }
-}
-
-function renderCSVResult(employees,totalIncluido,totalExcluido) {
-  const result=document.getElementById('csv-result');
-  if (!result) return;
-  const isXLSX=employees.length&&employees[0].reg===undefined;
-  const rows=employees.map(e=>`
-    <tr class="${e.excluido?'excluido-row':''}">
-      <td>${e.excluido?'🚫 ':''}${escapeHtml(e.name)}</td>
-      ${!isXLSX?`<td>${e.group||'—'}</td><td class="td-num">${fmt(e.reg)}</td><td class="td-num">${fmt(e.ot)}</td>`:''}
-      <td class="td-num"><strong>${fmt(e.total)}</strong></td>
-      <td>${e.excluido?'<span class="badge badge-bad">Excluido</span>':'<span class="badge badge-ok">Incluido</span>'}</td>
-    </tr>`).join('');
-  result.innerHTML=`
-    <div style="margin-top:14px">
-      <div style="display:flex;gap:14px;flex-wrap:wrap;align-items:center;margin-bottom:14px">
-        <div style="background:#d5f5e3;border-radius:8px;padding:12px 20px;text-align:center">
-          <div style="font-size:24px;font-weight:700;color:#1e8449">${fmt(totalIncluido)} h</div>
-          <div style="font-size:12px;color:#555;margin-top:2px">Total RH (sin Mario A.H.)</div>
-        </div>
-        ${totalExcluido>0?`<div style="background:#fde8e8;border-radius:8px;padding:12px 20px;text-align:center">
-          <div style="font-size:18px;font-weight:700;color:var(--rojo)">${fmt(totalExcluido)} h</div>
-          <div style="font-size:12px;color:#555;margin-top:2px">Excluidas (Mario A.H.)</div>
-        </div>`:''}
-      </div>
-      <div class="table-wrap">
-        <table>
-          <thead><tr>
-            <th>Empleado</th>
-            ${!isXLSX?'<th>Grupo</th><th class="td-num">Reg Hrs</th><th class="td-num">O/T Hrs</th>':''}
-            <th class="td-num">Total Hrs</th><th>Estado</th>
-          </tr></thead>
-          <tbody>${rows}</tbody>
-        </table>
-      </div>
-    </div>`;
 }
 
 // =====================================================================
