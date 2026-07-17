@@ -786,6 +786,7 @@
     <div id="datos-filtros-personas" style="display:none;align-items:center;gap:10px">
       <label>Mes:</label>
       <select id="personas-mes-sel" onchange="renderPorPersona()"></select>
+      <button class="btn btn-secondary btn-sm" onclick="exportPersonasCSV()" style="margin-left:8px">⬇ Exportar CSV</button>
     </div>
   </div>
 
@@ -2044,8 +2045,8 @@ async function renderPorPersona() {
   container.innerHTML = html;
 }
 
-function exportCSV() {
-  const table = document.querySelector('#tabla-historial table');
+function exportTableCSV(selector, filename) {
+  const table = document.querySelector(selector);
   if (!table) { toast('Sin datos para exportar','err'); return; }
   const rows = [...table.querySelectorAll('tr')];
   const csv  = rows.map(r =>
@@ -2054,7 +2055,15 @@ function exportCSV() {
   const blob = new Blob(['\uFEFF'+csv], {type:'text/csv;charset=utf-8;'});
   const url  = URL.createObjectURL(blob);
   const a    = document.createElement('a');
-  a.href=url; a.download='ameg_produccion.csv'; a.click();
+  a.href=url; a.download=filename; a.click();
+}
+
+function exportCSV() {
+  exportTableCSV('#tabla-historial table', 'ameg_produccion.csv');
+}
+
+function exportPersonasCSV() {
+  exportTableCSV('#tabla-personas table', 'ameg_horas_por_persona.csv');
 }
 
 // =====================================================================
