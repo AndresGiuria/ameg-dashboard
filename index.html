@@ -3382,10 +3382,22 @@ const MARKETMAN_MAP = {
   'MUSHROOMS':         'MUSHROOMS BAG 2KG',
   'CILANTRO':          'CILANTRO',
 };
+// MarketMan usa un nombre distinto para el mismo producto en el reporte de
+// Órdenes vs el de InvCount (confirmado con los archivos del 17-jul-2026).
+const MARKETMAN_ALIASES = {
+  'MUSHROOMS': ['2KG MUSHROOMS PAPER BAG'],
+  'LETTUCE':   ['LETTUCE 20LB (4 BAGS)'],
+};
+
 // canónico → MARKETMAN_MAP invertido para lookup O(1) por nombre normalizado
 const MARKETMAN_MAP_INV = {};
 for (const canon of Object.keys(MARKETMAN_MAP)) {
   MARKETMAN_MAP_INV[mmNormalize(MARKETMAN_MAP[canon])] = canon;
+}
+for (const canon of Object.keys(MARKETMAN_ALIASES)) {
+  for (const alias of MARKETMAN_ALIASES[canon]) {
+    MARKETMAN_MAP_INV[mmNormalize(alias)] = canon;
+  }
 }
 
 function mmNormalize(s) {
