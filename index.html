@@ -878,6 +878,26 @@
     </div>
     <div id="inv-save-status" style="margin-top:10px;font-size:12px;color:var(--texto-3)"></div>
     <div style="margin-top:8px;font-size:12px;color:var(--texto-3)">💡 Captura diaria: registra cada mañana el conteo en bolsas (Cierre) y los pedidos enviados. Al guardar, la producción del día anterior se calcula sola con el conteo — igual que el Excel de control diario, pero directo a la base.</div>
+
+    <div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--borde)">
+      <div style="font-size:11px;font-weight:600;color:var(--texto-3);margin-bottom:8px">📥 IMPORTAR DE MARKETMAN — llena Cierre/Pedidos del día cargado arriba (los 3 archivos son opcionales, sube los que tengas)</div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+        <div>
+          <label style="font-size:10px;color:var(--texto-3);display:block;margin-bottom:2px">Incoming orders by item</label>
+          <input type="file" id="mm-file-orders" accept=".xlsx,.xls" style="font-size:11px;max-width:180px">
+        </div>
+        <div>
+          <label style="font-size:10px;color:var(--texto-3);display:block;margin-bottom:2px">InvCount Basement</label>
+          <input type="file" id="mm-file-base" accept=".xlsx,.xls" style="font-size:11px;max-width:180px">
+        </div>
+        <div>
+          <label style="font-size:10px;color:var(--texto-3);display:block;margin-bottom:2px">InvCount Upstairs</label>
+          <input type="file" id="mm-file-ups" accept=".xlsx,.xls" style="font-size:11px;max-width:180px">
+        </div>
+        <button class="btn btn-secondary btn-sm" onclick="mmAplicarImport()" style="align-self:flex-end">⚡ Aplicar al conteo de hoy</button>
+      </div>
+      <div id="mm-import-status" style="margin-top:10px;font-size:12px;color:var(--texto-3)"></div>
+    </div>
   </div>
 
   <!-- Alertas -->
@@ -3327,6 +3347,147 @@ function getStockInfo(prod){
 }
 function getSeccion(prod){
   return INV_UPSTAIRS.includes(prod.toUpperCase()) ? 'upstairs' : 'basement';
+}
+
+// ── Import MarketMan: mapeo confirmado con Camilo (17-jul-2026) ──
+// canónico → nombre base del item en MarketMan (sin el "N. " inicial ni el
+// " - Pack/Case ..." final — ver mmNormalize).
+const MARKETMAN_MAP = {
+  'ASADA':             'BAKED ASADA 3KG',
+  'BARBACOA':          'BARBACOA 2KG',
+  'BIRRIA':            'BIRRIA 3KG',
+  'CARNITAS':          'CARNITAS 2KG',
+  'CHICKEN':           'CHICKEN 3KG',
+  'PASTOR':            'RAW PASTOR (4KG)',
+  'PAS MARINATE':      'NEW PASTOR MARINATE',
+  'BIRRIA CONSO':      'BIRRIA CONSOME',
+  'BBQ CONSO':         'CONSOME BARBACOA 750ML',
+  'BEANS':             'FRIJOLES/BEANS',
+  'SONORA WHITE':      'SONORA, 5.5" FRESH WHITE CORN TACO',
+  'BBJ':               'BIRRIA BASTING JUICE',
+  'FISH VENERICA':     'BASSA FISH V.',
+  'FISH BASSA CIELOS': 'FROZEN BASA FILLET 30LB',
+  'MILD':              'SALSA MILD',
+  'MEDIUM':            'SALSA MEDIUM',
+  'HOT':               'HOT SAUCE',
+  'HOT JALAPEÑO':      'JALAPEÑO HOT SAUCE',
+  'HOT JARS':          'HOT JAR 8oz',
+  'MAYO':              'MAYONNAISSE MARINATED',
+  'FISH FLOUR':        'FISH FLOUR',
+  'ONION':             'CEBOLLA / ONION',
+  'LETTUCE':           'LETTUCE BOX',
+  'PORTUGUESE BUNS':   'PORTUGUESE BUNS',
+  'MOZZARELLA':        'SHREDDED MOZZARELLA 10 KG',
+  'MACHA':             'SALSA MACHA 8oz',
+  'MUSHROOMS':         'MUSHROOMS BAG 2KG',
+  'CILANTRO':          'CILANTRO',
+};
+// canónico → MARKETMAN_MAP invertido para lookup O(1) por nombre normalizado
+const MARKETMAN_MAP_INV = {};
+for (const canon of Object.keys(MARKETMAN_MAP)) {
+  MARKETMAN_MAP_INV[mmNormalize(MARKETMAN_MAP[canon])] = canon;
+}
+
+function mmNormalize(s) {
+  return String(s || '')
+    .split(' - ')[0]                    // quita " - Pack 2 Kg" / " - Case (...)"
+    .replace(/^\s*\d+\s*[A-Z]?\.\s*/, '') // quita "1. " / "9 A. " inicial
+    .replace(/\s+/g, ' ')
+    .trim()
+    .toUpperCase();
+}
+
+// filas tipo [Product, Ordered, Reserved, InStock, ProduceReorder] (con header)
+function mmParseOrdersSheet(aoa) {
+  const out = {};
+  for (const row of aoa.slice(1)) {
+    if (!row || !row[0]) continue;
+    const canon = MARKETMAN_MAP_INV[mmNormalize(row[0])];
+    if (!canon) continue;
+    const ordered = parseFloat(row[1]) || 0;
+    out[canon] = ordered;
+  }
+  return out;
+}
+
+// filas tipo [Item, Qty, Storage1, Storage2, Storage3, Category, Type] (con header)
+function mmParseInvCountSheet(aoa) {
+  const out = {};
+  for (const row of aoa.slice(1)) {
+    if (!row || !row[0]) continue;
+    const qtyRaw = row[1];
+    if (qtyRaw === '' || qtyRaw === null || qtyRaw === undefined) continue;
+    const canon = MARKETMAN_MAP_INV[mmNormalize(row[0])];
+    if (!canon) continue;
+    out[canon] = parseFloat(qtyRaw) || 0;
+  }
+  return out;
+}
+
+async function mmLeerHoja(file) {
+  if (!(await cargarXLSXLib())) throw new Error('No se pudo cargar el lector de Excel');
+  const ab = await file.arrayBuffer();
+  const wb = XLSX.read(ab, {type: 'array'});
+  return XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], {header: 1, raw: true});
+}
+
+// Llena los inputs de Cierre/Pedidos del conteo de HOY ya renderizado con los
+// 3 archivos de MarketMan (órdenes + InvCount basement + InvCount upstairs).
+// No guarda solo: el usuario revisa las discrepancias y da clic en
+// "💾 Guardar conteo" como siempre — reusa invGuardarConteo/invDerivarProduccionAyer.
+async function mmAplicarImport() {
+  const statusEl = document.getElementById('mm-import-status');
+  const fOrders  = document.getElementById('mm-file-orders').files[0];
+  const fBase    = document.getElementById('mm-file-base').files[0];
+  const fUps     = document.getElementById('mm-file-ups').files[0];
+  if (!fOrders && !fBase && !fUps) { toast('Selecciona al menos un archivo de MarketMan', 'err'); return; }
+
+  statusEl.textContent = 'Leyendo archivos…';
+  try {
+    const ordersMap = fOrders ? mmParseOrdersSheet(await mmLeerHoja(fOrders)) : {};
+    const baseMap   = fBase   ? mmParseInvCountSheet(await mmLeerHoja(fBase))   : {};
+    const upsMap    = fUps    ? mmParseInvCountSheet(await mmLeerHoja(fUps))    : {};
+    const cierreMap = Object.assign({}, baseMap, upsMap);
+
+    let actualizados = 0;
+    const discrepancias = [];
+    for (const prod of [...INV_BASEMENT, ...INV_UPSTAIRS]) {
+      const cierreEl  = document.querySelector('[data-inv-prod="'+prod+'"][data-inv-field="cierre"]');
+      const pedidosEl = document.querySelector('[data-inv-prod="'+prod+'"][data-inv-field="pedidos"]');
+      if (!cierreEl || !pedidosEl) continue; // grid no renderizado — falta "Cargar día" primero
+
+      let tocado = false;
+      if (cierreMap[prod] !== undefined) {
+        const anterior = parseFloat(cierreEl.value) || 0;
+        const nuevo    = cierreMap[prod];
+        if (Math.abs(anterior - nuevo) > 0.01) {
+          discrepancias.push({prod, anterior, nuevo, diff: +(nuevo - anterior).toFixed(2)});
+        }
+        cierreEl.value = nuevo;
+        tocado = true;
+      }
+      if (ordersMap[prod] !== undefined) {
+        pedidosEl.value = ordersMap[prod];
+        tocado = true;
+      }
+      if (tocado) { invRecalcular(prod); actualizados++; }
+    }
+
+    let html = '✅ ' + actualizados + ' producto(s) actualizados desde MarketMan.';
+    if (discrepancias.length) {
+      html += ' <span style="color:var(--dorado-texto);font-weight:600">⚠ ' + discrepancias.length + ' no coincidían con lo esperado:</span>';
+      html += '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px">';
+      discrepancias.forEach(d => {
+        html += '<span style="font-size:11px;background:rgba(217,119,6,0.1);color:var(--dorado-texto);padding:3px 9px;border-radius:20px;font-weight:600">'
+          + escapeHtml(d.prod) + ': esperado ' + d.anterior + ' → contado ' + d.nuevo + ' (' + (d.diff>0?'+':'') + d.diff + ')</span>';
+      });
+      html += '</div>';
+    }
+    statusEl.innerHTML = html;
+    toast('MarketMan aplicado: ' + actualizados + ' producto(s)' + (discrepancias.length ? ', ' + discrepancias.length + ' con discrepancia' : ''), discrepancias.length ? 'err' : 'ok');
+  } catch (e) {
+    statusEl.textContent = '❌ Error: ' + e.message;
+  }
 }
 
 async function invRenderDefault(){
