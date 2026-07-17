@@ -764,6 +764,7 @@
       <button id="datos-btn-semanas" class="btn btn-sm" onclick="datosCambiarVista('semanas')" style="font-size:12px;border-radius:6px;background:var(--verde-2);color:#fff;border-color:var(--verde-2);font-weight:600">📅 Semanas</button>
       <button id="datos-btn-mes" class="btn btn-sm" onclick="datosCambiarVista('mes')" style="font-size:12px;border-radius:6px;background:transparent;color:var(--texto-3);border-color:transparent">🗓 Por Mes</button>
       <button id="datos-btn-historial" class="btn btn-sm" onclick="datosCambiarVista('historial')" style="font-size:12px;border-radius:6px;background:transparent;color:var(--texto-3);border-color:transparent">📁 Días</button>
+      <button id="datos-btn-personas" class="btn btn-sm" onclick="datosCambiarVista('personas')" style="font-size:12px;border-radius:6px;background:transparent;color:var(--texto-3);border-color:transparent">👥 Por Persona</button>
     </div>
     <span class="filter-sep">|</span>
     <div id="datos-filtros-semanas" style="display:flex;align-items:center;gap:10px">
@@ -782,6 +783,10 @@
       <select id="hist-semana-sel" onchange="renderHistorial()"></select>
       <button class="btn btn-secondary btn-sm" onclick="exportCSV()" style="margin-left:8px">⬇ Exportar CSV</button>
     </div>
+    <div id="datos-filtros-personas" style="display:none;align-items:center;gap:10px">
+      <label>Mes:</label>
+      <select id="personas-mes-sel" onchange="renderPorPersona()"></select>
+    </div>
   </div>
 
   <div id="datos-view-semanas">
@@ -794,6 +799,12 @@
     <div class="card">
       <h2>📁 Historial de días</h2>
       <div id="tabla-historial" class="table-wrap"><div class="loading"><div class="spinner"></div></div></div>
+    </div>
+  </div>
+  <div id="datos-view-personas" style="display:none">
+    <div class="card">
+      <h2>👥 Horas por persona y semana</h2>
+      <div id="tabla-personas" class="table-wrap"><div class="loading"><div class="spinner"></div></div></div>
     </div>
   </div>
 </div>
@@ -1457,7 +1468,7 @@ function getAvailableMonths() {
 function populateMonthSelects() {
   const months = getAvailableMonths();
   const currentMonth = hoyISO().slice(0,7);
-  ['captura-mes-sel','semanal-mes-sel','mes-mes-sel','hist-mes-sel','graf-mes-sel'].forEach(id => {
+  ['captura-mes-sel','semanal-mes-sel','mes-mes-sel','hist-mes-sel','graf-mes-sel','personas-mes-sel'].forEach(id => {
     const el = document.getElementById(id);
     if (!el) return;
     const prev = el.value;
@@ -1754,7 +1765,7 @@ var datosVistaActual = 'semanas';
 
 function datosCambiarVista(vista) {
   datosVistaActual = vista;
-  var vistas = ['semanas','mes','historial'];
+  var vistas = ['semanas','mes','historial','personas'];
   vistas.forEach(function(v) {
     var view    = document.getElementById('datos-view-' + v);
     var filtros = document.getElementById('datos-filtros-' + v);
@@ -1771,6 +1782,7 @@ function datosCambiarVista(vista) {
   });
   if (vista==='semanas') renderSemanal();
   else if (vista==='mes') renderMes();
+  else if (vista==='personas') renderPorPersona();
   else renderHistorial();
 }
 
@@ -1957,6 +1969,79 @@ async function renderHistorial() {
     return;
   }
   container.innerHTML = buildDiasTable(rows);
+}
+
+// =====================================================================
+// TAB: POR PERSONA (horas por persona y semana, desde horas_por_persona)
+// =====================================================================
+async function renderPorPersona() {
+  const mesSel    = document.getElementById('personas-mes-sel').value;
+  const container = document.getElementById('tabla-personas');
+  container.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
+
+  let desde, hasta;
+  if (mesSel !== 'all') {
+    const [y,m] = mesSel.split('-').map(Number);
+    desde = mesSel+'-01';
+    hasta = new Date(y,m,0).toISOString().split('T')[0];
+  } else {
+    ({desde, hasta} = getAllDateRange());
+  }
+
+  const {data, error} = await db.from('horas_por_persona').select('*')
+    .gte('fecha', desde).lte('fecha', hasta).order('fecha');
+  if (error) { dbError('cargar horas por persona', error); return; }
+  if (!data || !data.length) {
+    container.innerHTML = '<div class="empty"><div class="icon">📭</div><p>Sin horas por persona en este período — se cargan al importar el CSV de 7shifts (paso 2 de Importar Excel)</p></div>';
+    return;
+  }
+
+  // Agrupar por semana (usando los rangos de la tabla semanas) y por persona
+  const semanaDe = fecha => semanas.find(s => fecha>=s.fecha_inicio && fecha<=s.fecha_fin);
+  const semIds   = new Set();
+  const porPersona = {}; // { nombre: { semId: horas } }
+  data.forEach(r => {
+    const sem = semanaDe(r.fecha);
+    const semId = sem ? sem.id : '_sin_semana';
+    semIds.add(semId);
+    if (!porPersona[r.nombre]) porPersona[r.nombre] = {};
+    porPersona[r.nombre][semId] = (porPersona[r.nombre][semId] || 0) + r.horas;
+  });
+
+  const semCols = [...semIds].map(id => semanas.find(s => s.id===id) || {id, fecha_inicio:'9999', label:'Sin semana'})
+    .sort((a,b) => a.fecha_inicio.localeCompare(b.fecha_inicio));
+
+  const personas = Object.keys(porPersona).sort((a,b) => {
+    const totalA = Object.values(porPersona[a]).reduce((x,y)=>x+y,0);
+    const totalB = Object.values(porPersona[b]).reduce((x,y)=>x+y,0);
+    return totalB - totalA;
+  });
+
+  let html = '<table><thead><tr><th>Persona</th>';
+  semCols.forEach(s => { html += '<th class="td-num">' + weekLabel(s) + '</th>'; });
+  html += '<th class="td-num">Total</th></tr></thead><tbody>';
+
+  const totalesPorSemana = {};
+  let granTotal = 0;
+  personas.forEach(nombre => {
+    let totalPersona = 0;
+    html += '<tr><td style="font-weight:600">' + escapeHtml(nombre) + '</td>';
+    semCols.forEach(s => {
+      const h = porPersona[nombre][s.id] || 0;
+      totalPersona += h;
+      totalesPorSemana[s.id] = (totalesPorSemana[s.id] || 0) + h;
+      html += '<td class="td-num">' + (h ? fmt(h) : '—') + '</td>';
+    });
+    granTotal += totalPersona;
+    html += '<td class="td-num" style="font-weight:700">' + fmt(totalPersona) + '</td></tr>';
+  });
+
+  html += '<tr style="border-top:2px solid var(--borde)"><td style="font-weight:700">Total</td>';
+  semCols.forEach(s => { html += '<td class="td-num" style="font-weight:700">' + fmt(totalesPorSemana[s.id] || 0) + '</td>'; });
+  html += '<td class="td-num" style="font-weight:700">' + fmt(granTotal) + '</td></tr>';
+  html += '</tbody></table>';
+
+  container.innerHTML = html;
 }
 
 function exportCSV() {
@@ -2807,6 +2892,7 @@ function fmtDateShort(iso){
 // =====================================================================
 let ctrlDias = [];
 let ctrlHorasPorDia = {};
+let ctrlHorasPorPersonaDia = {};
 
 // nombre en el Excel → nombre canónico en dias_productos
 const CTRL_CANON = {
@@ -3064,6 +3150,8 @@ async function ctrlGuardarTodo() {
     guardados++;
   }
 
+  await guardarHorasPorPersona(ctrlHorasPorPersonaDia);
+
   btn.disabled = false; btn.textContent = '💾 Guardar todos los días';
   if (status) status.textContent = guardados + ' día(s) guardado(s)' + (errores ? ' · ' + errores + ' error(es)' : '');
   toast('Import completado: ' + guardados + ' días ✓', errores ? 'err' : 'ok');
@@ -3087,10 +3175,11 @@ async function ctrlProcesarHoras(file) {
     } else {
       text = await file.text();
     }
-    const porDia = ctrlLeerCSVHoras(text);
+    const {porDia, porPersonaDia} = ctrlLeerCSVHoras(text);
     const fechas = Object.keys(porDia);
     if (!fechas.length) throw new Error('No se encontraron horas por fecha (se esperan columnas de fecha y horas)');
     ctrlHorasPorDia = porDia;
+    ctrlHorasPorPersonaDia = porPersonaDia;
     const total = Object.values(porDia).reduce((a,b) => a+b, 0);
     iconEl.textContent = '✅';
     labelEl.textContent = fechas.length + ' días · ' + total.toFixed(2) + ' h total';
@@ -3110,7 +3199,8 @@ async function ctrlProcesarHoras(file) {
           const {error} = await db.from('dias').update({horas: +porDia[f].toFixed(2)}).eq('fecha', f);
           if (!error) ok++;
         }
-        toast('Horas aplicadas a ' + ok + ' día(s) ✓', 'ok');
+        const {ok: okPersona, error: errPersona} = await guardarHorasPorPersona(porPersonaDia);
+        toast('Horas aplicadas a ' + ok + ' día(s) ✓' + (okPersona ? ' · ' + okPersona + ' registros por persona' : ''), errPersona ? 'err' : 'ok');
         await refreshAll();
       }
     }
@@ -3122,7 +3212,7 @@ async function ctrlProcesarHoras(file) {
 function ctrlLeerCSVHoras(text) {
   text = text.replace(/^﻿/, '');
   const lines = text.split(/\r?\n/).filter(l => l.trim());
-  if (!lines.length) return {};
+  if (!lines.length) return {porDia: {}, porPersonaDia: {}};
   const header = parseCSVRow(lines[0]).map(h => h.toLowerCase().replace(/['"]/g,'').trim());
 
   const iDate    = header.findIndex(h => h === 'local_date' || h === 'date' || h === 'fecha');
@@ -3132,6 +3222,7 @@ function ctrlLeerCSVHoras(text) {
   const iHours   = header.findIndex(h => h === 'hours' || h === 'reg hours' || h === 'regular hours' || h === 'horas');
   const iJobcode = header.findIndex(h => h.includes('jobcode') || h === 'job');
   const porDia = {};
+  const porPersonaDia = {}; // { fecha: { NOMBRE: horas } }
 
   for (const line of lines.slice(1)) {
     const cols = parseCSVRow(line);
@@ -3163,9 +3254,27 @@ function ctrlLeerCSVHoras(text) {
       if (dm) fecha = dm[3] + '-' + String(dm[2]).padStart(2,'0') + '-' + String(dm[1]).padStart(2,'0');
     }
     fecha = fecha.slice(0, 10);
-    if (fecha.match(/^\d{4}-\d{2}-\d{2}$/)) porDia[fecha] = (porDia[fecha] || 0) + horas;
+    if (!fecha.match(/^\d{4}-\d{2}-\d{2}$/)) continue;
+
+    porDia[fecha] = (porDia[fecha] || 0) + horas;
+    if (name) {
+      if (!porPersonaDia[fecha]) porPersonaDia[fecha] = {};
+      porPersonaDia[fecha][name] = (porPersonaDia[fecha][name] || 0) + horas;
+    }
   }
-  return porDia;
+  return {porDia, porPersonaDia};
+}
+
+async function guardarHorasPorPersona(porPersonaDia) {
+  const rows = [];
+  for (const fecha of Object.keys(porPersonaDia)) {
+    for (const nombre of Object.keys(porPersonaDia[fecha])) {
+      rows.push({fecha, nombre, horas: +porPersonaDia[fecha][nombre].toFixed(2)});
+    }
+  }
+  if (!rows.length) return {ok: 0, error: null};
+  const {error} = await db.from('horas_por_persona').upsert(rows, {onConflict: 'fecha,nombre'});
+  return {ok: error ? 0 : rows.length, error};
 }
 
 // ═══════════════════════════════════════════════════════════════
