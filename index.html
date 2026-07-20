@@ -566,6 +566,11 @@
   </div>
 </header>
 
+<div id="banner-recordatorio" style="display:none;background:rgba(220,38,38,0.1);border-bottom:1px solid rgba(220,38,38,0.3);color:#7a1212;padding:8px 16px;font-size:13px;text-align:center;align-items:center;justify-content:center;gap:10px">
+  <span id="banner-recordatorio-msg"></span>
+  <button onclick="document.getElementById('banner-recordatorio').style.display='none'" style="background:transparent;border:0;cursor:pointer;color:inherit;font-size:14px;line-height:1;padding:2px 6px" title="Cerrar">✕</button>
+</div>
+
 <nav id="main-nav">
   <button class="active" data-tab="tablero">📊 Tablero</button>
   <button data-tab="inventario">📦 Inventario</button>
@@ -914,6 +919,7 @@
 
   <!-- Alertas -->
   <div id="inv-alertas" style="margin-bottom:14px"></div>
+  <div id="inv-prediccion-quiebre" style="margin-bottom:14px"></div>
 
   <!-- Resumen Basement -->
   <div class="card" style="margin-bottom:14px">
@@ -3743,6 +3749,7 @@ async function invRenderDefault(){
   if (fechaSel && !fechaSel.value) fechaSel.value = hoyISO();
   invRenderGrid({},{});
   await invCargarHistorial();
+  await invActualizarPrediccionQuiebre();
 }
 
 async function invCargarDia(){
@@ -3788,6 +3795,7 @@ async function invCargarDia(){
       : '📋 Sin datos previos — inicia desde cero';
 
   invRenderGrid(basement, upstairs);
+  await invActualizarPrediccionQuiebre();
 }
 
 async function invCargarAyer() {
@@ -4068,6 +4076,53 @@ function invActualizarAlertas(){
       + '</div>'
       + '<div id="inv-alertas-detalle" style="display:none;margin-top:6px">'+detalleHtml+'</div>';
   }
+}
+
+// Predicción de quiebre de stock por tasa REAL de consumo (no min/max fijo):
+// mide cuánto bajó cada producto de un día para otro (inv_final de hoy vs.
+// inv_cierre de mañana, solo en pares de fechas realmente consecutivas) y
+// proyecta cuántos días quedan al ritmo promedio de las últimas ~3 semanas.
+async function invActualizarPrediccionQuiebre() {
+  const el = document.getElementById('inv-prediccion-quiebre');
+  if (!el) return;
+  const hoy = hoyISO();
+  const desde = new Date(hoy+'T12:00:00'); desde.setDate(desde.getDate()-21);
+  const {data, error} = await db.from('inventario_diario')
+    .select('fecha,producto,inv_cierre,inv_final')
+    .gte('fecha', desde.toISOString().split('T')[0]).lte('fecha', hoy).order('fecha');
+  if (error || !data || !data.length) { el.innerHTML = ''; return; }
+
+  const porProducto = {};
+  data.forEach(r => { (porProducto[r.producto] = porProducto[r.producto]||[]).push(r); });
+
+  const predicciones = [];
+  for (const prod of [...INV_BASEMENT, ...INV_UPSTAIRS]) {
+    if (!getStockInfo(prod)) continue;
+    const rows = (porProducto[prod]||[]).sort((a,b) => a.fecha.localeCompare(b.fecha));
+    if (rows.length < 4) continue;
+    const consumos = [];
+    for (let i = 0; i < rows.length-1; i++) {
+      const cur = rows[i], nxt = rows[i+1];
+      const diffDias = Math.round((new Date(nxt.fecha+'T12:00:00') - new Date(cur.fecha+'T12:00:00')) / 86400000);
+      if (diffDias !== 1) continue; // no son días consecutivos, no sirve como tasa diaria
+      const consumo = (cur.inv_final||0) - (nxt.inv_cierre||0);
+      if (consumo > 0) consumos.push(consumo);
+    }
+    if (consumos.length < 3) continue;
+    const tasaProm = consumos.reduce((a,b)=>a+b,0) / consumos.length;
+    if (tasaProm <= 0) continue;
+    const actual = rows[rows.length-1].inv_final;
+    if (actual == null) continue;
+    const diasRestantes = actual / tasaProm;
+    if (diasRestantes < 3) predicciones.push({prod, actual, tasaProm, diasRestantes});
+  }
+
+  if (!predicciones.length) { el.innerHTML = ''; return; }
+  predicciones.sort((a,b) => a.diasRestantes-b.diasRestantes);
+  el.innerHTML = '<div class="inv-alerta warn" style="margin-bottom:6px"><strong>⏳ Predicción de quiebre por ritmo real de consumo</strong> (distinto de la alerta de mínimo fijo de arriba):</div>'
+    + predicciones.map(p => '<div class="inv-alerta ' + (p.diasRestantes<1?'critico':'warn') + '" style="margin-bottom:4px">'
+      + '⏳ <strong>' + p.prod + '</strong>: quedan ~' + fmt(p.actual,0) + ' bolsas, consumo prom. ' + fmt(p.tasaProm,1) + '/día → se agotaría en ~' + fmt(p.diasRestantes,1) + ' días'
+      + '</div>').join('');
 }
 
 function invToggleAlertas(){
@@ -4437,6 +4492,24 @@ async function iniciarApp(session) {
   await cargarConfig();
   await initSemanas();
   await refreshAll();
+  checkRecordatorioCaptura();
+}
+
+// Recordatorio en pantalla (no hay backend/cron en esta app, solo se checa
+// cuando alguien abre el dashboard) si nadie ha guardado el conteo de
+// Inventario de hoy después de cierta hora.
+const HORA_RECORDATORIO_CAPTURA = 14; // 2pm hora de Toronto
+async function checkRecordatorioCaptura() {
+  const horaActual = parseInt(new Date().toLocaleString('en-US', {timeZone: TZ, hour:'2-digit', hour12:false}), 10);
+  if (horaActual < HORA_RECORDATORIO_CAPTURA) return;
+  const hoy = hoyISO();
+  const {count, error} = await db.from('inventario_diario').select('*', {count:'exact', head:true}).eq('fecha', hoy);
+  if (error || count > 0) return;
+  const banner = document.getElementById('banner-recordatorio');
+  const msg = document.getElementById('banner-recordatorio-msg');
+  if (!banner || !msg) return;
+  msg.textContent = '⚠️ Todavía no se ha capturado el inventario de hoy (' + fmtDate(hoy) + ') — ve a la pestaña 📦 Inventario';
+  banner.style.display = 'flex';
 }
 
 function mostrarLogin() {
