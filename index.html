@@ -522,11 +522,31 @@
     .hero-grid { grid-template-columns:repeat(2,1fr); }
     .charts-main { grid-template-columns:1fr; }
     .status-bar { grid-template-columns:1fr; }
+    /* Hint de que el nav se puede deslizar horizontalmente (hay más pestañas fuera de vista) */
+    nav { -webkit-mask-image: linear-gradient(to right, transparent 0, black 14px, black calc(100% - 22px), transparent 100%);
+          mask-image: linear-gradient(to right, transparent 0, black 14px, black calc(100% - 22px), transparent 100%); }
   }
   @media (max-width:500px) {
     main { padding:12px; }
     .hero-grid { grid-template-columns:1fr 1fr; }
     .kh-value { font-size:28px; }
+  }
+  @media (max-width:480px) {
+    header { padding:0 14px; }
+    .brand-text p { display:none; }
+    .header-right { gap:6px; }
+    .cmdk-hint-text { display:none; }
+    #db-status { max-width:80px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; display:inline-block; vertical-align:bottom; }
+  }
+  /* Botón flotante "Guardar conteo" en Inventario — evita tener que volver a
+     scrollear arriba tras llenar ~28 productos en pantallas chicas.
+     Vive fuera de <main> (no descendiente de .tab-pane.active, que anima con
+     transform y por lo tanto se vuelve containing block de todo fixed hijo).
+     Visibilidad la controla JS (actualizarFabGuardar), no CSS. */
+  .fab-guardar {
+    display:none; position:fixed; left:16px; right:16px; bottom:16px; z-index:60;
+    justify-content:center; align-items:center; padding:14px; font-size:14px;
+    box-shadow:0 8px 24px rgba(0,0,0,0.28);
   }
 </style>
 </head>
@@ -558,6 +578,9 @@
     </div>
   </div>
   <div class="header-right">
+    <button onclick="abrirCommandPalette()" title="Buscar pestaña o fecha (Ctrl/Cmd+K)" style="background:transparent;border:1px solid rgba(0,0,0,0.12);border-radius:8px;padding:5px 10px;font-size:11px;cursor:pointer;color:var(--texto-3);display:flex;align-items:center;gap:6px;flex-shrink:0">
+      🔎 <span class="cmdk-hint-text" style="opacity:0.7">Ctrl+K</span>
+    </button>
     <div class="conn-badge">
       <div class="conn-dot" id="db-dot"></div>
       <span id="db-status">Conectando…</span>
@@ -589,6 +612,9 @@
 <!-- TABLERO -->
 <div class="tab-pane active" id="tab-tablero">
   <div id="status-bar-row" class="status-bar"></div>
+  <div style="display:flex;justify-content:flex-end;margin-bottom:10px">
+    <button onclick="compartirSnapshotDia()" class="btn btn-secondary btn-sm">📸 Compartir resumen del día</button>
+  </div>
   <div id="mes-top3-row" style="display:grid;grid-template-columns:1fr 2fr;gap:14px;margin-bottom:20px"></div>
   <div class="hero-grid" id="kpi-row">
     <div class="kpi-hero" id="kpi-hoy-efic">
@@ -992,7 +1018,6 @@
     <h2>📅 Historial de conteos</h2>
     <div id="inv-historial" style="margin-top:12px"><div class="loading"><div class="spinner"></div></div></div>
   </div>
-
 </div>
 
 <div class="tab-pane" id="tab-reporte">
@@ -1047,6 +1072,7 @@
 </div>
 
 </main>
+<button onclick="invGuardarConteo()" id="fab-guardar-inv" class="btn btn-primary fab-guardar">💾 Guardar conteo</button>
 <div id="toast" role="status" aria-live="polite"></div>
 
 <script>
@@ -1870,11 +1896,125 @@ async function renderKPIs() {
     avg4wEfic  = hTotal  > 0 ? kgTotal/hTotal  : null;
   }
 
-  setKPI('kpi-hoy-efic',  eficMes,       META_KG_H,  'Efic. Promedio Mes',  'Meta: 12 kg/h',     'kg/h', avg4wEfic);
-  setKPI('kpi-promedio',  promMes,        META_KG_DIA,'Prom. Diario Mes',    diasMesTrab.length+' días trabajados', 'kg', avg4wKgDia);
+  // Tendencia (sparkline): últimos días trabajados con datos, de un rango más
+  // amplio que el mes (para no quedar vacía a inicios de mes)
+  const desde30 = new Date(hoy+'T12:00:00'); desde30.setDate(desde30.getDate()-30);
+  const rows30 = (await fetchDiasByRange(desde30.toISOString().split('T')[0], hoy)).filter(r => (r.kg_producidos||0) > 0);
+  const trendKg   = rows30.slice(-14).map(r => r.kg_producidos);
+  const trendEfic = rows30.filter(r => r.kg_hora != null).slice(-14).map(r => r.kg_hora);
+
+  setKPI('kpi-hoy-efic',  eficMes,       META_KG_H,  'Efic. Promedio Mes',  'Meta: 12 kg/h',     'kg/h', avg4wEfic, trendEfic);
+  setKPI('kpi-promedio',  promMes,        META_KG_DIA,'Prom. Diario Mes',    diasMesTrab.length+' días trabajados', 'kg', avg4wKgDia, trendKg);
 }
 
-function setKPI(cardId, value, meta, label, sublabel, unit, avg4w) {
+// Mini gráfico de tendencia sin ejes/leyenda, dibujado directo en canvas
+// (más liviano que instanciar Chart.js para un elemento puramente decorativo)
+function drawSparkline(canvas, values, color) {
+  if (!canvas || values.length < 2) return;
+  const dpr = window.devicePixelRatio || 1;
+  const wCss = canvas.clientWidth, hCss = canvas.clientHeight;
+  canvas.width = wCss*dpr; canvas.height = hCss*dpr;
+  const ctx = canvas.getContext('2d');
+  ctx.scale(dpr,dpr);
+  ctx.clearRect(0,0,wCss,hCss);
+  const min = Math.min(...values), max = Math.max(...values);
+  const range = (max-min) || 1;
+  const stepX = wCss / (values.length-1);
+  const yOf = v => hCss - ((v-min)/range)*(hCss-4) - 2;
+  ctx.beginPath();
+  values.forEach((v,i) => { const x=i*stepX, y=yOf(v); i===0?ctx.moveTo(x,y):ctx.lineTo(x,y); });
+  ctx.strokeStyle = color; ctx.lineWidth = 1.5; ctx.lineJoin='round'; ctx.stroke();
+  const lastX = (values.length-1)*stepX, lastY = yOf(values[values.length-1]);
+  ctx.beginPath(); ctx.arc(lastX,lastY,2.2,0,Math.PI*2); ctx.fillStyle = color; ctx.fill();
+}
+
+function roundRectPath(ctx, x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x+r, y);
+  ctx.arcTo(x+w, y, x+w, y+h, r);
+  ctx.arcTo(x+w, y+h, x, y+h, r);
+  ctx.arcTo(x, y+h, x, y, r);
+  ctx.arcTo(x, y, x+w, y, r);
+  ctx.closePath();
+}
+
+// Snapshot compartible: imagen ligera con el resumen del último día con
+// producción (no el PDF completo) — dibujada a mano en canvas en vez de
+// screenshotear el DOM, para no depender de html2canvas ni arriesgar que los
+// efectos CSS (beams/gradientes) del kpi-hero se vean rotos en la imagen.
+async function compartirSnapshotDia() {
+  const hoy = hoyISO();
+  const desde = new Date(hoy+'T12:00:00'); desde.setDate(desde.getDate()-7);
+  const rows = (await fetchDiasByRange(desde.toISOString().split('T')[0], hoy)).filter(r => (r.kg_producidos||0) > 0);
+  const dia = rows.length ? rows[rows.length-1] : null;
+  if (!dia) { toast('Sin datos recientes para generar el snapshot','err'); return; }
+
+  const FONT = '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
+  const W = 640, H = 380;
+  const canvas = document.createElement('canvas');
+  canvas.width = W; canvas.height = H;
+  const ctx = canvas.getContext('2d');
+
+  ctx.fillStyle = '#f4f5f2'; ctx.fillRect(0,0,W,H);
+  ctx.fillStyle = '#1c1c1c'; ctx.fillRect(0,0,W,64);
+  ctx.fillStyle = '#fff';
+  ctx.font = '600 20px ' + FONT;
+  ctx.fillText('🌮 AMEG Dashboard', 24, 40);
+  ctx.fillStyle = 'rgba(255,255,255,0.7)';
+  ctx.font = '400 12px ' + FONT;
+  ctx.fillText('La Chilaca / Gus Tacos', 24, 56);
+
+  ctx.fillStyle = '#333';
+  ctx.font = '600 16px ' + FONT;
+  ctx.fillText(fmtDate(dia.fecha) + ' · ' + (dia.dia_nombre||''), 24, 100);
+
+  const pct = META_KG_DIA>0 ? dia.kg_producidos/META_KG_DIA*100 : 0;
+  const estado = pct>=100 ? '✓ Meta cumplida' : pct>=85 ? '↗ Cerca de la meta' : '↓ Bajo la meta';
+  const colorEstado = pct>=100 ? '#0a6e35' : pct>=85 ? '#d97706' : '#c0190f';
+
+  ctx.fillStyle = colorEstado;
+  ctx.font = '700 62px ' + FONT;
+  ctx.fillText(fmt(dia.kg_producidos,0) + ' kg', 24, 178);
+  ctx.fillStyle = '#888';
+  ctx.font = '400 13px ' + FONT;
+  ctx.fillText('Kg producidos (meta ' + META_KG_DIA + ' kg)', 24, 198);
+
+  ctx.fillStyle = '#333';
+  ctx.font = '600 28px ' + FONT;
+  ctx.fillText((dia.kg_hora!=null ? fmt(dia.kg_hora) : '—') + ' kg/h', 24, 246);
+  ctx.fillStyle = '#888';
+  ctx.font = '400 13px ' + FONT;
+  ctx.fillText('Eficiencia (meta ' + META_KG_H + ' kg/h)', 24, 264);
+
+  ctx.font = '600 14px ' + FONT;
+  const estadoW = ctx.measureText(estado).width;
+  ctx.fillStyle = colorEstado;
+  roundRectPath(ctx, 24, 286, estadoW+28, 32, 16); ctx.fill();
+  ctx.fillStyle = '#fff';
+  ctx.fillText(estado, 38, 307);
+
+  ctx.fillStyle = '#aaa';
+  ctx.font = '400 11px ' + FONT;
+  ctx.fillText('Generado ' + fmtDate(hoy), 24, H-16);
+
+  canvas.toBlob(async blob => {
+    if (!blob) { toast('Error generando la imagen','err'); return; }
+    const file = new File([blob], 'ameg-resumen-'+dia.fecha+'.png', {type:'image/png'});
+    if (navigator.canShare && navigator.canShare({files:[file]})) {
+      try { await navigator.share({files:[file], title:'AMEG Dashboard', text:'Resumen del '+fmtDate(dia.fecha)}); }
+      catch(e) { /* usuario cerró el share sheet — no forzar descarga */ }
+      return;
+    }
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = 'ameg-resumen-'+dia.fecha+'.png';
+    document.body.appendChild(a); a.click(); a.remove();
+    URL.revokeObjectURL(url);
+    toast('Imagen descargada — compártela por WhatsApp ✓','ok');
+  }, 'image/png');
+}
+
+function setKPI(cardId, value, meta, label, sublabel, unit, avg4w, trend) {
   const card = document.getElementById(cardId);
   const pct  = meta>0 ? (value/meta*100) : 0;
   card.className = 'kpi-hero'+(value==null?'':pct>=100?'':pct>=85?' warn':' bad');
@@ -1902,8 +2042,15 @@ function setKPI(cardId, value, meta, label, sublabel, unit, avg4w) {
         : pct>=85
           ? '<span class="kh-trend trend-flat">↗ Cerca</span>'
           : '<span class="kh-trend trend-down">↓ Bajo</span>'):''}
-    </div>` + deltaHtml;
+    </div>` + deltaHtml
+    + (trend && trend.length>=2 ? '<canvas class="kh-sparkline" style="width:100%;height:28px;display:block;margin-top:8px"></canvas>' : '');
   runNumTickers(card);
+  if (trend && trend.length>=2) {
+    const canvas = card.querySelector('.kh-sparkline');
+    const varName = pct>=100 ? '--verde' : pct>=85 ? '--dorado-2' : '--rojo';
+    const color = getComputedStyle(document.documentElement).getPropertyValue(varName).trim() || '#888';
+    requestAnimationFrame(() => drawSparkline(canvas, trend, color));
+  }
 }
 
 // =====================================================================
@@ -4459,6 +4606,10 @@ async function navTo(tabId){
   if (pane) pane.classList.add('active');
   const btn=document.querySelector(`#main-nav button[data-tab="${tabId}"]`);
   if (btn) btn.classList.add('active');
+  // Antes de los await de renderizado (que pueden tardar más si el usuario ya
+  // cambió de pestaña) para que un render lento de una pestaña anterior no
+  // pise el estado del fab al terminar tarde.
+  actualizarFabGuardar(tabId);
   if (tabId==='tablero')       await renderTablero();
   if (tabId==='inventario')    invRenderDefault();
   if (tabId==='semana-import') { /* upload tab, no render needed */ }
@@ -4469,8 +4620,118 @@ async function navTo(tabId){
   if (tabId==='config')        renderConfig();
 }
 
+function actualizarFabGuardar(tabId) {
+  const fab = document.getElementById('fab-guardar-inv');
+  if (!fab) return;
+  fab.style.display = (tabId==='inventario' && window.matchMedia('(max-width:700px)').matches) ? 'flex' : 'none';
+}
+window.addEventListener('resize', () => {
+  const activePane = document.querySelector('.tab-pane.active');
+  if (activePane) actualizarFabGuardar(activePane.id.replace('tab-',''));
+});
+
 document.querySelectorAll('#main-nav button[data-tab]').forEach(btn=>{
   btn.addEventListener('click',()=>navTo(btn.dataset.tab));
+});
+
+// =====================================================================
+// COMMAND PALETTE (Cmd/Ctrl+K) — saltar a una pestaña o a un día con datos
+// =====================================================================
+const CMDK_TABS = [
+  {label:'📊 Tablero', tab:'tablero'},
+  {label:'📦 Inventario', tab:'inventario'},
+  {label:'📈 Gráficas', tab:'graficas'},
+  {label:'📋 Datos', tab:'datos'},
+  {label:'📄 Reporte', tab:'reporte'},
+  {label:'➕ Agregar día', tab:'captura'},
+  {label:'📥 Importar Excel', tab:'semana-import'},
+  {label:'⚙️ Config', tab:'config'},
+];
+
+async function abrirCommandPalette() {
+  if (document.getElementById('cmdk-overlay')) return;
+  const modal = document.createElement('div');
+  modal.id = 'cmdk-overlay';
+  modal.className = 'modal-overlay';
+  modal.innerHTML = '<div class="modal-card" style="max-width:480px;margin-top:8vh">'
+    + '<div style="padding:14px 18px 8px">'
+    + '<input type="text" id="cmdk-input" placeholder="Ir a pestaña o fecha (ej. gráficas, 15 jul, 2026-07-15)…" '
+    + 'style="width:100%;border:1px solid var(--borde-2);border-radius:var(--radio);padding:10px 14px;font-size:14px;font-family:var(--font);outline:none" autocomplete="off">'
+    + '</div>'
+    + '<div id="cmdk-results" style="max-height:360px;overflow:auto;padding:0 10px 12px"></div>'
+    + '</div>';
+  document.body.appendChild(modal);
+  openModalAnimated('cmdk-overlay');
+  const close = () => closeModalAnimated('cmdk-overlay');
+  modal.onclick = e => { if (e.target === modal) close(); };
+
+  const hoy = hoyISO();
+  const desde = new Date(hoy+'T12:00:00'); desde.setDate(desde.getDate()-120);
+  const fechasRows = (await fetchDiasByRange(desde.toISOString().split('T')[0], hoy))
+    .filter(r => (r.kg_producidos||0) > 0).sort((a,b) => b.fecha.localeCompare(a.fecha));
+
+  const input = document.getElementById('cmdk-input');
+  const resultsEl = document.getElementById('cmdk-results');
+  if (!input || !resultsEl) return;
+  let seleccion = 0;
+  let itemsActuales = [];
+
+  function marcarSeleccion() {
+    resultsEl.querySelectorAll('.cmdk-item').forEach((el,i) => {
+      el.style.background = i===seleccion ? 'rgba(10,110,53,0.08)' : '';
+    });
+    const el = resultsEl.querySelector('[data-idx="'+seleccion+'"]');
+    if (el) el.scrollIntoView({block:'nearest'});
+  }
+
+  function ejecutar(item) {
+    close();
+    if (item.tipo==='tab') navTo(item.tab);
+    else showDiaDetalleModal(item.fecha);
+  }
+
+  function renderResultados(q) {
+    const norm = s => (s||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'');
+    const query = norm(q.trim());
+    const tabsMatch = CMDK_TABS.filter(t => !query || norm(t.label).includes(query));
+    const fechasMatch = (!query ? fechasRows.slice(0,8) : fechasRows.filter(r =>
+      r.fecha.includes(query) || norm(fmtDate(r.fecha)).includes(query) || norm(r.dia_nombre).includes(query)
+    ).slice(0,8));
+
+    itemsActuales = [
+      ...tabsMatch.map(t => ({tipo:'tab', tab:t.tab, label:t.label})),
+      ...fechasMatch.map(r => ({tipo:'fecha', fecha:r.fecha, label: fmtDate(r.fecha)+' · '+(r.dia_nombre||'')+' — '+fmt(r.kg_producidos,0)+' kg'})),
+    ];
+    seleccion = 0;
+    if (!itemsActuales.length) { resultsEl.innerHTML = '<div class="empty" style="padding:20px"><p>Sin resultados</p></div>'; return; }
+    resultsEl.innerHTML = itemsActuales.map((it,i) =>
+      '<div class="cmdk-item" data-idx="'+i+'" style="padding:9px 12px;border-radius:8px;cursor:pointer;font-size:13px">'
+      + (it.tipo==='tab' ? it.label : '📅 ' + it.label)
+      + '</div>').join('');
+    resultsEl.querySelectorAll('.cmdk-item').forEach(el => {
+      el.addEventListener('click', () => ejecutar(itemsActuales[+el.dataset.idx]));
+      el.addEventListener('mouseenter', () => { seleccion = +el.dataset.idx; marcarSeleccion(); });
+    });
+    marcarSeleccion();
+  }
+
+  input.addEventListener('input', () => renderResultados(input.value));
+  input.addEventListener('keydown', e => {
+    if (e.key==='ArrowDown') { e.preventDefault(); seleccion = Math.min(seleccion+1, itemsActuales.length-1); marcarSeleccion(); }
+    else if (e.key==='ArrowUp') { e.preventDefault(); seleccion = Math.max(seleccion-1, 0); marcarSeleccion(); }
+    else if (e.key==='Enter') { e.preventDefault(); if (itemsActuales[seleccion]) ejecutar(itemsActuales[seleccion]); }
+    else if (e.key==='Escape') { e.preventDefault(); close(); }
+  });
+
+  renderResultados('');
+  setTimeout(() => input.focus(), 50);
+}
+
+document.addEventListener('keydown', e => {
+  if ((e.metaKey||e.ctrlKey) && e.key.toLowerCase()==='k') {
+    e.preventDefault();
+    abrirCommandPalette();
+  }
 });
 
 // =====================================================================
