@@ -320,8 +320,8 @@
   textarea { resize:vertical; min-height:72px; }
 
   /* ── INVENTARIO: foco visible en captura (cierre/pedidos/producido, selector de fecha) ── */
-  input[data-inv-field], #inv-fecha-sel { transition: border-color 150ms var(--ease), box-shadow 150ms var(--ease); }
-  input[data-inv-field]:focus, #inv-fecha-sel:focus {
+  input[data-inv-field], #inv-fecha-sel, #inv-nota-dia { transition: border-color 150ms var(--ease), box-shadow 150ms var(--ease); }
+  input[data-inv-field]:focus, #inv-fecha-sel:focus, #inv-nota-dia:focus {
     outline: none;
     border-color: var(--verde) !important;
     box-shadow: 0 0 0 3px rgba(10,110,53,0.15);
@@ -725,6 +725,7 @@
         <div class="form-group">
           <label>Kg producidos *</label>
           <input type="number" id="f-kg" min="0" step="0.1" placeholder="Ej. 620.5" required>
+          <div id="f-kg-sugerido" style="font-size:11px;color:var(--texto-3);margin-top:4px"></div>
         </div>
         <div class="form-group">
           <label>Horas RH (excl. Mario A.H. / German P.) *</label>
@@ -819,6 +820,10 @@
     <label>Semana:</label>
     <select id="graf-semana-sel" onchange="renderGraficas()"></select>
   </div>
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(480px,1fr));gap:16px;margin-bottom:16px">
+    <div class="chart-card" id="graf-resumen-semanal"></div>
+    <div class="chart-card" id="graf-correlacion"></div>
+  </div>
   <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(480px,1fr));gap:16px">
     <div class="chart-card">
       <h3>📦 Kg Producidos vs Meta (600 kg/día)</h3>
@@ -851,6 +856,7 @@
       <div class="chart-wrap" style="height:300px"><canvas id="chart-mix-productos"></canvas></div>
     </div>
     <div class="chart-card" style="grid-column:1/-1" id="graf-top-dias"></div>
+    <div class="chart-card" style="grid-column:1/-1" id="graf-dias-atipicos"></div>
   </div>
 </div>
 
@@ -878,6 +884,12 @@
     </div>
     <div id="inv-save-status" style="margin-top:10px;font-size:12px;color:var(--texto-3)"></div>
     <div style="margin-top:8px;font-size:12px;color:var(--texto-3)">💡 Captura diaria: registra cada mañana el conteo en bolsas (Cierre) y los pedidos enviados. Al guardar, la producción del día anterior se calcula sola con el conteo — igual que el Excel de control diario, pero directo a la base.</div>
+
+    <div style="margin-top:12px">
+      <label for="inv-nota-dia" style="font-size:11px;font-weight:600;color:var(--texto-3);display:block;margin-bottom:4px">📝 NOTA DEL DÍA (opcional)</label>
+      <textarea id="inv-nota-dia" rows="2" placeholder="Ej. se perdieron 60kg de carne, faltó camión de pedido, paro de línea…"
+        style="width:100%;max-width:520px;border:1px solid var(--borde-2);border-radius:var(--radio);padding:8px 12px;font-size:13px;font-family:var(--font);background:rgba(255,255,255,0.8);color:var(--texto);outline:none;resize:vertical"></textarea>
+    </div>
 
     <div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--borde)">
       <div style="font-size:11px;font-weight:600;color:var(--texto-3);margin-bottom:8px">📥 IMPORTAR DE MARKETMAN — llena Cierre/Pedidos del día cargado arriba (los 3 archivos son opcionales, sube los que tengas)</div>
@@ -1353,7 +1365,7 @@ async function showDiaDetalleModal(fecha) {
     + '<div class="mes-stat"><div class="v">' + fmt(dia?.kg_producidos, 0) + '</div><div class="l">Kg producidos</div></div>'
     + '<div class="mes-stat"><div class="v">' + fmt(dia?.horas_rh) + '</div><div class="l">Horas RH</div></div>'
     + '<div class="mes-stat"><div class="v">' + fmt(dia?.kg_hora) + '</div><div class="l">Kg / hora</div></div>'
-    + '<div class="mes-stat">' + (dia ? badgeEfic(dia.kg_hora || 0) : '<span class="badge badge-bad">Sin datos</span>') + '<div class="l" style="margin-top:6px">Estado</div></div>'
+    + '<div class="mes-stat">' + (dia && dia.kg_hora != null ? badgeEfic(dia.kg_hora) : '<span class="badge badge-bad">Sin datos</span>') + '<div class="l" style="margin-top:6px">Estado</div></div>'
     + '</div>';
 
   // dias_productos puede tener >1 fila por producto (ver renderTablero, agregación por totProd) — sumar antes de mostrar
@@ -1440,6 +1452,29 @@ function badgeEfic(kgh) {
 }
 function progClass(pct) {
   if (pct >= 100) return ''; if (pct >= 85) return 'warn'; return 'danger';
+}
+
+// ── Nota libre por día (dias.notas) — separa la parte manual (staff) de la
+// autogenerada (invActualizarProduccionHoy/invDerivarProduccionAyer/import Excel)
+// para que ninguna pise a la otra al re-guardar el conteo de Inventario.
+const NOTA_AUTO_SEP = '\n⚙️ ';
+function extraerNotaManual(notas) {
+  if (!notas) return '';
+  const i = notas.indexOf(NOTA_AUTO_SEP);
+  if (i !== -1) return notas.slice(0, i).trim();
+  return notas.startsWith('Inv:') ? '' : notas.trim(); // notas viejas autogeneradas sin marcador
+}
+function extraerNotaAuto(notas) {
+  if (!notas) return '';
+  const i = notas.indexOf(NOTA_AUTO_SEP);
+  if (i !== -1) return notas.slice(i + NOTA_AUTO_SEP.length).trim();
+  return notas.startsWith('Inv:') ? notas.trim() : '';
+}
+function combinarNotas(manual, auto) {
+  const m = (manual||'').trim();
+  const a = (auto||'').trim();
+  if (!a) return m || null;
+  return m ? (m + NOTA_AUTO_SEP + a) : a;
 }
 
 // =====================================================================
@@ -1638,6 +1673,23 @@ function setTodayDate() {
   const iso = hoyISO();
   document.getElementById('f-fecha').value = iso;
   autoSelectSemana(iso);
+  actualizarSugerenciaKg(iso);
+}
+
+// Autocompletar sugerido (no auto-fill): promedio de kg producidos el mismo
+// día de la semana en las últimas ~12 semanas, mostrado como hint bajo el input.
+async function actualizarSugerenciaKg(fecha) {
+  const el = document.getElementById('f-kg-sugerido');
+  if (!el || !fecha) return;
+  el.textContent = '';
+  const diaSemana = new Date(fecha+'T12:00:00').getDay();
+  const desde = new Date(fecha+'T12:00:00'); desde.setDate(desde.getDate()-84); // ~12 semanas atrás
+  const rows = await fetchDiasByRange(desde.toISOString().split('T')[0], fecha);
+  const mismoDia = rows.filter(r => r.fecha !== fecha && (r.kg_producidos||0) > 0 && new Date(r.fecha+'T12:00:00').getDay() === diaSemana);
+  if (mismoDia.length < 3) return;
+  const prom = mismoDia.reduce((a,r)=>a+r.kg_producidos,0) / mismoDia.length;
+  const nombreDia = ['domingos','lunes','martes','miércoles','jueves','viernes','sábados'][diaSemana];
+  el.textContent = '💡 Sugerido: ~' + fmt(prom,0) + ' kg (prom. de los últimos ' + mismoDia.length + ' ' + nombreDia + ')';
 }
 
 function autoSelectSemana(dateStr) {
@@ -2162,6 +2214,72 @@ function destroyChart(key) {
   if (charts[key]) { charts[key].destroy(); delete charts[key]; }
 }
 
+// Insight en texto: esta semana vs. la pasada (siempre las 2 últimas semanas
+// completas, sin importar los filtros de mes/semana de arriba)
+async function renderResumenSemanal() {
+  const cont = document.getElementById('graf-resumen-semanal');
+  if (!cont) return;
+  // Compara las 2 últimas semanas registradas (no exige que "hoy" caiga dentro
+  // de una — si aún no hay captura para la semana en curso, usa la última con datos)
+  const semOrdenadas = [...semanas].sort((a,b) => a.fecha_inicio.localeCompare(b.fecha_inicio));
+  if (semOrdenadas.length < 2) { cont.innerHTML = ''; return; }
+  const semActual = semOrdenadas[semOrdenadas.length-1];
+  const semAnterior = semOrdenadas[semOrdenadas.length-2];
+  const [rowsActual, rowsAnterior] = await Promise.all([
+    fetchDiasByRange(semActual.fecha_inicio, semActual.fecha_fin),
+    fetchDiasByRange(semAnterior.fecha_inicio, semAnterior.fecha_fin),
+  ]);
+  const trabajados = rows => rows.filter(r => (r.kg_producidos||0) > 0);
+  const wA = trabajados(rowsActual), wP = trabajados(rowsAnterior);
+  if (!wA.length) { cont.innerHTML = ''; return; }
+
+  const kgA = wA.reduce((a,r)=>a+r.kg_producidos,0);
+  const kgP = wP.reduce((a,r)=>a+r.kg_producidos,0);
+  const conKgh = r => r.kg_hora != null && r.kg_hora > 0;
+  const eficA = wA.filter(conKgh).length ? wA.filter(conKgh).reduce((a,r)=>a+r.kg_hora,0)/wA.filter(conKgh).length : null;
+  const eficP = wP.filter(conKgh).length ? wP.filter(conKgh).reduce((a,r)=>a+r.kg_hora,0)/wP.filter(conKgh).length : null;
+  const pctKg    = kgP > 0 ? Math.round((kgA-kgP)/kgP*100) : null;
+  const pctEfic  = (eficA != null && eficP > 0) ? Math.round((eficA-eficP)/eficP*100) : null;
+  const mejorDia = [...wA].sort((a,b)=>b.kg_producidos-a.kg_producidos)[0];
+  const peorDia  = [...wA].sort((a,b)=>a.kg_producidos-b.kg_producidos)[0];
+  const hoy = hoyISO();
+  const etiquetaSemana = (hoy >= semActual.fecha_inicio && hoy <= semActual.fecha_fin)
+    ? 'Esta semana' : 'Última semana registrada (' + fmtDate(semActual.fecha_inicio) + '–' + fmtDate(semActual.fecha_fin) + ')';
+
+  const frases = [];
+  frases.push(etiquetaSemana + ': <strong>' + fmt(kgA,0) + ' kg</strong>' +
+    (pctKg != null ? ' (' + (pctKg>=0?'↑ ':'↓ ') + Math.abs(pctKg) + '% vs semana pasada)' : '') + '.');
+  if (pctEfic != null) frases.push('Eficiencia promedio ' + (pctEfic>=0?'subió ':'bajó ') + Math.abs(pctEfic) + '% vs semana pasada (' + fmt(eficA) + ' kg/h).');
+  if (mejorDia) frases.push('Mejor día: ' + (mejorDia.dia_nombre||'') + ' ' + fmtDate(mejorDia.fecha) + ' con ' + fmt(mejorDia.kg_producidos,0) + ' kg.');
+  if (peorDia && peorDia.fecha !== mejorDia?.fecha) frases.push('Día más flojo: ' + (peorDia.dia_nombre||'') + ' ' + fmtDate(peorDia.fecha) + ' con ' + fmt(peorDia.kg_producidos,0) + ' kg.');
+
+  cont.innerHTML = '<h3 style="margin-bottom:10px">🧠 Resumen de la semana</h3>'
+    + '<p style="font-size:13px;line-height:1.7;color:var(--texto)">' + frases.join(' ') + '</p>';
+}
+
+// Insight: correlación horas trabajadas ↔ eficiencia (kg/h), sobre todo el
+// histórico disponible — usa coeficiente de Pearson, no un umbral fijo
+async function renderCorrelacionHorasEficiencia() {
+  const cont = document.getElementById('graf-correlacion');
+  if (!cont) return;
+  const {desde,hasta} = getAllDateRange();
+  const rows = (await fetchDiasByRange(desde,hasta)).filter(r => r.horas_rh > 0 && r.kg_hora != null);
+  if (rows.length < 8) { cont.innerHTML = ''; return; }
+
+  const xs = rows.map(r=>r.horas_rh), ys = rows.map(r=>r.kg_hora);
+  const n = xs.length;
+  const mx = xs.reduce((a,b)=>a+b,0)/n, my = ys.reduce((a,b)=>a+b,0)/n;
+  const cov = xs.reduce((a,x,i)=>a+(x-mx)*(ys[i]-my),0);
+  const sx = Math.sqrt(xs.reduce((a,x)=>a+(x-mx)**2,0));
+  const sy = Math.sqrt(ys.reduce((a,y)=>a+(y-my)**2,0));
+  const r = (sx>0 && sy>0) ? cov/(sx*sy) : 0;
+  const fuerza = Math.abs(r) < 0.2 ? 'prácticamente nula' : Math.abs(r) < 0.4 ? 'débil' : Math.abs(r) < 0.6 ? 'moderada' : 'fuerte';
+  const direccion = Math.abs(r) < 0.2 ? '' : (r > 0 ? ' — más horas trabajadas se asocian a mayor eficiencia' : ' — más horas trabajadas se asocian a menor eficiencia (posible señal de sobre-staffing o turnos largos)');
+
+  cont.innerHTML = '<h3 style="margin-bottom:8px">📐 Horas vs. Eficiencia</h3>'
+    + '<p style="font-size:13px;line-height:1.7;color:var(--texto)">Correlación ' + fuerza + ' (r=' + r.toFixed(2) + ') en los ' + n + ' días con horas y producción registradas' + direccion + '.</p>';
+}
+
 async function renderGraficas() {
   const mesSel  = document.getElementById('graf-mes-sel').value;
   const semSel  = document.getElementById('graf-semana-sel').value;
@@ -2252,6 +2370,55 @@ async function renderGraficas() {
   await renderChartDiaSemana(allRows);
   await renderChartMixProductos(filteredSems);
   renderTopDiasGraficas(rows);
+  renderDiasAtipicos(rows);
+  await renderResumenSemanal();
+  await renderCorrelacionHorasEficiencia();
+}
+
+// Detección de días atípicos: kg producidos o kg/h fuera de ±2 desviaciones
+// estándar respecto al rango seleccionado (no un umbral fijo tipo min/max).
+function renderDiasAtipicos(rows) {
+  const cont = document.getElementById('graf-dias-atipicos');
+  if (!cont) return;
+  const titulo = '<h3 style="margin-bottom:10px">⚠️ Días atípicos <span style="font-weight:400;font-size:11px;color:var(--texto-3)">(fuera de ±2 desviaciones estándar vs. el rango seleccionado)</span></h3>';
+  const worked = rows.filter(r => (r.kg_producidos||0) > 0);
+  if (worked.length < 6) {
+    cont.innerHTML = titulo + '<div class="empty"><p>Se necesitan al menos 6 días con producción en el rango para detectar atípicos</p></div>';
+    return;
+  }
+
+  const stats = vals => {
+    const mean = vals.reduce((a,b)=>a+b,0) / vals.length;
+    const sd = Math.sqrt(vals.reduce((a,b)=>a+(b-mean)**2,0) / vals.length);
+    return {mean, sd};
+  };
+  const {mean:meanKg, sd:sdKg} = stats(worked.map(r=>r.kg_producidos));
+  const kghRows = worked.filter(r => r.kg_hora != null && r.kg_hora > 0);
+  const {mean:meanKgh, sd:sdKgh} = kghRows.length >= 6 ? stats(kghRows.map(r=>r.kg_hora)) : {mean:null, sd:null};
+
+  const atipicos = [];
+  worked.forEach(r => {
+    const motivos = [];
+    if (sdKg > 0 && Math.abs(r.kg_producidos-meanKg) > 2*sdKg)
+      motivos.push(r.kg_producidos>meanKg ? '▲ Kg muy sobre el promedio' : '▼ Kg muy bajo el promedio');
+    if (sdKgh && r.kg_hora != null && Math.abs(r.kg_hora-meanKgh) > 2*sdKgh)
+      motivos.push(r.kg_hora>meanKgh ? '▲ Eficiencia muy sobre el promedio' : '▼ Eficiencia muy baja');
+    if (motivos.length) atipicos.push({...r, motivos});
+  });
+
+  if (!atipicos.length) {
+    cont.innerHTML = titulo + '<div class="empty"><p>Sin días atípicos en el rango — todo dentro de lo normal</p></div>';
+    return;
+  }
+
+  atipicos.sort((a,b) => a.fecha.localeCompare(b.fecha));
+  cont.innerHTML = titulo + '<div style="display:flex;flex-direction:column;gap:8px">'
+    + atipicos.map(r => '<div style="display:flex;justify-content:space-between;align-items:center;gap:12px;padding:8px 12px;border:1px solid var(--borde);border-radius:var(--radio);cursor:pointer" onclick="showDiaDetalleModal(\''+r.fecha+'\')" title="Ver detalle del día">'
+      + '<div><strong>' + fmtDate(r.fecha) + '</strong> · ' + (r.dia_nombre||'') + '</div>'
+      + '<div style="font-size:12px;color:var(--texto-3)">' + fmt(r.kg_producidos,0) + ' kg' + (r.kg_hora!=null ? ' · ' + fmt(r.kg_hora) + ' kg/h' : '') + '</div>'
+      + '<div style="font-size:12px;text-align:right">' + r.motivos.join(' · ') + '</div>'
+      + '</div>').join('')
+    + '</div>';
 }
 
 // Ranking top/bottom 5 días (antes vivía en la pestaña Calendario)
@@ -3593,6 +3760,10 @@ async function invCargarDia(){
   const {data: hoyData} = await db.from('inventario_diario').select('*').eq('fecha',fecha);
   // Load yesterday's inv_final as today's inv_cierre
   const {data: ayerData} = await db.from('inventario_diario').select('*').eq('fecha',ayerStr);
+  // Precargar la nota manual del día (si ya había una guardada)
+  const {data: diaNotaEx} = await db.from('dias').select('notas').eq('fecha',fecha).maybeSingle();
+  const notaEl = document.getElementById('inv-nota-dia');
+  if (notaEl) notaEl.value = extraerNotaManual(diaNotaEx?.notas);
 
   const ayerMap = {};
   (ayerData||[]).forEach(r=>{ ayerMap[r.producto] = r.inv_final||0; });
@@ -3938,9 +4109,29 @@ async function invGuardarConteo(){
   }
   statusEl.textContent='✅ '+rows.length+' productos guardados — '+fecha;
   toast('Conteo del '+fecha+' guardado ✓','ok');
+  await invGuardarNotaManual(fecha, document.getElementById('inv-nota-dia')?.value || '');
   await invActualizarProduccionHoy(fecha, rows);
   await invDerivarProduccionAyer(fecha, rows);
   await invCargarHistorial();
+}
+
+// Guarda la nota manual del día en dias.notas preservando la parte
+// autogenerada existente (ver NOTA_AUTO_SEP) — se corre ANTES de
+// invActualizarProduccionHoy/invDerivarProduccionAyer para que esas dos, al
+// releer dias.notas, ya vean la nota recién tecleada y no la pisen.
+async function invGuardarNotaManual(fecha, notaTexto) {
+  const {data: diaEx} = await db.from('dias').select('semana_id,notas').eq('fecha', fecha).maybeSingle();
+  const autoActual = extraerNotaAuto(diaEx?.notas);
+  const nuevaNotas = combinarNotas(notaTexto, autoActual);
+  if (nuevaNotas === (diaEx?.notas || null)) return;
+  let semana_id = diaEx?.semana_id;
+  if (!semana_id) {
+    const semRes = await obtenerOCrearSemana(fecha);
+    if (semRes.error) return;
+    semana_id = semRes.id;
+  }
+  const {error} = await db.from('dias').upsert({fecha, semana_id, notas: nuevaNotas}, {onConflict:'fecha'});
+  if (error) dbError('guardar nota del día', error);
 }
 
 // Si el staff ya tecleó "Producido" para HOY al guardar el conteo, refleja esa
@@ -3970,9 +4161,10 @@ async function invActualizarProduccionHoy(fecha, rowsHoy){
 
   const semRes = await obtenerOCrearSemana(fecha);
   if (semRes.error) return;
-  const {data: diaEx} = await db.from('dias').select('horas').eq('fecha', fecha).maybeSingle();
+  const {data: diaEx} = await db.from('dias').select('horas,notas').eq('fecha', fecha).maybeSingle();
   const kgProd = +(kgFin - kgIni).toFixed(2);
-  const notas  = 'Inv: '+kgIni.toFixed(2)+' → '+kgFin.toFixed(2)+' · Capturado en Inventario';
+  const autoTxt = 'Inv: '+kgIni.toFixed(2)+' → '+kgFin.toFixed(2)+' · Capturado en Inventario';
+  const notas  = combinarNotas(extraerNotaManual(diaEx?.notas), autoTxt);
   const upRes = await db.from('dias').upsert(
     {fecha: fecha, semana_id: semRes.id, prod: kgProd,
      horas: diaEx ? diaEx.horas : null, start_kg: +kgIni.toFixed(2), end_kg: +kgFin.toFixed(2), notas},
@@ -4023,9 +4215,10 @@ async function invDerivarProduccionAyer(fecha, rowsHoy){
 
   const semRes = await obtenerOCrearSemana(ayerStr);
   if (semRes.error) return;
-  const {data: diaEx} = await db.from('dias').select('horas').eq('fecha', ayerStr).maybeSingle();
+  const {data: diaEx} = await db.from('dias').select('horas,notas').eq('fecha', ayerStr).maybeSingle();
   const kgProd = +(kgFin - kgIni).toFixed(2);
-  const notas  = 'Inv: '+kgIni.toFixed(2)+' → '+kgFin.toFixed(2)+' · Derivado del conteo del '+fecha;
+  const autoTxt = 'Inv: '+kgIni.toFixed(2)+' → '+kgFin.toFixed(2)+' · Derivado del conteo del '+fecha;
+  const notas  = combinarNotas(extraerNotaManual(diaEx?.notas), autoTxt);
   const upRes = await db.from('dias').upsert(
     {fecha: ayerStr, semana_id: semRes.id, prod: kgProd,
      horas: diaEx ? diaEx.horas : null, start_kg: +kgIni.toFixed(2), end_kg: +kgFin.toFixed(2), notas},
@@ -4284,7 +4477,7 @@ document.addEventListener('DOMContentLoaded', async ()=>{
   const formDia = document.getElementById('form-dia');
   const btnLimpiar = document.getElementById('btn-limpiar');
 
-  if (fFecha)  fFecha.addEventListener('change', e => autoSelectSemana(e.target.value));
+  if (fFecha)  fFecha.addEventListener('change', e => { autoSelectSemana(e.target.value); actualizarSugerenciaKg(e.target.value); });
   if (formDia) formDia.addEventListener('submit', handleFormDiaSubmit);
   if (btnLimpiar) btnLimpiar.addEventListener('click', () => { document.getElementById('form-dia').reset(); setTodayDate(); });
 
