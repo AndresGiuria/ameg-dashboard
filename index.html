@@ -1314,6 +1314,75 @@ function fmtDate(d) {
   return `${day}/${m}/${y}`;
 }
 
+// Modal de detalle por día: producción + horas + inventario en un solo popup
+// (reusa el overlay/card/animación de confirmDialog, no su contrato boolean)
+async function showDiaDetalleModal(fecha) {
+  if (!fecha) return;
+  const id = 'dia-detalle-modal-' + Date.now();
+  const modal = document.createElement('div');
+  modal.id = id;
+  modal.className = 'modal-overlay';
+  modal.innerHTML =
+    '<div class="modal-card">' +
+    '<div style="padding:22px 24px 26px">' +
+    '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px">' +
+    '<div style="font-size:16px;font-weight:700;color:var(--texto)">📅 ' + fmtDate(fecha) + '</div>' +
+    '<button class="btn btn-secondary" id="' + id + '-close" style="padding:4px 10px">✕</button>' +
+    '</div>' +
+    '<div id="' + id + '-body" style="min-height:100px;display:flex;align-items:center;justify-content:center;color:var(--texto-3);font-size:13px">Cargando…</div>' +
+    '</div></div>';
+  document.body.appendChild(modal);
+  openModalAnimated(id);
+  const close = () => closeModalAnimated(id);
+  modal.querySelector('#' + id + '-close').onclick = close;
+  modal.onclick = e => { if (e.target === modal) close(); };
+
+  const [diaRes, prodRes, invRes] = await Promise.all([
+    db.from('dias').select('*').eq('fecha', fecha).maybeSingle(),
+    db.from('dias_productos').select('producto,kg_prod').eq('fecha', fecha).order('producto'),
+    db.from('inventario_diario').select('*').eq('fecha', fecha).order('producto'),
+  ]);
+  if (diaRes.error || prodRes.error || invRes.error) dbError('detalle del día', diaRes.error || prodRes.error || invRes.error);
+
+  const body = document.getElementById(id + '-body');
+  if (!body) return; // el usuario cerró el modal antes de que respondiera la BD
+  body.style.cssText = '';
+
+  const dia = diaRes.data ? normalizeDiaRow(diaRes.data) : null;
+  const kpiRow = '<div class="mes-stats" style="margin-bottom:18px">'
+    + '<div class="mes-stat"><div class="v">' + fmt(dia?.kg_producidos, 0) + '</div><div class="l">Kg producidos</div></div>'
+    + '<div class="mes-stat"><div class="v">' + fmt(dia?.horas_rh) + '</div><div class="l">Horas RH</div></div>'
+    + '<div class="mes-stat"><div class="v">' + fmt(dia?.kg_hora) + '</div><div class="l">Kg / hora</div></div>'
+    + '<div class="mes-stat">' + (dia ? badgeEfic(dia.kg_hora || 0) : '<span class="badge badge-bad">Sin datos</span>') + '<div class="l" style="margin-top:6px">Estado</div></div>'
+    + '</div>';
+
+  // dias_productos puede tener >1 fila por producto (ver renderTablero, agregación por totProd) — sumar antes de mostrar
+  const prodTotales = {};
+  (prodRes.data || []).forEach(p => { if (p.kg_prod != null) prodTotales[p.producto] = (prodTotales[p.producto]||0) + p.kg_prod; });
+  const prodRows = Object.entries(prodTotales).sort((a,b) => a[0].localeCompare(b[0])).map(([producto, kg_prod]) => ({producto, kg_prod}));
+  const prodTable = prodRows.length
+    ? '<table><thead><tr><th>Producto</th><th class="td-num">Kg</th></tr></thead><tbody>'
+      + prodRows.map(p => '<tr><td>' + escapeHtml(p.producto) + '</td><td class="td-num">' + fmt(p.kg_prod) + '</td></tr>').join('')
+      + '</tbody></table>'
+    : '<div class="empty"><p>Sin desglose por producto este día</p></div>';
+
+  const invRows = invRes.data || [];
+  const invTable = invRows.length
+    ? '<table><thead><tr><th>Producto</th><th>Sección</th><th class="td-num">Cierre</th><th class="td-num">Pedidos</th><th class="td-num">Producido</th><th class="td-num">Inv. Final</th></tr></thead><tbody>'
+      + invRows.map(r => '<tr><td>' + escapeHtml(r.producto) + '</td><td>' + (r.seccion || '—') + '</td>'
+        + '<td class="td-num">' + fmt(r.inv_cierre, 2) + '</td><td class="td-num">' + fmt(r.pedidos, 2) + '</td>'
+        + '<td class="td-num">' + fmt(r.producido, 2) + '</td><td class="td-num">' + fmt(r.inv_final, 2) + '</td></tr>').join('')
+      + '</tbody></table>'
+    : '<div class="empty"><p>Sin inventario capturado este día</p></div>';
+
+  body.innerHTML = kpiRow
+    + (dia?.notas ? '<div style="font-size:12px;color:var(--texto-3);margin-bottom:16px"><strong>Notas:</strong> ' + escapeHtml(dia.notas) + '</div>' : '')
+    + '<h3 style="margin-bottom:8px">Producción por producto</h3>'
+    + '<div style="max-height:220px;overflow:auto;margin-bottom:20px">' + prodTable + '</div>'
+    + '<h3 style="margin-bottom:8px">Inventario</h3>'
+    + '<div style="max-height:260px;overflow:auto">' + invTable + '</div>';
+}
+
 // ── Motion helpers: number ticker + animated fill bars (Magic UI-style, vanilla) ──
 function numTicker(target, dec) {
   dec = dec == null ? 1 : dec;
@@ -1651,7 +1720,7 @@ function buildDiasTable(rows) {
       const pct = r.kg_producidos?(r.kg_producidos/META_KG_DIA*100):0;
       const sem = semanas.find(s => s.id===r.semana_id);
       const encNotas = encodeURIComponent(r.notas||'');
-      return '<tr data-dia-id="' + r.id + '" data-kg="' + (r.kg_producidos||0) + '" data-notas="' + encNotas + '">'
+      return '<tr data-dia-id="' + r.id + '" data-kg="' + (r.kg_producidos||0) + '" data-notas="' + encNotas + '" style="cursor:pointer" onclick="if(!event.target.closest(\'button\')) showDiaDetalleModal(\'' + r.fecha + '\')" title="Ver detalle del día">'
         + '<td>' + fmtDate(r.fecha) + '</td>'
         + '<td>' + (r.dia_nombre||'—') + '</td>'
         + '<td>' + (sem?'S'+sem.numero_semana:'—') + '</td>'
@@ -2193,7 +2262,7 @@ function renderTopDiasGraficas(rows) {
   if (!sorted.length) { cont.innerHTML = '<div class="empty"><p>Sin días con producción en el rango seleccionado</p></div>'; return; }
   const top5 = sorted.slice(0,5);
   const low5 = sorted.slice(-5).reverse();
-  const card = (r,i,bad) => `<div class="top-dia-card${bad?' bad':''}${i===0&&!bad?' shine-card':''}"><div class="top-dia-rank">${i===0&&!bad?'🏆 ':''}#${i+1}</div>
+  const card = (r,i,bad) => `<div class="top-dia-card${bad?' bad':''}${i===0&&!bad?' shine-card':''}" style="cursor:pointer" onclick="showDiaDetalleModal('${r.fecha}')" title="Ver detalle del día"><div class="top-dia-rank">${i===0&&!bad?'🏆 ':''}#${i+1}</div>
     <div class="top-dia-kg">${numTicker(r.kg_producidos,0)} <span style="font-size:12px;font-weight:400;color:var(--gris-500)">kg</span></div>
     <div class="top-dia-fecha">${fmtDate(r.fecha)} · ${r.dia_nombre||''}</div></div>`;
   cont.innerHTML = `<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
