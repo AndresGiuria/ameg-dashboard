@@ -909,6 +909,7 @@
       </div>
       <div style="display:flex;gap:10px;flex-wrap:wrap">
         <button class="btn btn-primary btn-sm" onclick="invGuardarConteo()">💾 Guardar conteo</button>
+        <button class="btn btn-secondary btn-sm" onclick="verListaPedido()" title="Ver, imprimir o descargar lo que hace falta pedir hoy">📋 Lista de pedido</button>
         <button class="btn btn-secondary btn-sm" onclick="invDescargarExcel()">⬇️ Excel del día</button>
         <button class="btn btn-secondary btn-sm" onclick="invDescargarHistorial()">⬇️ Historial completo</button>
       </div>
@@ -4452,6 +4453,92 @@ async function invDerivarProduccionAyer(fecha, rowsHoy){
     dpRows.map(r => Object.assign({fecha: ayerStr, semana_id: semRes.id}, r)));
   toast('Producción del '+ayerStr+' derivada del conteo: '+fmt(kgProd)+' kg ✓','ok');
   await refreshAll();
+}
+
+// Lista de lo que hace falta pedir hoy (solo basement, únicos productos con
+// mín/máx configurado): mismo cálculo del hint "💡 Pedir ~X" de cada tarjeta,
+// pero consolidado en una vista para imprimir o descargar y darle a alguien más.
+function calcularListaPedido() {
+  const fecha = document.getElementById('inv-fecha-sel')?.value || hoyISO();
+  const lista = [];
+  for (const prod of INV_BASEMENT) {
+    const stock = getStockInfo(prod);
+    if (!stock) continue;
+    const cierre = parseFloat(document.querySelector('[data-inv-prod="'+prod+'"][data-inv-field="cierre"]')?.value) || 0;
+    const sugerido = Math.max(0, stock.max - cierre);
+    if (sugerido > 0) lista.push({producto: prod, cierre, min: stock.min, max: stock.max, sugerido});
+  }
+  lista.sort((a,b) => b.sugerido - a.sugerido);
+  return {fecha, lista};
+}
+
+function verListaPedido() {
+  const {fecha, lista} = calcularListaPedido();
+  const id = 'pedido-modal-' + Date.now();
+  const modal = document.createElement('div');
+  modal.id = id;
+  modal.className = 'modal-overlay';
+  const filas = lista.length
+    ? lista.map(r => '<tr><td>' + escapeHtml(r.producto) + '</td><td class="td-num">' + r.cierre + '</td>'
+      + '<td class="td-num">' + r.min + '</td><td class="td-num">' + r.max + '</td>'
+      + '<td class="td-num"><strong>' + r.sugerido + '</strong></td></tr>').join('')
+    : '<tr><td colspan="5" style="text-align:center;color:var(--texto-3);padding:20px">Nada por debajo del máximo — no hace falta pedir nada 🎉</td></tr>';
+  modal.innerHTML = '<div class="modal-card" style="max-width:560px">'
+    + '<div style="padding:22px 24px 26px">'
+    + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">'
+    + '<div style="font-size:16px;font-weight:700;color:var(--texto)">📋 Lista de pedido sugerido — ' + fmtDate(fecha) + '</div>'
+    + '<button class="btn btn-secondary" id="' + id + '-close" style="padding:4px 10px">✕</button>'
+    + '</div>'
+    + '<table><thead><tr><th>Producto</th><th class="td-num">Cierre</th><th class="td-num">Mín</th><th class="td-num">Máx</th><th class="td-num">Pedir</th></tr></thead><tbody>' + filas + '</tbody></table>'
+    + '<div style="display:flex;gap:10px;margin-top:18px">'
+    + '<button class="btn btn-primary" id="' + id + '-print">🖨️ Imprimir</button>'
+    + '<button class="btn btn-secondary" id="' + id + '-excel">⬇️ Descargar Excel</button>'
+    + '</div>'
+    + '<div style="font-size:11px;color:var(--texto-3);margin-top:10px">Solo productos de basement (los de arriba aún no tienen mín/máx configurado). "Pedir" = máximo − Cierre de hoy.</div>'
+    + '</div></div>';
+  document.body.appendChild(modal);
+  openModalAnimated(id);
+  const close = () => closeModalAnimated(id);
+  modal.onclick = e => { if (e.target === modal) close(); };
+  modal.querySelector('#' + id + '-close').onclick = close;
+  modal.querySelector('#' + id + '-print').onclick = () => imprimirListaPedido(fecha, lista);
+  modal.querySelector('#' + id + '-excel').onclick = () => descargarListaPedido(fecha, lista);
+}
+
+function imprimirListaPedido(fecha, lista) {
+  const w = window.open('', '_blank', 'width=600,height=800');
+  if (!w) { toast('El navegador bloqueó la ventana de impresión — habilita pop-ups', 'err'); return; }
+  const filas = lista.map(r => '<tr><td>' + r.producto + '</td><td style="text-align:right">' + r.cierre + '</td>'
+    + '<td style="text-align:right">' + r.min + '</td><td style="text-align:right">' + r.max + '</td>'
+    + '<td style="text-align:right;font-weight:700">' + r.sugerido + '</td></tr>').join('');
+  w.document.write(
+    '<html><head><title>Lista de pedido — ' + fecha + '</title>'
+    + '<style>body{font-family:-apple-system,sans-serif;padding:24px;color:#111}'
+    + 'h1{font-size:18px;margin-bottom:4px} p{color:#666;font-size:12px;margin-top:0}'
+    + 'table{width:100%;border-collapse:collapse;margin-top:16px}'
+    + 'th,td{padding:8px 10px;border-bottom:1px solid #ddd;font-size:13px}'
+    + 'th{text-align:left;background:#f5f5f5}'
+    + 'td:not(:first-child), th:not(:first-child){text-align:right}</style></head><body>'
+    + '<h1>📋 Lista de pedido sugerido — AMEG</h1>'
+    + '<p>' + fmtDate(fecha) + ' · generado por el dashboard</p>'
+    + '<table><thead><tr><th>Producto</th><th>Cierre</th><th>Mín</th><th>Máx</th><th>Pedir</th></tr></thead>'
+    + '<tbody>' + (filas || '<tr><td colspan="5">Nada por pedir</td></tr>') + '</tbody></table>'
+    + '</body></html>'
+  );
+  w.document.close();
+  w.focus();
+  w.print();
+}
+
+async function descargarListaPedido(fecha, lista) {
+  if (!(await cargarXLSXLib())) { toast('No se pudo cargar el generador de Excel', 'err'); return; }
+  const rows = [['Producto','Cierre','Mínimo','Máximo','Pedir']];
+  lista.forEach(r => rows.push([r.producto, r.cierre, r.min, r.max, r.sugerido]));
+  const ws = XLSX.utils.aoa_to_sheet(rows);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Pedido');
+  XLSX.writeFile(wb, 'pedido_sugerido_' + fecha + '.xlsx');
+  toast('Excel descargado ✓', 'ok');
 }
 
 async function invDescargarExcel(){
