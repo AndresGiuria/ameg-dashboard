@@ -493,7 +493,7 @@
 
   .mes-kpi-row { display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:12px; margin-bottom:20px; }
 
-  .status-bar { display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin-bottom:20px; }
+  .status-bar { display:grid; grid-template-columns:repeat(2,1fr); gap:14px; margin-bottom:20px; }
   .sb-card { border-radius:var(--radio-lg); padding:20px 24px; border:1px solid var(--glass-borde); box-shadow:var(--glass-sombra); backdrop-filter:blur(20px) saturate(180%); -webkit-backdrop-filter:blur(20px) saturate(180%); border-top-width:3px; border-top-style:solid; }
   .sb-label { font-size:10px; text-transform:uppercase; letter-spacing:0.08em; color:var(--texto-3); margin-bottom:8px; }
   .sb-value { display:flex; align-items:baseline; gap:8px; margin-bottom:6px; }
@@ -2804,25 +2804,10 @@ async function renderStatusBar() {
   const bgInv    = diasCob==null ? 'var(--glass)' : diasCob>4 ? 'rgba(217,119,6,0.08)' : diasCob>0 ? 'rgba(10,110,53,0.08)' : 'rgba(192,25,15,0.08)';
   const invLabel = lastInvFecha ? fmtDate(lastInvFecha) : 'sin datos';
 
-  // --- Card 3: eficiencia semana actual vs anterior ---
-  const semOrd = [...semanas].sort(function(a,b){ return b.fecha_inicio.localeCompare(a.fecha_inicio); });
-  const semAct = semOrd[0];
-  const semAnt = semOrd[1];
-  var efAct=0, efAnt=0;
-  if (semAct) {
-    const d  = await fetchDiasByRange(semAct.fecha_inicio, semAct.fecha_fin);
-    const kg = d.reduce(function(a,x){ return a+(x.kg_producidos||0); }, 0);
-    efAct = (semAct.horas||0)>0 ? kg/semAct.horas : 0;
-  }
-  if (semAnt) {
-    const d  = await fetchDiasByRange(semAnt.fecha_inicio, semAnt.fecha_fin);
-    const kg = d.reduce(function(a,x){ return a+(x.kg_producidos||0); }, 0);
-    efAnt = (semAnt.horas||0)>0 ? kg/semAnt.horas : 0;
-  }
-  const diffEf  = efAct - efAnt;
-  const upEf    = diffEf >= 0;
-  const colorEf = efAct>=META_KG_H ? 'var(--verde)' : efAct>=META_KG_H*0.9 ? 'var(--dorado-2)' : (efAct>0 ? 'var(--rojo)' : 'var(--texto-3)');
-  const bgEf    = efAct>=META_KG_H ? 'rgba(10,110,53,0.08)' : efAct>=META_KG_H*0.9 ? 'rgba(217,119,6,0.08)' : (efAct>0 ? 'rgba(192,25,15,0.08)' : 'var(--glass)');
+  // La 3ra tarjeta que vivía aquí ("Eficiencia semana actual") se quitó
+  // 21-jul-2026 — duplicaba exactamente el mismo dato (semana actual vs
+  // anterior) que ya muestra, con más detalle, la tarjeta "Eficiencia
+  // actual vs anterior" en sem-comparativo-row (renderSemComparativo).
 
   container.innerHTML =
     '<div class="sb-card beam-card" style="background:' + bgDia + ';border-top-color:' + colorDia + ';--beam-c:' + colorDia + '">'
@@ -2844,17 +2829,6 @@ async function renderStatusBar() {
     + '</div>'
     + '<div class="sb-sub">'
     + (totalKgInv>0 ? fmt(totalKgInv,0) + ' kg · a ritmo de ' + META_KG_DIA + ' kg/día' : 'Sin registro de inventario')
-    + '</div>'
-    + '</div>'
-
-    + '<div class="sb-card beam-card" style="background:' + bgEf + ';border-top-color:' + colorEf + ';--beam-c:' + colorEf + '">'
-    + '<div class="sb-label">EFICIENCIA SEMANA ACTUAL</div>'
-    + '<div class="sb-value">'
-    +   '<span class="sb-number" style="color:' + colorEf + '">' + (efAct>0 ? numTicker(efAct,1) : '—') + '</span>'
-    +   '<span class="sb-unit">' + (efAct>0 ? 'kg/h' : '') + '</span>'
-    + '</div>'
-    + '<div class="sb-sub">'
-    + (semAnt && efAnt>0 ? (upEf?'↑':'↓') + ' ' + fmt(Math.abs(diffEf),2) + ' vs sem ant (' + fmt(efAnt,1) + ' kg/h)' : 'Meta: ' + META_KG_H + ' kg/h')
     + '</div>'
     + '</div>';
   runNumTickers(container);
