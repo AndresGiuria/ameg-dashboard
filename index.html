@@ -946,6 +946,11 @@
         <div style="width:22px;height:22px;border-radius:50%;background:var(--verde-2);color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0">3</div>
         <div style="font-size:11px;font-weight:600;color:var(--texto-3)">GUARDA TU CONTEO</div>
       </div>
+      <div style="margin-bottom:12px">
+        <label for="inv-horas-dia" style="font-size:11px;font-weight:600;color:var(--texto-3);display:block;margin-bottom:4px">🕐 Horas trabajadas hoy (opcional, excl. Mario A.H. / German P.)</label>
+        <input type="number" id="inv-horas-dia" min="0" step="0.25" placeholder="Ej. 52.0"
+          style="width:140px;border:1px solid var(--borde-2);border-radius:var(--radio);padding:7px 12px;font-size:13px;font-family:var(--font);background:rgba(255,255,255,0.8);color:var(--texto);outline:none">
+      </div>
       <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
         <button class="btn btn-primary btn-sm" onclick="invGuardarConteo()">💾 Guardar conteo</button>
         <button class="btn btn-secondary btn-sm" onclick="verListaPedido()" title="Ver, imprimir o descargar lo que hace falta pedir hoy">📋 Lista de pedido</button>
@@ -3754,6 +3759,21 @@ const INV_BASEMENT = ['ASADA','BARBACOA','BIRRIA','CARNITAS','CHICKEN','BBJ',
 const INV_UPSTAIRS = ['MILD','MEDIUM','HOT','HOT JALAPEÑO','HOT JARS','MACHA',
   'MAYO','FISH FLOUR','ONION','MUSHROOMS','LETTUCE','CILANTRO','PORTUGUESE BUNS','MOZZARELLA'];
 
+// FISH VENERICA y FISH BASSA CIELOS son el mismo pescado, comprado a 2
+// proveedores distintos (confirmado con el usuario 21-jul-2026) — se
+// muestran fusionados en una sola tarjeta en Inventario/Alertas/Predicción/
+// Lista de pedido, aunque cada proveedor mantiene su propio Cierre/Pedidos/
+// Producido por separado (y su propio mapeo de MarketMan).
+const INV_MERGE_GROUPS = [
+  { label: 'FISH BASSA', nota: 'mismo pescado, 2 proveedores',
+    productos: ['FISH VENERICA', 'FISH BASSA CIELOS'],
+    sublabels: {'FISH VENERICA': 'Proveedor Venerica', 'FISH BASSA CIELOS': 'Proveedor Cielos'} },
+];
+function invMergeGroupOf(prod) {
+  return INV_MERGE_GROUPS.find(g => g.productos.includes(prod)) || null;
+}
+function invGroupSafeId(grupo) { return grupo.label.replace(/[\s/]/g,'-'); }
+
 // Orden por longitud descendente: evita que "BIRRIA" gane el match antes que "BIRRIA CONSO"
 let INV_STOCK_KEYS = Object.keys(INV_STOCK).sort((a,b) => b.length - a.length);
 function recalcStockKeys(){ INV_STOCK_KEYS = Object.keys(INV_STOCK).sort((a,b) => b.length - a.length); }
@@ -3955,10 +3975,12 @@ async function invCargarDia(){
   const {data: hoyData} = await db.from('inventario_diario').select('*').eq('fecha',fecha);
   // Load yesterday's inv_final as today's inv_cierre
   const {data: ayerData} = await db.from('inventario_diario').select('*').eq('fecha',ayerStr);
-  // Precargar la nota manual del día (si ya había una guardada)
-  const {data: diaNotaEx} = await db.from('dias').select('notas').eq('fecha',fecha).maybeSingle();
+  // Precargar la nota manual y las horas del día (si ya había algo guardado)
+  const {data: diaEx} = await db.from('dias').select('notas,horas').eq('fecha',fecha).maybeSingle();
   const notaEl = document.getElementById('inv-nota-dia');
-  if (notaEl) notaEl.value = extraerNotaManual(diaNotaEx?.notas);
+  if (notaEl) notaEl.value = extraerNotaManual(diaEx?.notas);
+  const horasEl = document.getElementById('inv-horas-dia');
+  if (horasEl) horasEl.value = diaEx?.horas ?? '';
 
   const ayerMap = {};
   (ayerData||[]).forEach(r=>{ ayerMap[r.producto] = r.inv_final||0; });
@@ -4102,6 +4124,95 @@ function invRenderGrid(basement, upstairs){
     </div>`;
   };
 
+  // Tarjeta fusionada para grupos de INV_MERGE_GROUPS (ej. FISH VENERICA +
+  // FISH BASSA CIELOS: mismo pescado, 2 proveedores) — un encabezado con el
+  // total combinado (número grande, barra, alerta, pedido sugerido), y un
+  // sub-bloque de Cierre/Pedidos/Producido por cada proveedor debajo.
+  const makeMergedCard = (grupo, dataMap) => {
+    const stock = getStockInfo(grupo.productos[0]);
+    let cierreTot=0, finalTot=0;
+    const subs = grupo.productos.map(prod => {
+      const data = dataMap[prod] || {};
+      const inv_cierre  = data.inv_cierre  || 0;
+      const pedidos     = data.pedidos     || 0;
+      const inv_inicial = Math.max(0, inv_cierre - pedidos);
+      const producido   = data.producido   || 0;
+      const inv_final   = inv_inicial + producido;
+      cierreTot += inv_cierre; finalTot += inv_final;
+      return {prod, inv_cierre, pedidos, inv_inicial, producido};
+    });
+
+    let barColor='var(--verde-3)', statusTxt='✓ OK';
+    if (stock){
+      if (finalTot<=0)                 { barColor='var(--rojo-2)';  statusTxt='🚨 Sin stock'; }
+      else if (finalTot<stock.min*0.6) { barColor='var(--rojo-2)';  statusTxt='🚨 Crítico'; }
+      else if (finalTot<stock.min)     { barColor='var(--dorado-2)'; statusTxt='⚡ Bajo mínimo'; }
+      else if (finalTot>stock.max)     { barColor='var(--dorado-2)'; statusTxt='📈 Sobre máximo'; }
+    }
+    const pct     = stock ? Math.min(Math.round(finalTot/stock.max*100),100) : 0;
+    const paraMin = stock ? Math.max(0,stock.min-finalTot) : 0;
+    const paraMax = stock ? Math.max(0,stock.max-finalTot) : 0;
+    const sugerido= stock ? Math.max(0,stock.max-cierreTot) : 0;
+    const groupSafeId = invGroupSafeId(grupo);
+    const kgFinal  = stock ? (finalTot*stock.kg_bolsa).toFixed(1)+' kg' : '—';
+    const badgeBg  = barColor==='var(--verde-3)'?'rgba(10,110,53,0.08)':barColor==='var(--dorado-2)'?'rgba(217,119,6,0.1)':'rgba(192,25,15,0.09)';
+    const badgeClr = barColor==='var(--verde-3)'?'var(--verde)':barColor==='var(--dorado-2)'?'var(--dorado-texto)':'var(--rojo)';
+    const bigClr   = barColor==='var(--rojo-2)'?'var(--rojo)':barColor==='var(--dorado-2)'?'var(--dorado-2)':'var(--texto)';
+
+    return `<div style="background:rgba(255,255,255,0.55);backdrop-filter:blur(12px);border:0.5px solid var(--glass-borde);border-radius:12px;padding:14px;border-top:3px solid ${barColor}" id="inv-grupo-${groupSafeId}">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+        <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;color:var(--texto-2)">${grupo.label} <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--texto-4)">(${grupo.nota})</span></div>
+        <div style="font-size:10px;font-weight:600;padding:2px 8px;border-radius:20px;background:${badgeBg};color:${badgeClr}">${statusTxt}</div>
+      </div>
+      <div style="font-size:30px;font-weight:700;line-height:1;color:${bigClr};margin-bottom:2px" id="inv-grupo-big-${groupSafeId}">${finalTot}</div>
+      <div style="font-size:11px;color:var(--texto-3);margin-bottom:8px" id="inv-grupo-kg-${groupSafeId}">${kgFinal}</div>
+      ${stock?`<div style="background:rgba(0,0,0,0.07);border-radius:4px;height:8px;overflow:hidden;margin-bottom:10px">
+        <div id="inv-grupo-bar-${groupSafeId}" style="height:100%;width:100%;border-radius:4px;transform-origin:left;transform:scaleX(${pct/100});background:${barColor};transition:transform 0.4s"></div>
+      </div>`:''}
+      ${subs.map(s => {
+        const safeId = s.prod.replace(/[\s/]/g,'-');
+        const p2 = s.prod.replace(/'/g,"\\'");
+        return `<div style="padding:8px 0;border-top:1px dashed var(--borde)">
+          <div style="font-size:9px;font-weight:600;color:var(--texto-3);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:5px">${grupo.sublabels[s.prod]||s.prod}</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px">
+            <div>
+              <div style="font-size:9px;color:var(--texto-3);text-transform:uppercase;margin-bottom:2px">Cierre</div>
+              <input type="number" value="${s.inv_cierre}" min="0" step="1"
+                data-inv-prod="${s.prod}" data-inv-field="cierre" aria-label="Cierre ${s.prod}"
+                style="width:100%;font-size:13px;font-weight:600;font-family:var(--mono);text-align:center;border:0.5px solid var(--borde-2);border-radius:6px;padding:4px 2px;background:rgba(255,255,255,0.7);outline:none;color:var(--texto)"
+                oninput="invRecalcular('${p2}')">
+            </div>
+            <div>
+              <div style="font-size:9px;color:var(--rojo);text-transform:uppercase;margin-bottom:2px">Pedidos</div>
+              <input type="number" value="${s.pedidos}" min="0" step="1"
+                data-inv-prod="${s.prod}" data-inv-field="pedidos" aria-label="Pedidos ${s.prod}"
+                style="width:100%;font-size:13px;font-weight:600;font-family:var(--mono);text-align:center;border:0.5px solid rgba(192,25,15,0.2);border-radius:6px;padding:4px 2px;background:rgba(255,240,240,0.6);outline:none;color:var(--rojo)"
+                oninput="invRecalcular('${p2}')">
+            </div>
+            <div>
+              <div style="font-size:9px;color:var(--verde);text-transform:uppercase;margin-bottom:2px">Producido</div>
+              <input type="number" value="${s.producido}" min="0" step="1"
+                data-inv-prod="${s.prod}" data-inv-field="producido" aria-label="Producido ${s.prod}"
+                style="width:100%;font-size:13px;font-weight:600;font-family:var(--mono);text-align:center;border:0.5px solid rgba(10,110,53,0.2);border-radius:6px;padding:4px 2px;background:rgba(234,243,222,0.6);outline:none;color:var(--verde)"
+                oninput="invRecalcular('${p2}')">
+            </div>
+          </div>
+          <div style="font-size:9px;color:var(--texto-4);margin-top:4px">Ini día: <span id="inv-ini-${safeId}">${s.inv_inicial}</span></div>
+        </div>`;
+      }).join('')}
+      <div style="display:flex;align-items:center;justify-content:space-between;background:rgba(0,0,0,0.04);border-radius:6px;padding:5px 10px;margin:10px 0 6px" >
+        <span style="font-size:11px;color:var(--texto-3)">Inv final (combinado)</span>
+        <strong id="inv-grupo-final-${groupSafeId}" style="font-size:14px;font-weight:700;font-family:var(--mono);color:${bigClr}">${finalTot}</strong>
+      </div>
+      ${stock?`<div style="font-size:10px;color:var(--texto-4);margin-bottom:5px">Mín:${stock.min} · Máx:${stock.max} bolsas (combinado)</div>
+      <div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:6px" id="inv-grupo-recom-${groupSafeId}">
+        ${paraMin>0?`<span style="font-size:10px;background:rgba(217,119,6,0.1);color:var(--dorado-texto);padding:1px 7px;border-radius:20px;font-weight:600">+${paraMin} para mínimo</span>`:''}
+        ${paraMax>0?`<span style="font-size:10px;background:rgba(10,110,53,0.08);color:var(--verde);padding:1px 7px;border-radius:20px;font-weight:600">+${paraMax} para máximo</span>`:''}
+      </div>
+      <div id="inv-grupo-sugerido-${groupSafeId}" style="font-size:10px;color:var(--texto-3)">${sugerido>0?'💡 Pedir ~'+sugerido+' (combinado, cualquier proveedor)':''}</div>`:''}
+    </div>`;
+  };
+
   const makeCompactCard = (prod, data) => {
     const inv_cierre  = data.inv_cierre || 0;
     const pedidos     = data.pedidos    || 0;
@@ -4153,7 +4264,16 @@ function invRenderGrid(basement, upstairs){
   if (bSem) bSem.innerHTML = buildSemaforo(INV_BASEMENT, basement);
   if (uSem) uSem.innerHTML = buildSemaforo(INV_UPSTAIRS, upstairs);
 
-  bEl.innerHTML = INV_BASEMENT.map(p=>makeCard(p,basement[p]||{})).join('');
+  const gruposYaRenderizados = new Set();
+  bEl.innerHTML = INV_BASEMENT.map(p => {
+    const grupo = invMergeGroupOf(p);
+    if (grupo) {
+      if (gruposYaRenderizados.has(grupo.label)) return '';
+      gruposYaRenderizados.add(grupo.label);
+      return makeMergedCard(grupo, basement);
+    }
+    return makeCard(p, basement[p]||{});
+  }).join('');
   uEl.innerHTML = INV_UPSTAIRS.map(p=>makeCompactCard(p,upstairs[p]||{})).join('');
   invActualizarResumen();
   invActualizarAlertas();
@@ -4209,8 +4329,56 @@ function invRecalcular(prod){
     }
   }
   invActualizarResumen();
+
+  const grupo = invMergeGroupOf(prod);
+  if (grupo) invRecalcularGrupo(grupo);
 }
 
+// Recalcula en vivo el encabezado combinado de una tarjeta fusionada
+// (INV_MERGE_GROUPS) sumando los valores actuales de todos sus sub-productos.
+function invRecalcularGrupo(grupo) {
+  const stock = getStockInfo(grupo.productos[0]);
+  if (!stock) return;
+  let cierreTot = 0, finalTot = 0;
+  grupo.productos.forEach(p => {
+    const cierre    = parseFloat(document.querySelector('[data-inv-prod="'+p+'"][data-inv-field="cierre"]')?.value) || 0;
+    const pedidos   = parseFloat(document.querySelector('[data-inv-prod="'+p+'"][data-inv-field="pedidos"]')?.value) || 0;
+    const producido = parseFloat(document.querySelector('[data-inv-prod="'+p+'"][data-inv-field="producido"]')?.value) || 0;
+    cierreTot += cierre;
+    finalTot  += Math.max(0, cierre - pedidos) + producido;
+  });
+
+  const groupSafeId = invGroupSafeId(grupo);
+  const bigEl   = document.getElementById('inv-grupo-big-'+groupSafeId);
+  const barEl   = document.getElementById('inv-grupo-bar-'+groupSafeId);
+  const kgEl    = document.getElementById('inv-grupo-kg-'+groupSafeId);
+  const finalEl = document.getElementById('inv-grupo-final-'+groupSafeId);
+  const recomEl = document.getElementById('inv-grupo-recom-'+groupSafeId);
+  const sugEl   = document.getElementById('inv-grupo-sugerido-'+groupSafeId);
+
+  const pct = Math.min(Math.round(finalTot/stock.max*100),100);
+  let bc = 'var(--verde-3)';
+  if (finalTot<=0)                 bc='var(--rojo-2)';
+  else if (finalTot<stock.min*0.6) bc='var(--rojo-2)';
+  else if (finalTot<stock.min)     bc='var(--dorado-2)';
+  else if (finalTot>stock.max)     bc='var(--dorado-2)';
+  const bigClr = bc==='var(--rojo-2)'?'var(--rojo)':bc==='var(--dorado-2)'?'var(--dorado-2)':'var(--texto)';
+
+  if (bigEl)   { bigEl.textContent = finalTot; bigEl.style.color = bigClr; }
+  if (finalEl) { finalEl.textContent = finalTot; finalEl.style.color = bigClr; }
+  if (barEl)   { barEl.style.transform = 'scaleX('+(pct/100)+')'; barEl.style.background = bc; }
+  if (kgEl)    kgEl.textContent = (finalTot*stock.kg_bolsa).toFixed(1)+' kg';
+  if (sugEl) {
+    const sugerido = Math.max(0, stock.max - cierreTot);
+    sugEl.textContent = sugerido>0 ? '💡 Pedir ~'+sugerido+' (combinado, cualquier proveedor)' : '';
+  }
+  if (recomEl) {
+    const pm = Math.max(0,stock.min-finalTot), px = Math.max(0,stock.max-finalTot);
+    recomEl.innerHTML =
+      (pm>0?'<span style="font-size:10px;background:rgba(217,119,6,0.1);color:var(--dorado-texto);padding:1px 7px;border-radius:20px;font-weight:600">+'+pm+' para mínimo</span>':'')+
+      (px>0?'<span style="font-size:10px;background:rgba(10,110,53,0.08);color:var(--verde);padding:1px 7px;border-radius:20px;font-weight:600">+'+px+' para máximo</span>':'');
+  }
+}
 
 function invActualizarResumen(){
   const calcSec = (prods) => {
@@ -4239,14 +4407,27 @@ function invActualizarAlertas(){
   const alertasEl = document.getElementById('inv-alertas');
   if (!alertasEl) return;
   const alertas=[];
+  const gruposVistos = new Set();
   for (const prod of [...INV_BASEMENT,...INV_UPSTAIRS]){
-    const finalEl = document.getElementById('inv-final-'+prod.replace(/[\s/]/g,'-'));
-    const final_v = parseFloat(finalEl?.textContent)||0;
-    const stock = getStockInfo(prod);
+    const grupo = invMergeGroupOf(prod);
+    let label, final_v, stock;
+    if (grupo) {
+      if (gruposVistos.has(grupo.label)) continue;
+      gruposVistos.add(grupo.label);
+      label = grupo.label;
+      stock = getStockInfo(grupo.productos[0]);
+      const finalEl = document.getElementById('inv-grupo-final-'+invGroupSafeId(grupo));
+      final_v = parseFloat(finalEl?.textContent)||0;
+    } else {
+      label = prod;
+      stock = getStockInfo(prod);
+      const finalEl = document.getElementById('inv-final-'+prod.replace(/[\s/]/g,'-'));
+      final_v = parseFloat(finalEl?.textContent)||0;
+    }
     if (!stock) continue;
-    if (final_v<=0)             alertas.push({prod,final_v,tipo:'critico',msg:'Sin stock'});
-    else if (final_v<stock.min*0.6) alertas.push({prod,final_v,tipo:'critico',msg:'Crítico'});
-    else if (final_v<stock.min)     alertas.push({prod,final_v,tipo:'warn',msg:'Bajo mínimo'});
+    if (final_v<=0)             alertas.push({prod:label,final_v,tipo:'critico',msg:'Sin stock'});
+    else if (final_v<stock.min*0.6) alertas.push({prod:label,final_v,tipo:'critico',msg:'Crítico'});
+    else if (final_v<stock.min)     alertas.push({prod:label,final_v,tipo:'warn',msg:'Bajo mínimo'});
   }
   const detalleHtml = alertas.map(a=>
     '<div class="inv-alerta '+a.tipo+'" style="margin-bottom:6px">'+
@@ -4289,11 +4470,25 @@ async function invActualizarPrediccionQuiebre() {
   const porProducto = {};
   data.forEach(r => { (porProducto[r.producto] = porProducto[r.producto]||[]).push(r); });
 
-  const predicciones = [];
-  for (const prod of [...INV_BASEMENT, ...INV_UPSTAIRS]) {
-    if (!getStockInfo(prod)) continue;
-    const rows = (porProducto[prod]||[]).sort((a,b) => a.fecha.localeCompare(b.fecha));
-    if (rows.length < 4) continue;
+  // Combina la serie diaria de los productos de un grupo fusionado (ej.
+  // FISH VENERICA + FISH BASSA CIELOS) sumando inv_cierre/inv_final por
+  // fecha, para que la predicción salga combinada en vez de una por proveedor.
+  function combinarSeriePorFecha(productos) {
+    const porFecha = {};
+    productos.forEach(prod => {
+      (porProducto[prod]||[]).forEach(r => {
+        const acc = porFecha[r.fecha] || {fecha: r.fecha, inv_cierre:0, inv_final:0};
+        acc.inv_cierre += r.inv_cierre||0;
+        acc.inv_final  += r.inv_final||0;
+        porFecha[r.fecha] = acc;
+      });
+    });
+    return Object.values(porFecha);
+  }
+
+  function calcularPrediccionProducto(label, stock, rowsCrudas) {
+    const rows = rowsCrudas.slice().sort((a,b) => a.fecha.localeCompare(b.fecha));
+    if (rows.length < 4) return null;
     const consumos = [];
     for (let i = 0; i < rows.length-1; i++) {
       const cur = rows[i], nxt = rows[i+1];
@@ -4302,13 +4497,33 @@ async function invActualizarPrediccionQuiebre() {
       const consumo = (cur.inv_final||0) - (nxt.inv_cierre||0);
       if (consumo > 0) consumos.push(consumo);
     }
-    if (consumos.length < 3) continue;
+    if (consumos.length < 3) return null;
     const tasaProm = consumos.reduce((a,b)=>a+b,0) / consumos.length;
-    if (tasaProm <= 0) continue;
+    if (tasaProm <= 0) return null;
     const actual = rows[rows.length-1].inv_final;
-    if (actual == null) continue;
+    if (actual == null) return null;
     const diasRestantes = actual / tasaProm;
-    if (diasRestantes < 3) predicciones.push({prod, actual, tasaProm, diasRestantes});
+    if (diasRestantes >= 3) return null;
+    return {prod: label, actual, tasaProm, diasRestantes};
+  }
+
+  const predicciones = [];
+  const gruposVistos = new Set();
+  for (const prod of [...INV_BASEMENT, ...INV_UPSTAIRS]) {
+    const grupo = invMergeGroupOf(prod);
+    if (grupo) {
+      if (gruposVistos.has(grupo.label)) continue;
+      gruposVistos.add(grupo.label);
+      const stock = getStockInfo(grupo.productos[0]);
+      if (!stock) continue;
+      const pred = calcularPrediccionProducto(grupo.label, stock, combinarSeriePorFecha(grupo.productos));
+      if (pred) predicciones.push(pred);
+      continue;
+    }
+    const stock = getStockInfo(prod);
+    if (!stock) continue;
+    const pred = calcularPrediccionProducto(prod, stock, porProducto[prod]||[]);
+    if (pred) predicciones.push(pred);
   }
 
   if (!predicciones.length) { el.innerHTML = ''; return; }
@@ -4359,9 +4574,29 @@ async function invGuardarConteo(){
   statusEl.textContent='✅ '+rows.length+' productos guardados — '+fecha;
   toast('Conteo del '+fecha+' guardado ✓','ok');
   await invGuardarNotaManual(fecha, document.getElementById('inv-nota-dia')?.value || '');
+  await invGuardarHorasDia(fecha, document.getElementById('inv-horas-dia')?.value);
   await invActualizarProduccionHoy(fecha, rows);
   await invDerivarProduccionAyer(fecha, rows);
   await invCargarHistorial();
+}
+
+// Guarda las horas del día directo desde Inventario — se corre ANTES de
+// invActualizarProduccionHoy/invDerivarProduccionAyer (mismo motivo que
+// invGuardarNotaManual) para que esas dos, al preservar dias.horas, ya vean
+// el valor recién tecleado en vez de uno viejo.
+async function invGuardarHorasDia(fecha, horasTexto) {
+  const horas = (horasTexto === '' || horasTexto == null) ? null : parseFloat(horasTexto);
+  if (horas != null && (isNaN(horas) || horas < 0)) return;
+  const {data: diaEx} = await db.from('dias').select('semana_id,horas').eq('fecha', fecha).maybeSingle();
+  if ((horas ?? null) === (diaEx?.horas ?? null)) return;
+  let semana_id = diaEx?.semana_id;
+  if (!semana_id) {
+    const semRes = await obtenerOCrearSemana(fecha);
+    if (semRes.error) return;
+    semana_id = semRes.id;
+  }
+  const {error} = await db.from('dias').upsert({fecha, semana_id, horas}, {onConflict:'fecha'});
+  if (error) dbError('guardar horas del día', error);
 }
 
 // Guarda la nota manual del día en dias.notas preservando la parte
@@ -4491,7 +4726,20 @@ async function invDerivarProduccionAyer(fecha, rowsHoy){
 function calcularListaPedido() {
   const fecha = document.getElementById('inv-fecha-sel')?.value || hoyISO();
   const lista = [];
+  const gruposVistos = new Set();
   for (const prod of INV_BASEMENT) {
+    const grupo = invMergeGroupOf(prod);
+    if (grupo) {
+      if (gruposVistos.has(grupo.label)) continue;
+      gruposVistos.add(grupo.label);
+      const stock = getStockInfo(grupo.productos[0]);
+      if (!stock) continue;
+      const cierreTot = grupo.productos.reduce((a,p) =>
+        a + (parseFloat(document.querySelector('[data-inv-prod="'+p+'"][data-inv-field="cierre"]')?.value) || 0), 0);
+      const sugerido = Math.max(0, stock.max - cierreTot);
+      if (sugerido > 0) lista.push({producto: grupo.label, cierre: cierreTot, min: stock.min, max: stock.max, sugerido});
+      continue;
+    }
     const stock = getStockInfo(prod);
     if (!stock) continue;
     const cierre = parseFloat(document.querySelector('[data-inv-prod="'+prod+'"][data-inv-field="cierre"]')?.value) || 0;
