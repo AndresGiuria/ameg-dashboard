@@ -3186,6 +3186,48 @@ async function renderDiaDestacado() {
   runNumTickers(topRow);
 }
 
+// ── Helpers de estilo para las gráficas del Tablero (gradiente, tooltip,
+// etiqueta directa en el último dato) — mismo lenguaje visual para las 4 ──
+function degradadoVertical(chart, rgba) {
+  const {ctx, chartArea} = chart;
+  if (!chartArea) return rgba; // primer paint, antes de layout — cae a color plano
+  const m = rgba.match(/rgba?\(([^)]+)\)/);
+  if (!m) return rgba;
+  const [r,g,b] = m[1].split(',').map(s => s.trim());
+  const grad = ctx.createLinearGradient(0, chartArea.top, 0, chartArea.bottom);
+  grad.addColorStop(0, `rgba(${r},${g},${b},0.32)`);
+  grad.addColorStop(1, `rgba(${r},${g},${b},0.94)`);
+  return grad;
+}
+const TOOLTIP_ESTILO = {
+  backgroundColor: '#16181a', titleColor: '#fff', bodyColor: '#e4e4e2',
+  padding: 10, cornerRadius: 8, displayColors: false,
+  titleFont: {weight: '600', size: 11}, bodyFont: {size: 12},
+};
+// Dibuja un texto arriba del último punto/barra del dataset 0 — etiquetado
+// selectivo (solo el dato más reciente), no un número en cada punto.
+function pluginEtiquetaFinal(getTexto, color) {
+  return {
+    id: 'etiquetaFinal-' + Math.random().toString(36).slice(2),
+    afterDatasetsDraw(chart) {
+      const meta = chart.getDatasetMeta(0);
+      const idx = meta.data.length - 1;
+      if (idx < 0) return;
+      const texto = getTexto(idx);
+      if (!texto) return;
+      const el = meta.data[idx];
+      const {x, y} = el.getProps(['x','y'], true);
+      const ctx = chart.ctx;
+      ctx.save();
+      ctx.font = '700 11px Inter, -apple-system, sans-serif';
+      ctx.fillStyle = color || '#0b0c0d';
+      ctx.textAlign = 'center';
+      ctx.fillText(texto, x, y - 8);
+      ctx.restore();
+    }
+  };
+}
+
 async function renderChartDiarioMain() {
   const canvas=document.getElementById('chart-diario-main');
   if (!canvas) return;
@@ -3199,16 +3241,18 @@ async function renderChartDiarioMain() {
       labels:rows.map(r=>fmtDateShort(r.fecha)),
       datasets:[
         {label:'Kg producidos',data:rows.map(r=>r.kg_producidos),
-          backgroundColor:rows.map(r=>r.kg_producidos>=META_KG_DIA?'rgba(34,197,94,0.85)':'rgba(220,38,38,0.75)'),
-          borderRadius:5,borderSkipped:false},
+          backgroundColor:ctx=>degradadoVertical(ctx.chart, rows[ctx.dataIndex]?.kg_producidos>=META_KG_DIA?'rgba(14,142,68,0.92)':'rgba(224,30,18,0.85)'),
+          borderRadius:5,borderSkipped:false,maxBarThickness:22},
         {label:'Meta '+META_KG_DIA+' kg',data:rows.map(()=>META_KG_DIA),type:'line',
-          borderColor:'rgba(0,0,0,0.12)',borderWidth:1.5,borderDash:[4,4],pointRadius:0,fill:false}
+          borderColor:'rgba(160,168,180,0.6)',borderWidth:1.5,borderDash:[4,4],pointRadius:0,fill:false}
       ]
     },
     options:{responsive:true,maintainAspectRatio:false,
-      plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>' '+fmt(ctx.raw)+' kg'}}},
+      animation:{duration:750,easing:'easeOutQuart'},
+      plugins:{legend:{display:false},tooltip:{...TOOLTIP_ESTILO,callbacks:{label:ctx=>' '+fmt(ctx.raw)+' kg'}}},
       scales:{x:{grid:{display:false},ticks:{font:{size:10},maxRotation:45}},
-              y:{grid:{color:'rgba(0,0,0,0.04)'},ticks:{font:{size:11},callback:v=>fmt(v)}}}}
+              y:{grid:{color:'rgba(0,0,0,0.04)'},ticks:{font:{size:11},callback:v=>fmt(v)}}}},
+    plugins:[pluginEtiquetaFinal(i=>fmt(rows[i]?.kg_producidos,0),'#0b0c0d')]
   });
 }
 
@@ -3221,7 +3265,7 @@ async function renderChartEficMain() {
     .filter(r=>r.kg_hora).sort((a,b)=>a.fecha.localeCompare(b.fecha));
   if (window._chartEficMain) window._chartEficMain.destroy();
   if (!rows.length) {
-    canvas.parentElement.innerHTML = '<div class="empty"><p>Sin datos de horas aún — importa el registro de horas en 📥 Importar Excel</p></div>';
+    canvas.parentElement.innerHTML = '<div class="empty"><p>Sin datos de horas aún — importa el registro de horas en ⚙️ Config → Importar Excel</p></div>';
     return;
   }
   window._chartEficMain=new Chart(canvas,{
@@ -3233,14 +3277,16 @@ async function renderChartEficMain() {
           backgroundColor:'rgba(30,148,72,0.08)',borderWidth:2,pointRadius:3,
           pointBackgroundColor:rows.map(r=>r.kg_hora>=META_KG_H?'#22c55e':'#dc2626'),
           fill:true,tension:0.3},
-        {label:'Meta '+META_KG_H+' kg/h',data:rows.map(()=>META_KG_H),borderColor:'rgba(0,0,0,0.12)',
+        {label:'Meta '+META_KG_H+' kg/h',data:rows.map(()=>META_KG_H),borderColor:'rgba(160,168,180,0.6)',
           borderWidth:1.5,borderDash:[4,4],pointRadius:0,fill:false}
       ]
     },
     options:{responsive:true,maintainAspectRatio:false,
-      plugins:{legend:{display:false}},
+      animation:{duration:750,easing:'easeOutQuart'},
+      plugins:{legend:{display:false},tooltip:{...TOOLTIP_ESTILO,callbacks:{label:ctx=>' '+fmt(ctx.raw,2)+' kg/h'}}},
       scales:{x:{grid:{display:false},ticks:{font:{size:10},maxRotation:45}},
-              y:{grid:{color:'rgba(0,0,0,0.04)'},ticks:{font:{size:11}}}}}
+              y:{grid:{color:'rgba(0,0,0,0.04)'},ticks:{font:{size:11}}}}},
+    plugins:[pluginEtiquetaFinal(i=>fmt(rows[i]?.kg_hora,1),'#0e8e44')]
   });
 }
 
@@ -3278,19 +3324,21 @@ async function renderSemanasStrip() {
       labels:rows.map(r=>r.label),
       datasets:[
         {label:'Kg producidos',data:rows.map(r=>r.total),
-          backgroundColor:rows.map(r=>colorFor(r.pct)),
-          borderRadius:5,borderSkipped:false},
+          backgroundColor:ctx=>degradadoVertical(ctx.chart, colorFor(rows[ctx.dataIndex]?.pct)),
+          borderRadius:5,borderSkipped:false,maxBarThickness:26},
         {label:'Meta',data:rows.map(r=>r.metaSem),type:'line',
-          borderColor:'rgba(0,0,0,0.15)',borderWidth:1.5,borderDash:[4,4],pointRadius:0,fill:false}
+          borderColor:'rgba(160,168,180,0.6)',borderWidth:1.5,borderDash:[4,4],pointRadius:0,fill:false}
       ]
     },
     options:{responsive:true,maintainAspectRatio:false,
+      animation:{duration:750,easing:'easeOutQuart'},
       plugins:{legend:{display:false},
-        tooltip:{callbacks:{label:ctx=>ctx.datasetIndex===1
+        tooltip:{...TOOLTIP_ESTILO,callbacks:{label:ctx=>ctx.datasetIndex===1
           ? ' Meta: '+fmt(ctx.raw)+' kg'
           : ' '+fmt(ctx.raw)+' kg ('+rows[ctx.dataIndex].pct.toFixed(0)+'%)'}}},
       scales:{x:{grid:{display:false},ticks:{font:{size:10},maxRotation:45}},
-              y:{grid:{color:'rgba(0,0,0,0.04)'},ticks:{font:{size:11},callback:v=>fmt(v)}}}}
+              y:{grid:{color:'rgba(0,0,0,0.04)'},ticks:{font:{size:11},callback:v=>fmt(v)}}}},
+    plugins:[pluginEtiquetaFinal(i=>rows[i]?rows[i].pct.toFixed(0)+'%':'','#0b0c0d')]
   });
 }
 
@@ -3313,13 +3361,15 @@ async function renderChartMesMain() {
     data:{
       labels:meses.map(m=>nombres[m.slice(5)]+' '+m.slice(2,4)),
       datasets:[{label:'Kg producidos',data:meses.map(m=>byMes[m]),
-        backgroundColor:meses.map((m,i)=>i===meses.length-1?'rgba(37,99,235,0.8)':'rgba(34,197,94,0.8)'),
-        borderRadius:6,borderSkipped:false}]
+        backgroundColor:ctx=>degradadoVertical(ctx.chart, ctx.dataIndex===meses.length-1?'rgba(24,95,165,0.85)':'rgba(14,142,68,0.82)'),
+        borderRadius:6,borderSkipped:false,maxBarThickness:56}]
     },
     options:{responsive:true,maintainAspectRatio:false,
-      plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>' '+fmt(ctx.raw)+' kg'}}},
+      animation:{duration:750,easing:'easeOutQuart'},
+      plugins:{legend:{display:false},tooltip:{...TOOLTIP_ESTILO,callbacks:{label:ctx=>' '+fmt(ctx.raw)+' kg'}}},
       scales:{x:{grid:{display:false},ticks:{font:{size:11}}},
-              y:{grid:{color:'rgba(0,0,0,0.04)'},ticks:{font:{size:11},callback:v=>fmt(v)}}}}
+              y:{grid:{color:'rgba(0,0,0,0.04)'},ticks:{font:{size:11},callback:v=>fmt(v)}}}},
+    plugins:[pluginEtiquetaFinal(i=>i===meses.length-1?fmt(byMes[meses[i]],0):'','#185FA5')]
   });
 }
 
