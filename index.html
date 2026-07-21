@@ -3120,16 +3120,24 @@ async function renderStockDias() {
   var html = '<div style="background:var(--glass);border:1px solid var(--glass-borde);border-radius:var(--radio-lg);padding:16px 20px;margin-bottom:20px">'
     + '<div style="font-size:10px;text-transform:uppercase;letter-spacing:0.08em;color:var(--texto-3);margin-bottom:12px">DÍAS DE STOCK · ' + fmtDate(lastFecha) + '</div>'
     + '<div style="display:flex;gap:8px;overflow-x:auto;padding-bottom:4px">';
+  // Techo de referencia para la barra de urgencia: 7 días de cobertura se
+  // considera "lleno" (mismo criterio que ya separa crítico/bajo/OK abajo).
+  var DIAS_BARRA_MAX = 7;
   cards.forEach(function(c) {
     var d   = c.dias;
     var clr = d===null ? 'var(--texto-3)' : d<2 ? 'var(--rojo)' : d<5 ? 'var(--dorado-2)' : 'var(--verde)';
     var bg  = d===null ? 'rgba(0,0,0,0.04)' : d<2 ? 'rgba(192,25,15,0.08)' : d<5 ? 'rgba(217,119,6,0.08)' : 'rgba(10,110,53,0.08)';
+    var barColor = d===null ? 'var(--texto-4)' : d<2 ? 'var(--rojo-2)' : d<5 ? 'var(--dorado-2)' : 'var(--verde-3)';
+    var pctBarra = d===null ? 0 : Math.min(1, d/DIAS_BARRA_MAX);
     var rateLabel = c.avgDay >= 0.5 ? Math.round(c.avgDay) + ' kg/d · ' + c.fuente : '';
     var critico = d!==null && d<2;
     html += '<div style="min-width:100px;flex-shrink:0;background:' + bg + ';border-radius:10px;padding:10px 10px;text-align:center"' + (critico ? ' class="stock-pulse"' : '') + '>'
       + '<div style="font-size:9px;font-weight:700;color:var(--texto-3);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + c.key + '</div>'
       + '<div style="font-size:26px;font-weight:800;color:' + clr + ';line-height:1;margin-bottom:2px">' + (d!==null ? numTicker(Math.round(d),0) : '—') + '</div>'
-      + '<div style="font-size:9px;color:var(--texto-3);margin-bottom:3px">' + (d!==null ? 'días' : 'sin datos') + '</div>'
+      + '<div style="font-size:9px;color:var(--texto-3);margin-bottom:6px">' + (d!==null ? 'días' : 'sin datos') + '</div>'
+      + '<div style="background:rgba(0,0,0,0.06);border-radius:3px;height:4px;overflow:hidden;margin-bottom:6px" title="' + (d!==null ? Math.round(d)+'/'+DIAS_BARRA_MAX+' días de cobertura' : 'sin datos suficientes') + '">'
+      + '<div data-fill="' + pctBarra + '" style="height:100%;width:100%;border-radius:3px;transform-origin:left;transform:scaleX(0);background:' + barColor + ';transition:transform 1s var(--ease)"></div>'
+      + '</div>'
       + '<div style="font-size:9px;color:var(--texto-3)">' + c.bolsas + ' bolsas · ' + Math.round(c.kgStock) + ' kg</div>'
       + '<div style="font-size:9px;color:var(--texto-3);margin-top:2px;opacity:0.7">' + rateLabel + '</div>'
       + '</div>';
@@ -3141,6 +3149,7 @@ async function renderStockDias() {
   html += '</div>';
   container.innerHTML = html;
   runNumTickers(container);
+  animateFillBars(container);
 }
 
 // ═══════════════════════════════════════════════════════════════
