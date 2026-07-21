@@ -3440,6 +3440,11 @@ async function ctrlProcesarExcel(file) {
         const um = ctrlNum(row[4]) || (stockInfo ? stockInfo.kg_bolsa : null);
         let prodn = row.length > 7 ? ctrlNum(row[7]) : null;
         if (soloInventario || prodn === null) prodn = 0;
+        // La fórmula del Excel puede dar PRODUCCION negativa cuando nadie
+        // contó ese producto ese día (INVENTORY en blanco) — un stock físico
+        // no puede ser negativo. Visto en producción: FISH BASSA CIELOS
+        // 19-jul-2026 quedó con producido=-28/inv_final=-28 por este hueco.
+        prodn = Math.max(0, prodn);
         // Límite razonable de columnas: un arrastre accidental de celda en Excel
         // puede repetir un valor miles de columnas a la derecha (visto en
         // producción, 20-jul-2026 — fila de PAS MARINATE arrastrada a ~2000
@@ -3472,6 +3477,7 @@ async function ctrlProcesarExcel(file) {
         total = Math.max(0, total === null ? cierre - pedidos : total);
         let prodn = row.length > 4 ? ctrlNum(row[4]) : null;
         if (soloInventario || prodn === null) prodn = 0;
+        prodn = Math.max(0, prodn); // mismo hueco que basement — ver comentario arriba
         invRows.push({producto: prod, seccion: 'upstairs',
           inv_cierre: cierre, pedidos: pedidos, inv_inicial: total,
           producido: prodn, inv_final: total + prodn});
@@ -4422,8 +4428,14 @@ async function invDerivarProduccionAyer(fecha, rowsHoy){
   for (const ar of ayerRows){
     const hr = hoyMap[ar.producto];
     if (!hr) continue;
-    const inv_final = hr.inv_cierre || 0;
-    const producido = +(inv_final - (ar.inv_inicial||0)).toFixed(2);
+    // Si el cierre de hoy vino más bajo que el inicial de ayer (conteo real
+    // menor al esperado, o nadie contó ese producto), no dejar que "producido"
+    // ni "inv_final" queden negativos — un stock físico no puede ser negativo.
+    // Encontrado en producción el 21-jul-2026: FISH BASSA CIELOS 19-jul quedó
+    // con producido=-28/inv_final=-28 por este mismo hueco.
+    const inv_finalCrudo = hr.inv_cierre || 0;
+    const producido = Math.max(0, +(inv_finalCrudo - (ar.inv_inicial||0)).toFixed(2));
+    const inv_final = +((ar.inv_inicial||0) + producido).toFixed(2);
     if (producido !== (ar.producido||0) || inv_final !== (ar.inv_final||0)){
       await db.from('inventario_diario').update({producido, inv_final}).eq('id', ar.id);
     }
