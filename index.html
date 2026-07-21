@@ -689,8 +689,10 @@
   <div class="card" style="margin-bottom:12px">
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
       <div style="width:26px;height:26px;border-radius:50%;background:var(--verde-2);color:#fff;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center">2</div>
-      <h2 style="margin:0">Horas trabajadas (opcional)</h2>
-      <span style="font-size:12px;color:var(--texto-3);margin-left:4px">CSV/Excel con fecha y horas — Mario Alberto y German Poveda se excluyen automáticamente</span>
+      <h2 style="margin:0">Horas trabajadas — carga SEMANAL (opcional)</h2>
+    </div>
+    <div style="background:var(--glass);border-radius:var(--radio);padding:10px 14px;margin-bottom:12px;font-size:12px;color:var(--texto-3)">
+      📅 <strong style="color:var(--texto)">Sube aquí, una vez por semana, el CSV/Excel de 7shifts</strong> (fecha + horas por persona). Esto es lo único que trae las horas reales de <strong>cada persona</strong> — alimenta la vista "Datos → Por Persona". Mario Alberto Hernández y German Poveda se excluyen automáticamente. Al subirlo, sobreescribe cualquier total que se haya puesto a mano día por día en Inventario, con el dato real.
     </div>
     <div class="upload-zone" id="ctrl-horas-zone">
       <input type="file" id="ctrl-horas-input" accept=".csv,.txt,.xlsx,.xls">
@@ -946,9 +948,10 @@
         <div style="font-size:11px;font-weight:600;color:var(--texto-3)">GUARDA TU CONTEO</div>
       </div>
       <div style="margin-bottom:12px">
-        <label for="inv-horas-dia" style="font-size:11px;font-weight:600;color:var(--texto-3);display:block;margin-bottom:4px">🕐 Horas trabajadas hoy (opcional, excl. Mario A.H. / German P.)</label>
+        <label for="inv-horas-dia" style="font-size:11px;font-weight:600;color:var(--texto-3);display:block;margin-bottom:4px">🕐 Horas trabajadas hoy — total aproximado, opcional (excl. Mario A.H. / German P.)</label>
         <input type="number" id="inv-horas-dia" min="0" step="0.25" placeholder="Ej. 52.0"
           style="width:140px;border:1px solid var(--borde-2);border-radius:var(--radio);padding:7px 12px;font-size:13px;font-family:var(--font);background:rgba(255,255,255,0.8);color:var(--texto);outline:none">
+        <div style="font-size:10px;color:var(--texto-4);margin-top:4px;max-width:420px">Solo el total del día, para que la eficiencia no quede en blanco mientras tanto. Las horas reales por persona se cargan aparte, 1 vez por semana, en Config → Importar Excel (paso 2) — eso sobreescribe este número con el dato correcto.</div>
       </div>
       <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
         <button class="btn btn-primary btn-sm" onclick="invGuardarConteo()">💾 Guardar conteo</button>
