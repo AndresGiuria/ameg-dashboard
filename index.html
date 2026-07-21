@@ -9,12 +9,12 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
   <style>
   :root {
-    --bg:          #f2f3f4;
-    --bg-2:        #eaebec;
-    --glass:       rgba(255,255,255,0.62);
-    --glass-2:     rgba(255,255,255,0.38);
-    --glass-borde: rgba(255,255,255,0.85);
-    --glass-sombra:0 8px 32px rgba(0,0,0,0.08), 0 1px 0 rgba(255,255,255,0.9) inset;
+    --bg:          #f7f2e7;
+    --bg-2:        #efe7d5;
+    --glass:       rgba(255,252,244,0.64);
+    --glass-2:     rgba(255,252,244,0.40);
+    --glass-borde: rgba(255,250,238,0.85);
+    --glass-sombra:0 8px 32px rgba(60,45,20,0.07), 0 1px 0 rgba(255,255,255,0.9) inset;
     --negro:       #0b0c0d;
     --negro-2:     #16181a;
     --verde:       #0a6e35;
@@ -64,8 +64,8 @@
     min-height: 100vh;
     -webkit-font-smoothing: antialiased;
     background-image:
-      radial-gradient(ellipse 80% 60% at 60% -10%, rgba(10,110,53,0.06) 0%, transparent 60%),
-      radial-gradient(ellipse 60% 40% at 0% 100%, rgba(192,25,15,0.04) 0%, transparent 50%);
+      radial-gradient(ellipse 80% 60% at 60% -10%, rgba(123,168,138,0.09) 0%, transparent 60%),
+      radial-gradient(ellipse 60% 40% at 0% 100%, rgba(232,119,108,0.07) 0%, transparent 50%);
     background-attachment: fixed;
   }
 
@@ -119,12 +119,12 @@
   nav button {
     background: none; border: none; cursor: pointer;
     padding: 14px 15px; font-size: 12px; font-weight: 500;
-    font-family: var(--font); color: rgba(255,255,255,0.35);
+    font-family: var(--font); color: rgba(255,255,255,0.62);
     border-bottom: 1.5px solid transparent; white-space: nowrap;
     transition: color var(--t) var(--ease), border-color var(--t) var(--ease);
     display: flex; align-items: center; gap: 5px; letter-spacing: -0.1px;
   }
-  nav button:hover { color: rgba(255,255,255,0.75); }
+  nav button:hover { color: rgba(255,255,255,0.85); }
   nav button.active { color: #fff; border-bottom-color: var(--verde-2); }
   .nav-spacer { flex: 1; min-width: 16px; }
   .nav-action {
@@ -439,7 +439,7 @@
   }
   .modal-overlay.show { opacity:1; }
   .modal-card {
-    background:#fff; border-radius:var(--radio-lg); width:100%; max-width:960px;
+    background:#fffdf7; border-radius:var(--radio-lg); width:100%; max-width:960px;
     box-shadow:0 20px 60px rgba(0,0,0,0.3); overflow:hidden; margin:auto;
     transform:scale(0.95); opacity:0;
     transition:transform 200ms var(--spring), opacity 200ms var(--ease);
@@ -554,7 +554,7 @@
 
 <!-- LOGIN -->
 <div id="login-overlay" style="position:fixed;inset:0;z-index:1000;background:rgba(244,245,242,0.98);align-items:center;justify-content:center;display:none">
-  <form id="login-form" onsubmit="loginSubmit(event)" style="background:#fff;border:1px solid rgba(0,0,0,0.08);border-radius:16px;box-shadow:0 20px 60px rgba(0,0,0,0.12);padding:36px 32px;width:340px;max-width:90vw">
+  <form id="login-form" onsubmit="loginSubmit(event)" style="background:#fffdf7;border:1px solid rgba(0,0,0,0.08);border-radius:16px;box-shadow:0 20px 60px rgba(0,0,0,0.12);padding:36px 32px;width:340px;max-width:90vw">
     <div style="text-align:center;margin-bottom:20px">
       <div style="font-size:34px;margin-bottom:8px">🌮</div>
       <div style="font-size:17px;font-weight:700">AMEG Dashboard</div>
