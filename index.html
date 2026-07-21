@@ -923,7 +923,7 @@
     </div>
 
     <div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--borde)">
-      <div style="font-size:11px;font-weight:600;color:var(--texto-3);margin-bottom:8px">📥 IMPORTAR DE MARKETMAN — llena Cierre/Pedidos del día cargado arriba (los 3 archivos son opcionales, sube los que tengas)</div>
+      <div style="font-size:11px;font-weight:600;color:var(--texto-3);margin-bottom:8px">📥 IMPORTAR DE MARKETMAN — llena Cierre/Pedidos de hoy (o de la fecha de arriba) directo, sin necesidad de dar "Cargar día" primero. Los 3 archivos son opcionales, sube los que tengas</div>
       <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
         <div>
           <label style="font-size:10px;color:var(--texto-3);display:block;margin-bottom:2px">Incoming orders by item</label>
@@ -3850,6 +3850,15 @@ async function mmAplicarImport() {
   const fUps     = document.getElementById('mm-file-ups').files[0];
   if (!fOrders && !fBase && !fUps) { toast('Selecciona al menos un archivo de MarketMan', 'err'); return; }
 
+  // Ya no exige haber dado clic en "🔄 Cargar día" primero — siempre (re)carga
+  // el día real de la BD antes de aplicar, así "esperado" refleja lo que ya
+  // hay guardado y no la grilla vacía en ceros que se renderiza por defecto
+  // al entrar a la pestaña (invRenderDefault).
+  const fechaSel = document.getElementById('inv-fecha-sel');
+  if (fechaSel && !fechaSel.value) fechaSel.value = hoyISO();
+  statusEl.textContent = 'Cargando el día antes de aplicar…';
+  await invCargarDia();
+
   statusEl.textContent = 'Leyendo archivos…';
   try {
     const ordersMap = fOrders ? mmParseOrdersSheet(await mmLeerHoja(fOrders)) : {};
@@ -4039,6 +4048,7 @@ function invRenderGrid(basement, upstairs){
             data-inv-prod="${prod}" data-inv-field="pedidos" aria-label="Pedidos ${prod}"
             style="width:100%;font-size:14px;font-weight:600;font-family:var(--mono);text-align:center;border:0.5px solid rgba(192,25,15,0.2);border-radius:6px;padding:5px 2px;background:rgba(255,240,240,0.6);outline:none;color:var(--rojo)"
             oninput="invRecalcular('${p2}')">
+          <div id="inv-sugerido-${safeId}" style="font-size:9px;color:var(--texto-3);margin-top:3px;text-align:center">${stock && Math.max(0,stock.max-inv_cierre)>0 ? '💡 Pedir ~'+Math.max(0,stock.max-inv_cierre) : ''}</div>
         </div>
         <div>
           <div style="font-size:9px;color:var(--azul);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:3px">Ini día</div>
@@ -4135,6 +4145,7 @@ function invRecalcular(prod){
   const barEl     = document.getElementById('inv-bar-'+safeId);
   const kgEl      = document.getElementById('inv-kg-'+safeId);
   const recomEl   = document.getElementById('inv-recom-'+safeId);
+  const sugEl     = document.getElementById('inv-sugerido-'+safeId);
 
   if (!cierreEl||!pedidosEl||!prodEl) return;
 
@@ -4161,6 +4172,10 @@ function invRecalcular(prod){
     if (bigEl)  bigEl.style.color  = bigClr;
     if (finalEl) finalEl.style.color = bigClr;
     if (kgEl)  kgEl.textContent=(final_v*stock.kg_bolsa).toFixed(1)+' kg';
+    if (sugEl){
+      const sugerido = Math.max(0, stock.max - cierre);
+      sugEl.textContent = sugerido>0 ? '💡 Pedir ~'+sugerido : '';
+    }
     if (recomEl){
       const pm=Math.max(0,stock.min-final_v), px=Math.max(0,stock.max-final_v);
       recomEl.innerHTML=
