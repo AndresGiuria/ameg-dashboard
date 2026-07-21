@@ -3434,9 +3434,16 @@ async function ctrlProcesarExcel(file) {
         const um = ctrlNum(row[4]) || (stockInfo ? stockInfo.kg_bolsa : null);
         let prodn = row.length > 7 ? ctrlNum(row[7]) : null;
         if (soloInventario || prodn === null) prodn = 0;
-        for (let k = 8; k < row.length; k++) {
-          if (typeof row[k] === 'string' && row[k].trim() && row[k].trim() !== '`')
-            notasExtra.push(prod + ': ' + row[k].trim());
+        // Límite razonable de columnas: un arrastre accidental de celda en Excel
+        // puede repetir un valor miles de columnas a la derecha (visto en
+        // producción, 20-jul-2026 — fila de PAS MARINATE arrastrada a ~2000
+        // columnas) y generar una nota gigante sin este límite.
+        const NOTA_EXTRA_COL_MAX = 20;
+        for (let k = 8; k < Math.min(row.length, NOTA_EXTRA_COL_MAX); k++) {
+          const val = typeof row[k] === 'string' ? row[k].trim() : '';
+          // ignora si el "extra" es solo el nombre del producto repetido (artefacto de arrastre en Excel, no una nota real)
+          if (val && val !== '`' && val.toUpperCase() !== prod.toUpperCase())
+            notasExtra.push(prod + ': ' + val);
         }
         invRows.push({producto: CTRL_INV_NAME[prod] || prod, seccion: 'basement',
           inv_cierre: cierre, pedidos: pedidos, inv_inicial: total,
@@ -3471,7 +3478,7 @@ async function ctrlProcesarExcel(file) {
 
       return {fecha: fecha, soloInventario: soloInventario, invRows: invRows, dpRows: dpRows,
         kgIni: +kgIni.toFixed(2), kgFin: +kgFin.toFixed(2), kgProd: +(kgFin - kgIni).toFixed(2),
-        notasExtra: notasExtra};
+        notasExtra: [...new Set(notasExtra)]};
     });
 
     iconEl.textContent = '✅';
