@@ -2929,20 +2929,22 @@ async function renderSemComparativo() {
   const diasAct = await fetchDiasByRange(semAct.fecha_inicio, semAct.fecha_fin);
   const kgAct   = diasAct.reduce((a,d) => a+(d.kg_producidos||0), 0);
   const hAct    = semAct.horas || 0;
-  const efAct   = hAct > 0 ? kgAct/hAct : 0;
+  // null (no "0.00" falso) cuando aún no se cargaron las horas de la semana —
+  // 0 kg/h se leía como "la eficiencia se desplomó" en vez de "falta el dato".
+  const efAct   = hAct > 0 ? kgAct/hAct : null;
 
-  let kgAnt = 0, efAnt = 0;
+  let kgAnt = 0, efAnt = null;
   if (semAnt) {
     const diasAnt = await fetchDiasByRange(semAnt.fecha_inicio, semAnt.fecha_fin);
     kgAnt = diasAnt.reduce((a,d) => a+(d.kg_producidos||0), 0);
     const hAnt = semAnt.horas || 0;
-    efAnt = hAnt > 0 ? kgAnt/hAnt : 0;
+    efAnt = hAnt > 0 ? kgAnt/hAnt : null;
   }
 
   const diffKg  = kgAct - kgAnt;
-  const diffEf  = efAct - efAnt;
+  const diffEf  = (efAct!=null && efAnt!=null) ? efAct - efAnt : null;
   const upKg    = diffKg >= 0;
-  const upEf    = diffEf >= 0;
+  const upEf    = diffEf!=null ? diffEf >= 0 : null;
   const metaAct = metaSemana(semAct.fecha_inicio);
   const pctAct  = Math.min(kgAct/metaAct*100, 100);
 
@@ -2966,9 +2968,9 @@ async function renderSemComparativo() {
       <div class="kh-label">Eficiencia actual vs anterior</div>
       <div style="display:flex;align-items:baseline;gap:12px;margin:10px 0 6px">
         <div class="kh-value" style="font-size:32px">${numTicker(efAct,2)}<span>kg/h</span></div>
-        ${semAnt ? `<span style="font-size:12px;font-weight:600;padding:3px 8px;border-radius:20px;background:${upEf?'rgba(10,110,53,0.1)':'rgba(192,25,15,0.09)'};color:${upEf?'var(--verde)':'var(--rojo)'}">
+        ${diffEf!=null ? `<span style="font-size:12px;font-weight:600;padding:3px 8px;border-radius:20px;background:${upEf?'rgba(10,110,53,0.1)':'rgba(192,25,15,0.09)'};color:${upEf?'var(--verde)':'var(--rojo)'}">
           ${upEf?'↑':'↓'} ${fmt(Math.abs(diffEf),2)} kg/h vs ${weekLabel(semAnt)}
-        </span>` : ''}
+        </span>` : semAnt ? `<span style="font-size:12px;color:var(--texto-3)">Faltan horas para comparar</span>` : ''}
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px">
         <div style="background:rgba(0,0,0,0.04);border-radius:8px;padding:10px;text-align:center">
