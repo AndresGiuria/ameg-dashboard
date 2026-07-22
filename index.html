@@ -2190,7 +2190,7 @@ async function renderSemanal() {
       const notasHtml  = s.notas ? '<div style="margin-bottom:10px;padding:8px 12px;background:rgba(154,96,0,0.07);border-left:3px solid rgba(154,96,0,0.4);border-radius:0 6px 6px 0;font-size:12px;color:var(--dorado)">📝 ' + escapeHtml(s.notas) + '</div>' : '';
       html += `<div class="semana-card" style="${cardStyle}">
         <div class="semana-header">
-          <div><h3>${weekLabel(s)}</h3><div class="dates">${fmtDate(s.fecha_inicio)} — ${fmtDate(s.fecha_fin)}</div></div>
+          <div><h3>${escapeHtml(weekLabel(s))}</h3><div class="dates">${fmtDate(s.fecha_inicio)} — ${fmtDate(s.fecha_fin)}</div></div>
           <div style="display:flex;gap:10px;flex-wrap:wrap">
             <div style="text-align:center"><div style="font-size:20px;font-weight:700">${fmt(totalKg)} kg</div><div style="font-size:11px;color:#888">Total</div></div>
             <div style="text-align:center"><div style="font-size:20px;font-weight:700">${fmt(efic)} kg/h</div><div style="font-size:11px;color:#888">Eficiencia</div></div>
@@ -2357,7 +2357,7 @@ async function renderPorPersona() {
   });
 
   let html = '<table><thead><tr><th>Persona</th>';
-  semCols.forEach(s => { html += '<th class="td-num">' + weekLabel(s) + '</th>'; });
+  semCols.forEach(s => { html += '<th class="td-num">' + escapeHtml(weekLabel(s)) + '</th>'; });
   html += '<th class="td-num">Total</th></tr></thead><tbody>';
 
   const totalesPorSemana = {};
