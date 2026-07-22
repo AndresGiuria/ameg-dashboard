@@ -199,16 +199,22 @@
     animation: beam-spin 5.5s linear infinite;
     pointer-events: none; opacity:0.8;
   }
+  /* El beam giratorio solo corre cuando el KPI necesita atención (warn/bad) —
+     un tile sano se queda estático para no diluir la señal real de alerta. */
   .kpi-hero::after {
     content:''; position:absolute; inset:0; border-radius:inherit; padding:1.5px;
-    background: conic-gradient(from 0deg, transparent 0 72%, var(--verde-3) 82%, transparent 92%);
     -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
     -webkit-mask-composite: xor; mask-composite: exclude;
-    animation: beam-spin 5.5s linear infinite;
-    pointer-events: none; opacity:0.75;
+    pointer-events: none; opacity:0;
   }
-  .kpi-hero.warn::after { background: conic-gradient(from 0deg, transparent 0 72%, var(--dorado-2) 82%, transparent 92%); }
-  .kpi-hero.bad::after  { background: conic-gradient(from 0deg, transparent 0 72%, var(--rojo-2) 82%, transparent 92%); }
+  .kpi-hero.warn::after {
+    background: conic-gradient(from 0deg, transparent 0 72%, var(--dorado-2) 82%, transparent 92%);
+    animation: beam-spin 5.5s linear infinite; opacity:0.75;
+  }
+  .kpi-hero.bad::after {
+    background: conic-gradient(from 0deg, transparent 0 72%, var(--rojo-2) 82%, transparent 92%);
+    animation: beam-spin 5.5s linear infinite; opacity:0.75;
+  }
   @keyframes beam-spin { to { transform: rotate(360deg); } }
 
   .shine-card { position:relative; overflow:hidden; }
@@ -1112,6 +1118,15 @@ const SUPABASE_URL = 'https://vcsclfosmtrgfcgaqiqu.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZjc2NsZm9zbXRyZ2ZjZ2FxaXF1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUxNTQ0ODUsImV4cCI6MjA5MDczMDQ4NX0.9hE7rjud8KzszmO_-nA903wL7lxpsuLcWCFFYdUx2SY';
 let META_KG_DIA  = 600;   // editable en Supabase → app_config
 let META_KG_H    = 12;
+
+// Colores de estado para charts (Chart.js no puede leer var() de CSS).
+// Un solo tono por significado — antes cada gráfica tenía su propio verde/rojo.
+const COLOR_OK       = 'rgba(10,110,53,0.85)';   // --verde: meta cumplida
+const COLOR_OK_SOLID = '#0a6e35';
+const COLOR_OK_FILL  = 'rgba(10,110,53,0.08)';
+const COLOR_BAD      = 'rgba(192,25,15,0.85)';   // --rojo: bajo meta
+const COLOR_BAD_SOLID= '#c0190f';
+const COLOR_WARN     = 'rgba(217,119,6,0.85)';   // --dorado-2
 
 // Meta semanal: sube de 3,600 a 3,900 kg a partir de esta fecha de inicio de semana
 let META_SEM_CUTOFF = '2026-05-01';
@@ -2486,7 +2501,7 @@ async function renderGraficas() {
       labels: rows.map(r => fmtDate(r.fecha)),
       datasets:[
         {label:'Kg producidos', data:rows.map(r=>r.kg_producidos),
-          backgroundColor:rows.map(r=>r.kg_producidos>=META_KG_DIA?'rgba(34,197,94,0.85)':'rgba(220,38,38,0.75)'),borderRadius:4},
+          backgroundColor:rows.map(r=>r.kg_producidos>=META_KG_DIA?COLOR_OK:COLOR_BAD),borderRadius:4},
         {label:'Meta 600 kg', data:rows.map(()=>META_KG_DIA),
           type:'line',borderColor:'rgba(200,147,10,0.6)',borderDash:[6,3],borderWidth:2,pointRadius:0,fill:false},
       ]
@@ -2502,7 +2517,7 @@ async function renderGraficas() {
       datasets:[
         {label:'kg/h real',
           data:rows.map(r=>r.kg_hora??(r.horas_rh>0?+(r.kg_producidos/r.horas_rh).toFixed(2):null)),
-          borderColor:'#1e9448',backgroundColor:'rgba(30,148,72,0.07)',fill:true,tension:0.3},
+          borderColor:COLOR_OK_SOLID,backgroundColor:COLOR_OK_FILL,fill:true,tension:0.3},
         {label:'Meta 12 kg/h', data:rows.map(()=>META_KG_H),
           borderColor:'rgba(34,255,122,0.3)',borderDash:[6,3],borderWidth:2,pointRadius:0,fill:false},
       ]
@@ -2532,7 +2547,7 @@ async function renderGraficas() {
     type:'bar',
     data:{labels:semLabels, datasets:[
       {label:'Kg producidos', data:semKgs,
-        backgroundColor:semKgs.map(function(kg){return kg<UMBRAL_SEM?'rgba(220,38,38,0.75)':'rgba(59,130,246,0.85)';}),
+        backgroundColor:semKgs.map(function(kg){return kg<UMBRAL_SEM?COLOR_BAD:COLOR_OK;}),
         borderRadius:6},
       {label:'Meta semanal', data:filteredSems.map(function(s){return metaSemana(s.fecha_inicio);}),
         type:'line',borderColor:'rgba(200,147,10,0.5)',borderDash:[6,3],borderWidth:2,pointRadius:0,fill:false},
@@ -2644,7 +2659,7 @@ async function renderChartDiaSemana(allRows) {
     type:'bar',
     data:{labels:labels, datasets:[
       {label:'Kg promedio', data:promedios,
-        backgroundColor:promedios.map(function(v){return v>=META_KG_DIA?'rgba(34,197,94,0.8)':'rgba(59,130,246,0.8)';}),
+        backgroundColor:promedios.map(function(v){return v>=META_KG_DIA?COLOR_OK:COLOR_BAD;}),
         borderRadius:5},
       {label:'Meta 600 kg', data:promedios.map(function(){return META_KG_DIA;}),
         type:'line',borderColor:'rgba(200,147,10,0.6)',borderDash:[6,3],borderWidth:2,pointRadius:0,fill:false},
@@ -2675,12 +2690,16 @@ async function renderChartMixProductos(filteredSems) {
   }
   // Top productos por volumen total; el resto se agrupa en "Otros" para no saturar de colores
   // (todas las semanas y todo el kg siguen presentes, solo se consolida la leyenda)
-  const MAX_SERIES = 7;
+  // Máximo 5 series propias — más que eso, el ojo deja de poder distinguir
+  // colores en una barra apilada (y el resto se consolida en "Otros").
+  const MAX_SERIES = 5;
   const productosOrdenados = Object.keys(totalesProducto).sort(function(a,b){return totalesProducto[b]-totalesProducto[a];});
   const top   = productosOrdenados.slice(0, MAX_SERIES);
   const resto = productosOrdenados.slice(MAX_SERIES);
-  const COLORES = ['rgba(239,68,68,0.8)','rgba(59,130,246,0.8)','rgba(34,197,94,0.8)','rgba(249,115,22,0.8)',
-    'rgba(168,85,247,0.8)','rgba(20,184,166,0.8)','rgba(234,179,8,0.8)'];
+  // Paleta Okabe-Ito (validada para daltonismo — deuteranopia/protanopia/tritanopia),
+  // evita el par naranja/verde y el amarillo pálido que fallaban antes.
+  const COLORES = ['rgba(0,114,178,0.85)','rgba(213,94,0,0.85)','rgba(0,158,115,0.85)',
+    'rgba(204,121,167,0.85)','rgba(230,159,0,0.85)'];
   const datasets = top.map(function(prod,i){
     return {
       label:prod,
@@ -3236,7 +3255,7 @@ async function renderChartDiarioMain() {
       labels:rows.map(r=>fmtDateShort(r.fecha)),
       datasets:[
         {label:'Kg producidos',data:rows.map(r=>r.kg_producidos),
-          backgroundColor:ctx=>degradadoVertical(ctx.chart, rows[ctx.dataIndex]?.kg_producidos>=META_KG_DIA?'rgba(14,142,68,0.92)':'rgba(224,30,18,0.85)'),
+          backgroundColor:ctx=>degradadoVertical(ctx.chart, rows[ctx.dataIndex]?.kg_producidos>=META_KG_DIA?COLOR_OK:COLOR_BAD),
           borderRadius:5,borderSkipped:false,maxBarThickness:22},
         {label:'Meta '+META_KG_DIA+' kg',data:rows.map(()=>META_KG_DIA),type:'line',
           borderColor:'rgba(160,168,180,0.6)',borderWidth:1.5,borderDash:[4,4],pointRadius:0,fill:false}
@@ -3268,9 +3287,9 @@ async function renderChartEficMain() {
     data:{
       labels:rows.map(r=>fmtDateShort(r.fecha)),
       datasets:[
-        {label:'kg/h',data:rows.map(r=>r.kg_hora),borderColor:'#1e9448',
-          backgroundColor:'rgba(30,148,72,0.08)',borderWidth:2,pointRadius:3,
-          pointBackgroundColor:rows.map(r=>r.kg_hora>=META_KG_H?'#22c55e':'#dc2626'),
+        {label:'kg/h',data:rows.map(r=>r.kg_hora),borderColor:COLOR_OK_SOLID,
+          backgroundColor:COLOR_OK_FILL,borderWidth:2,pointRadius:3,
+          pointBackgroundColor:rows.map(r=>r.kg_hora>=META_KG_H?COLOR_OK_SOLID:COLOR_BAD_SOLID),
           fill:true,tension:0.3},
         {label:'Meta '+META_KG_H+' kg/h',data:rows.map(()=>META_KG_H),borderColor:'rgba(160,168,180,0.6)',
           borderWidth:1.5,borderDash:[4,4],pointRadius:0,fill:false}
@@ -3307,7 +3326,7 @@ async function renderSemanasStrip() {
   }
 
   const rows = semanasVistaCompleta ? items : items.slice(-SEMANAS_RECIENTES);
-  const colorFor = pct => pct>=100?'rgba(12,125,60,0.85)':pct>=80?'rgba(217,119,6,0.85)':'rgba(224,30,18,0.75)';
+  const colorFor = pct => pct>=100?COLOR_OK:pct>=80?COLOR_WARN:COLOR_BAD;
 
   const inner=document.getElementById('semanas-chart-inner');
   if (inner) inner.style.minWidth = (semanasVistaCompleta && rows.length>SEMANAS_RECIENTES) ? (rows.length*48)+'px' : '100%';
@@ -3356,7 +3375,7 @@ async function renderChartMesMain() {
     data:{
       labels:meses.map(m=>nombres[m.slice(5)]+' '+m.slice(2,4)),
       datasets:[{label:'Kg producidos',data:meses.map(m=>byMes[m]),
-        backgroundColor:ctx=>degradadoVertical(ctx.chart, ctx.dataIndex===meses.length-1?'rgba(24,95,165,0.85)':'rgba(14,142,68,0.82)'),
+        backgroundColor:ctx=>degradadoVertical(ctx.chart, ctx.dataIndex===meses.length-1?'rgba(24,95,165,0.85)':COLOR_OK),
         borderRadius:6,borderSkipped:false,maxBarThickness:56}]
     },
     options:{responsive:true,maintainAspectRatio:false,
@@ -4166,7 +4185,7 @@ function invRenderGrid(basement, upstairs){
         <span style="font-size:11px;color:var(--texto-3)">Inv final</span>
         <strong id="inv-final-${safeId}" style="font-size:14px;font-weight:700;font-family:var(--mono);color:${bigClr}">${inv_final}</strong>
       </div>
-      ${stock?`<div style="font-size:10px;color:var(--texto-4);margin-bottom:5px">Mín:${stock.min} · Máx:${stock.max} bolsas</div>
+      ${stock?`<div style="font-size:10px;color:var(--texto-2);margin-bottom:5px">Mín:${stock.min} · Máx:${stock.max} bolsas</div>
       <div style="display:flex;gap:4px;flex-wrap:wrap" id="inv-recom-${safeId}">
         ${paraMin>0?`<span style="font-size:10px;background:rgba(217,119,6,0.1);color:var(--dorado-texto);padding:1px 7px;border-radius:20px;font-weight:600">+${paraMin} para mínimo</span>`:''}
         ${paraMax>0?`<span style="font-size:10px;background:rgba(10,110,53,0.08);color:var(--verde);padding:1px 7px;border-radius:20px;font-weight:600">+${paraMax} para máximo</span>`:''}
@@ -4247,14 +4266,14 @@ function invRenderGrid(basement, upstairs){
                 oninput="invRecalcular('${p2}')">
             </div>
           </div>
-          <div style="font-size:9px;color:var(--texto-4);margin-top:4px">Ini día: <span id="inv-ini-${safeId}">${s.inv_inicial}</span></div>
+          <div style="font-size:9px;color:var(--texto-2);margin-top:4px">Ini día: <span id="inv-ini-${safeId}">${s.inv_inicial}</span></div>
         </div>`;
       }).join('')}
       <div style="display:flex;align-items:center;justify-content:space-between;background:rgba(0,0,0,0.04);border-radius:6px;padding:5px 10px;margin:10px 0 6px" >
         <span style="font-size:11px;color:var(--texto-3)">Inv final (combinado)</span>
         <strong id="inv-grupo-final-${groupSafeId}" style="font-size:14px;font-weight:700;font-family:var(--mono);color:${bigClr}">${finalTot}</strong>
       </div>
-      ${stock?`<div style="font-size:10px;color:var(--texto-4);margin-bottom:5px">Mín:${stock.min} · Máx:${stock.max} bolsas (combinado)</div>
+      ${stock?`<div style="font-size:10px;color:var(--texto-2);margin-bottom:5px">Mín:${stock.min} · Máx:${stock.max} bolsas (combinado)</div>
       <div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:6px" id="inv-grupo-recom-${groupSafeId}">
         ${paraMin>0?`<span style="font-size:10px;background:rgba(217,119,6,0.1);color:var(--dorado-texto);padding:1px 7px;border-radius:20px;font-weight:600">+${paraMin} para mínimo</span>`:''}
         ${paraMax>0?`<span style="font-size:10px;background:rgba(10,110,53,0.08);color:var(--verde);padding:1px 7px;border-radius:20px;font-weight:600">+${paraMax} para máximo</span>`:''}
